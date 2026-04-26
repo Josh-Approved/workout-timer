@@ -4,7 +4,6 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
-  Alert,
   StyleSheet,
   useColorScheme,
   SafeAreaView,
@@ -13,7 +12,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList, TimerConfig } from '../types';
-import { loadTimers, deleteTimer } from '../storage/storage';
+import { loadTimers } from '../storage/storage';
 import { getTimerSummary, getTotalDuration, formatTime } from '../utils/workout';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TimerList'>;
@@ -29,22 +28,21 @@ export default function TimerListScreen({ navigation }: Props) {
     }, [])
   );
 
-  const handleDelete = (timer: TimerConfig) => {
-    Alert.alert('Delete Timer', `Delete "${timer.name}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => setTimers(await deleteTimer(timer.id)),
-      },
-    ]);
-  };
-
   return (
     <SafeAreaView style={s.container}>
       <View style={s.header}>
-        <Text style={s.title}>Free Workout Timer</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Settings')} hitSlop={8}>
+        <Text
+          style={s.title}
+          accessibilityRole="header"
+        >
+          Free Workout Timer
+        </Text>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Settings')}
+          hitSlop={8}
+          accessibilityLabel="Settings"
+          accessibilityRole="button"
+        >
           <Text style={s.headerIcon}>⚙️</Text>
         </TouchableOpacity>
       </View>
@@ -57,43 +55,53 @@ export default function TimerListScreen({ navigation }: Props) {
           <TouchableOpacity
             style={s.bmacRow}
             onPress={() => Linking.openURL('https://buymeacoffee.com/jtysonwilliams')}
+            accessibilityLabel="Buy me a coffee"
+            accessibilityRole="link"
+            accessibilityHint="Opens buymeacoffee.com in your browser"
           >
             <Text style={s.bmacText}>☕  Buy me a coffee</Text>
           </TouchableOpacity>
         }
         ListEmptyComponent={
-          <View style={s.empty}>
+          <View style={s.empty} accessibilityLiveRegion="polite">
             <Text style={s.emptyText}>No timers yet.</Text>
             <Text style={s.emptyText}>Tap + to create one.</Text>
           </View>
         }
         renderItem={({ item }) => (
-          <View style={s.card}>
-            <View style={s.cardInfo}>
-              <Text style={s.cardName}>{item.name}</Text>
-              <Text style={s.cardSummary}>{getTimerSummary(item)}</Text>
-              <Text style={s.cardDuration}>
-                Total · {formatTime(getTotalDuration(item))}
-              </Text>
-            </View>
-            <View style={s.cardActions}>
+          <View
+            style={s.card}
+            accessible={false}
+          >
+            {/* Main row: info left, play button right (vertically centered) */}
+            <View style={s.cardMain}>
+              <View style={s.cardInfo}>
+                <Text style={s.cardName}>{item.name}</Text>
+                <Text style={s.cardSummary}>{getTimerSummary(item)}</Text>
+                <Text style={s.cardDuration}>
+                  Total · {formatTime(getTotalDuration(item))}
+                </Text>
+              </View>
               <TouchableOpacity
                 style={s.playBtn}
-                onPress={() =>
-                  navigation.navigate('ActiveWorkout', { timerId: item.id })
-                }
+                onPress={() => navigation.navigate('ActiveWorkout', { timerId: item.id })}
+                accessibilityLabel={`Start ${item.name}`}
+                accessibilityRole="button"
+                accessibilityHint="Begins the workout"
               >
-                <Text style={s.playBtnText}>▶</Text>
+                <Text style={s.playBtnText} importantForAccessibility="no">▶</Text>
               </TouchableOpacity>
+            </View>
+
+            {/* Footer row: edit button */}
+            <View style={s.cardFooter}>
               <TouchableOpacity
-                onPress={() =>
-                  navigation.navigate('TimerEditor', { timerId: item.id })
-                }
+                onPress={() => navigation.navigate('TimerEditor', { timerId: item.id })}
+                accessibilityLabel={`Edit ${item.name}`}
+                accessibilityRole="button"
+                hitSlop={8}
               >
-                <Text style={s.linkText}>Edit</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => handleDelete(item)}>
-                <Text style={[s.linkText, s.deleteText]}>Delete</Text>
+                <Text style={s.editText}>Edit</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -103,8 +111,10 @@ export default function TimerListScreen({ navigation }: Props) {
       <TouchableOpacity
         style={s.fab}
         onPress={() => navigation.navigate('TimerEditor', {})}
+        accessibilityLabel="Create new timer"
+        accessibilityRole="button"
       >
-        <Text style={s.fabText}>+</Text>
+        <Text style={s.fabText} importantForAccessibility="no">+</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );
@@ -131,24 +141,29 @@ function makeStyles(isDark: boolean) {
     title: { fontSize: 22, fontWeight: '700', color: text },
     headerIcon: { fontSize: 22 },
     list: { padding: 16, paddingBottom: 100 },
+
+    // Card: column layout
     card: {
       backgroundColor: cardBg,
       borderRadius: 14,
-      padding: 16,
       marginBottom: 12,
-      flexDirection: 'row',
-      alignItems: 'center',
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: isDark ? 0 : 0.07,
       shadowRadius: 4,
       elevation: 2,
+      overflow: 'hidden',
+    },
+    // Top section: info + vertically-centered play button
+    cardMain: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 16,
     },
     cardInfo: { flex: 1, marginRight: 12 },
     cardName: { fontSize: 17, fontWeight: '600', color: text, marginBottom: 4 },
     cardSummary: { fontSize: 13, color: sub, marginBottom: 2 },
     cardDuration: { fontSize: 12, color: sub },
-    cardActions: { alignItems: 'flex-end', gap: 8 },
     playBtn: {
       backgroundColor: '#EF4444',
       width: 46,
@@ -158,8 +173,16 @@ function makeStyles(isDark: boolean) {
       alignItems: 'center',
     },
     playBtnText: { fontSize: 18, color: '#FFFFFF', marginLeft: 2 },
-    linkText: { fontSize: 13, color: '#3B82F6', fontWeight: '500' },
-    deleteText: { color: '#EF4444' },
+
+    // Footer: edit button
+    cardFooter: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: border,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+    },
+    editText: { fontSize: 14, color: '#3B82F6', fontWeight: '500' },
+
     empty: { alignItems: 'center', paddingTop: 80, gap: 6 },
     emptyText: { fontSize: 16, color: sub },
     bmacRow: { alignItems: 'center', paddingVertical: 24 },
