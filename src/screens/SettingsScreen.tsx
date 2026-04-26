@@ -78,11 +78,22 @@ export default function SettingsScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={s.container}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={8}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          hitSlop={8}
+          accessibilityLabel="Back"
+          accessibilityRole="button"
+        >
           <Text style={s.headerBack}>‹ Back</Text>
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Settings</Text>
-        <TouchableOpacity onPress={handleReset} hitSlop={8}>
+        <Text style={s.headerTitle} accessibilityRole="header">Settings</Text>
+        <TouchableOpacity
+          onPress={handleReset}
+          hitSlop={8}
+          accessibilityLabel="Reset to defaults"
+          accessibilityRole="button"
+          accessibilityHint="Restores all sound settings to their defaults"
+        >
           <Text style={s.headerReset}>Reset</Text>
         </TouchableOpacity>
       </View>
@@ -100,15 +111,26 @@ export default function SettingsScreen({ navigation }: Props) {
               <TouchableOpacity
                 style={s.stepBtn}
                 onPress={() => updateCountdownDuration(Math.max(0, sounds.countdownDuration - 1))}
+                accessibilityLabel="Decrease countdown duration"
+                accessibilityRole="button"
+                accessibilityHint={`Current value: ${sounds.countdownDuration} seconds`}
               >
-                <Text style={s.stepBtnText}>−</Text>
+                <Text style={s.stepBtnText} importantForAccessibility="no">−</Text>
               </TouchableOpacity>
-              <Text style={s.stepValue}>{sounds.countdownDuration}s</Text>
+              <Text
+                style={s.stepValue}
+                accessibilityLabel={`${sounds.countdownDuration} seconds`}
+              >
+                {sounds.countdownDuration}s
+              </Text>
               <TouchableOpacity
                 style={s.stepBtn}
                 onPress={() => updateCountdownDuration(Math.min(10, sounds.countdownDuration + 1))}
+                accessibilityLabel="Increase countdown duration"
+                accessibilityRole="button"
+                accessibilityHint={`Current value: ${sounds.countdownDuration} seconds`}
               >
-                <Text style={s.stepBtnText}>+</Text>
+                <Text style={s.stepBtnText} importantForAccessibility="no">+</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -133,8 +155,12 @@ export default function SettingsScreen({ navigation }: Props) {
                       key={style}
                       style={[s.pill, active && s.pillActive]}
                       onPress={() => updateSound(event.key, style)}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: active }}
+                      accessibilityLabel={SOUND_STYLE_LABELS[style]}
+                      accessibilityHint={active ? 'Currently selected' : 'Tap to select and preview'}
                     >
-                      <Text style={[s.pillText, active && s.pillTextActive]}>
+                      <Text style={[s.pillText, active && s.pillTextActive]} importantForAccessibility="no">
                         {SOUND_STYLE_LABELS[style]}
                       </Text>
                     </TouchableOpacity>
@@ -151,9 +177,12 @@ export default function SettingsScreen({ navigation }: Props) {
           <TouchableOpacity
             style={s.row}
             onPress={() => Linking.openURL('https://buymeacoffee.com/jtysonwilliams')}
+            accessibilityLabel="Buy me a coffee"
+            accessibilityRole="link"
+            accessibilityHint="Opens buymeacoffee.com in your browser"
           >
             <Text style={s.rowTitle}>☕  Buy me a coffee</Text>
-            <Text style={s.chevron}>›</Text>
+            <Text style={s.chevron} importantForAccessibility="no">›</Text>
           </TouchableOpacity>
           <View style={[s.row, s.rowBorder]}>
             <Text style={s.rowTitle}>Version</Text>
