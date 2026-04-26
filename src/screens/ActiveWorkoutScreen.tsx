@@ -18,7 +18,7 @@ import { AudioEngine } from '../audio/AudioEngine';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ActiveWorkout'>;
 
-type Mode = 'pre_countdown' | 'phase' | 'complete';
+type Mode = 'phase' | 'complete';
 
 interface DisplayState {
   mode: Mode;
@@ -46,9 +46,6 @@ const PHASE_LABELS: Record<WorkoutPhase, string> = {
   complete: 'COMPLETE',
 };
 
-// Phases that should NEVER get a pre-countdown — transition is instant
-const NO_COUNTDOWN_PHASES: WorkoutPhase[] = ['rest'];
-
 export default function ActiveWorkoutScreen({ route, navigation }: Props) {
   const { timerId } = route.params;
   const isDark = useColorScheme() === 'dark';
@@ -60,17 +57,12 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
   const isRunningRef = useRef(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const stateRef = useRef<DisplayState>({
-    mode: 'pre_countdown',
-    stepIndex: 0,
-    timeRemaining: 0,
-  });
-
+  const stateRef = useRef<DisplayState>({ mode: 'phase', stepIndex: 0, timeRemaining: 0 });
   const [displayState, setDisplayState] = useState<DisplayState>(stateRef.current);
   const [isRunning, setIsRunning] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
-  // ── Load timer and settings ───────────────────────────────────────────────
+  // ── Load ──────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     let cancelled = false;
@@ -92,7 +84,11 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       totalDurationRef.current = getTotalDuration(timer);
       maxCyclesRef.current = getMaxCycles(steps);
 
-      const initial = makeInitialState(steps, settings.sounds.countdownDuration);
+      if (steps.length === 0) return;
+
+      // Fire the start sound for the first phase, then begin
+      firePhaseStart(steps[0].phase, settings.sounds);
+      const initial: DisplayState = { mode: 'phase', stepIndex: 0, timeRemaining: steps[0].duration };
       stateRef.current = initial;
       setDisplayState(initial);
       setLoaded(true);
@@ -106,44 +102,17 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     };
   }, [timerId]);
 
-  // ── Step transition helper ────────────────────────────────────────────────
-
-  const transitionToStep = useCallback(
-    (nextIdx: number): DisplayState | null => {
-      const sounds = soundsRef.current!;
-      const steps = stepsRef.current;
-
-      if (nextIdx >= steps.length) return null; // signal complete
-
-      const nextStep = steps[nextIdx];
-      const countdownDur = sounds.countdownDuration;
-      const skipCountdown =
-        countdownDur === 0 || NO_COUNTDOWN_PHASES.includes(nextStep.phase);
-
-      if (skipCountdown) {
-        firePhaseStart(nextStep.phase, sounds);
-        return { mode: 'phase', stepIndex: nextIdx, timeRemaining: nextStep.duration };
-      }
-
-      // Start pre-countdown
-      AudioEngine.playTick().catch(() => {});
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-      return { mode: 'pre_countdown', stepIndex: nextIdx, timeRemaining: countdownDur };
-    },
-    []
-  );
-
-  // ── Tick logic ────────────────────────────────────────────────────────────
+  // ── Tick ──────────────────────────────────────────────────────────────────
 
   const tick = useCallback(() => {
     const s = stateRef.current;
     const sounds = soundsRef.current!;
     const steps = stepsRef.current;
-
     const newTime = s.timeRemaining - 1;
 
     if (newTime > 0) {
-      if (s.mode === 'pre_countdown') {
+      // Audio-only end-of-interval warning
+      if (sounds.countdownDuration > 0 && newTime <= sounds.countdownDuration) {
         AudioEngine.playTick().catch(() => {});
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
       }
@@ -153,21 +122,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       return;
     }
 
-    // Time is up in pre_countdown → begin the actual phase
-    if (s.mode === 'pre_countdown') {
-      const step = steps[s.stepIndex];
-      firePhaseStart(step.phase, sounds);
-      const next: DisplayState = {
-        mode: 'phase',
-        stepIndex: s.stepIndex,
-        timeRemaining: step.duration,
-      };
-      stateRef.current = next;
-      setDisplayState(next);
-      return;
-    }
-
-    // Phase ended → advance to next step
+    // Interval ended — advance instantly
     const nextIdx = s.stepIndex + 1;
     if (nextIdx >= steps.length) {
       playComplete(sounds);
@@ -180,10 +135,12 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       return;
     }
 
-    const next = transitionToStep(nextIdx)!;
+    const nextStep = steps[nextIdx];
+    firePhaseStart(nextStep.phase, sounds);
+    const next: DisplayState = { mode: 'phase', stepIndex: nextIdx, timeRemaining: nextStep.duration };
     stateRef.current = next;
     setDisplayState(next);
-  }, [transitionToStep]);
+  }, []);
 
   // ── Interval management ───────────────────────────────────────────────────
 
@@ -200,7 +157,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
   }, []);
 
   useEffect(() => {
-    if (loaded && stateRef.current.mode !== 'complete') {
+    if (loaded) {
       isRunningRef.current = true;
       setIsRunning(true);
       startInterval();
@@ -226,17 +183,9 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
   const handleRestart = () => {
     if (displayState.mode === 'complete') return;
     const s = stateRef.current;
-    const steps = stepsRef.current;
-    const sounds = soundsRef.current!;
-    const currentStep = steps[s.stepIndex];
-
-    // Restart the current interval from full duration
-    firePhaseStart(currentStep.phase, sounds);
-    const next: DisplayState = {
-      mode: 'phase',
-      stepIndex: s.stepIndex,
-      timeRemaining: currentStep.duration,
-    };
+    const currentStep = stepsRef.current[s.stepIndex];
+    firePhaseStart(currentStep.phase, soundsRef.current!);
+    const next: DisplayState = { mode: 'phase', stepIndex: s.stepIndex, timeRemaining: currentStep.duration };
     stateRef.current = next;
     setDisplayState(next);
   };
@@ -246,8 +195,8 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     const s = stateRef.current;
     const steps = stepsRef.current;
     const sounds = soundsRef.current!;
-
     const nextIdx = s.stepIndex + 1;
+
     if (nextIdx >= steps.length) {
       playComplete(sounds);
       const next: DisplayState = { mode: 'complete', stepIndex: s.stepIndex, timeRemaining: 0 };
@@ -259,7 +208,9 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       return;
     }
 
-    const next = transitionToStep(nextIdx)!;
+    const nextStep = steps[nextIdx];
+    firePhaseStart(nextStep.phase, sounds);
+    const next: DisplayState = { mode: 'phase', stepIndex: nextIdx, timeRemaining: nextStep.duration };
     stateRef.current = next;
     setDisplayState(next);
   };
@@ -270,21 +221,17 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       {
         text: 'Stop',
         style: 'destructive',
-        onPress: () => {
-          stopInterval();
-          navigation.goBack();
-        },
+        onPress: () => { stopInterval(); navigation.goBack(); },
       },
     ]);
   };
 
-  // ── Derived display values ────────────────────────────────────────────────
+  // ── Derived display ───────────────────────────────────────────────────────
 
   const currentStep = stepsRef.current[displayState.stepIndex] ?? null;
   const phase: WorkoutPhase =
     displayState.mode === 'complete' ? 'complete' : currentStep?.phase ?? 'exercise';
   const phaseColor = PHASE_COLORS[phase];
-  const phaseLabel = PHASE_LABELS[phase];
 
   const setDisplay = currentStep?.setNumber != null
     ? `${currentStep.setNumber} / ${getTotalSets(stepsRef.current, currentStep)}`
@@ -308,18 +255,12 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     <SafeAreaView style={s.container}>
       {/* Phase label */}
       <View style={s.phaseRow}>
-        {displayState.mode === 'pre_countdown' ? (
-          <Text style={s.phaseCountdownLabel}>{phaseLabel} ›› STARTING</Text>
-        ) : (
-          <Text style={s.phaseLabel}>{phaseLabel}</Text>
-        )}
+        <Text style={s.phaseLabel}>{PHASE_LABELS[phase]}</Text>
       </View>
 
       {/* Big timer */}
       <View style={s.timerContainer}>
-        {displayState.mode === 'pre_countdown' ? (
-          <Text style={s.countdown}>{displayState.timeRemaining}</Text>
-        ) : displayState.mode === 'complete' ? (
+        {displayState.mode === 'complete' ? (
           <Text style={s.completeText}>Done! 🎉</Text>
         ) : (
           <Text style={s.timer}>{formatTime(displayState.timeRemaining)}</Text>
@@ -351,10 +292,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
           <TouchableOpacity style={s.stopBtn} onPress={handleStop} hitSlop={8}>
             <Text style={s.stopBtnText}>■</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[s.playPauseBtn, { backgroundColor: phaseColor }]}
-            onPress={togglePause}
-          >
+          <TouchableOpacity style={[s.playPauseBtn, { backgroundColor: phaseColor }]} onPress={togglePause}>
             <Text style={s.playPauseBtnText}>{isRunning ? '⏸' : '▶'}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={s.secondaryBtn} onPress={handleSkip} hitSlop={8}>
@@ -373,16 +311,6 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────
-
-function makeInitialState(steps: PhaseStep[], countdownDur: number): DisplayState {
-  if (steps.length === 0) return { mode: 'complete', stepIndex: 0, timeRemaining: 0 };
-  const firstPhase = steps[0].phase;
-  const skipCountdown = countdownDur === 0 || NO_COUNTDOWN_PHASES.includes(firstPhase);
-  if (skipCountdown) {
-    return { mode: 'phase', stepIndex: 0, timeRemaining: steps[0].duration };
-  }
-  return { mode: 'pre_countdown', stepIndex: 0, timeRemaining: countdownDur };
-}
 
 function firePhaseStart(phase: WorkoutPhase, sounds: SoundSettings): void {
   const styleMap: Partial<Record<WorkoutPhase, keyof SoundSettings>> = {
@@ -432,8 +360,6 @@ function makeStyles(isDark: boolean, phaseColor: string) {
       paddingVertical: 24,
     },
     loading: { flex: 1, fontSize: 18, color: text, textAlign: 'center', marginTop: 100 },
-
-    // Phase label
     phaseRow: { alignItems: 'center', paddingTop: 16 },
     phaseLabel: {
       fontSize: 28,
@@ -442,15 +368,6 @@ function makeStyles(isDark: boolean, phaseColor: string) {
       letterSpacing: 2,
       textTransform: 'uppercase',
     },
-    phaseCountdownLabel: {
-      fontSize: 18,
-      fontWeight: '600',
-      color: phaseColor,
-      letterSpacing: 1,
-      opacity: 0.85,
-    },
-
-    // Main timer
     timerContainer: { alignItems: 'center', justifyContent: 'center', flex: 1 },
     timer: {
       fontSize: 96,
@@ -459,15 +376,7 @@ function makeStyles(isDark: boolean, phaseColor: string) {
       fontVariant: ['tabular-nums'],
       letterSpacing: -2,
     },
-    countdown: {
-      fontSize: 120,
-      fontWeight: '300',
-      color: phaseColor,
-      fontVariant: ['tabular-nums'],
-    },
     completeText: { fontSize: 48, fontWeight: '700', color: '#22C55E' },
-
-    // Info panels
     infoRow: {
       flexDirection: 'row',
       backgroundColor: panelBg,
@@ -476,11 +385,7 @@ function makeStyles(isDark: boolean, phaseColor: string) {
       marginBottom: 20,
       overflow: 'hidden',
     },
-    infoPanel: {
-      flex: 1,
-      alignItems: 'center',
-      paddingVertical: 12,
-    },
+    infoPanel: { flex: 1, alignItems: 'center', paddingVertical: 12 },
     infoPanelBorder: {
       borderLeftWidth: StyleSheet.hairlineWidth,
       borderLeftColor: panelBorder,
@@ -498,8 +403,6 @@ function makeStyles(isDark: boolean, phaseColor: string) {
       color: text,
       fontVariant: ['tabular-nums'],
     },
-
-    // Controls
     controls: {
       flexDirection: 'row',
       alignItems: 'center',
