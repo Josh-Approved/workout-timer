@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList, TimerConfig } from '../types';
-import { loadTimers, saveTimer } from '../storage/storage';
+import { loadTimers, saveTimer, deleteTimer } from '../storage/storage';
 import { generateId } from '../utils/workout';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TimerEditor'>;
@@ -62,7 +62,6 @@ export default function TimerEditorScreen({ route, navigation }: Props) {
       Alert.alert('Exercise time required', 'Exercise interval must be at least 1 second.');
       return;
     }
-
     const timer: TimerConfig = {
       id: timerId ?? generateId(),
       ...form,
@@ -70,19 +69,48 @@ export default function TimerEditorScreen({ route, navigation }: Props) {
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
-
     await saveTimer(timer);
     navigation.goBack();
+  };
+
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Timer',
+      `Permanently delete "${form.name}"? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteTimer(timerId!);
+            navigation.goBack();
+          },
+        },
+      ]
+    );
   };
 
   return (
     <SafeAreaView style={s.container}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={8}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          hitSlop={8}
+          accessibilityLabel="Back"
+          accessibilityRole="button"
+        >
           <Text style={s.headerBack}>‹ Back</Text>
         </TouchableOpacity>
-        <Text style={s.headerTitle}>{timerId ? 'Edit Timer' : 'New Timer'}</Text>
-        <TouchableOpacity onPress={handleSave} hitSlop={8}>
+        <Text style={s.headerTitle} accessibilityRole="header">
+          {timerId ? 'Edit Timer' : 'New Timer'}
+        </Text>
+        <TouchableOpacity
+          onPress={handleSave}
+          hitSlop={8}
+          accessibilityLabel="Save timer"
+          accessibilityRole="button"
+        >
           <Text style={s.headerSave}>Save</Text>
         </TouchableOpacity>
       </View>
@@ -94,7 +122,7 @@ export default function TimerEditorScreen({ route, navigation }: Props) {
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
           {/* Name */}
           <View style={s.section}>
-            <Text style={s.sectionTitle}>Timer Name</Text>
+            <Text style={s.sectionTitle} accessibilityRole="header">Timer Name</Text>
             <TextInput
               style={s.nameInput}
               value={form.name}
@@ -103,12 +131,14 @@ export default function TimerEditorScreen({ route, navigation }: Props) {
               placeholderTextColor={isDark ? '#555' : '#BBB'}
               maxLength={60}
               returnKeyType="done"
+              accessibilityLabel="Timer name"
+              accessibilityHint="Enter a name for this timer"
             />
           </View>
 
           {/* Preparation */}
           <View style={s.section}>
-            <Text style={s.sectionTitle}>Preparation</Text>
+            <Text style={s.sectionTitle} accessibilityRole="header">Preparation</Text>
             <Field
               label="Initial Countdown"
               hint="Get-ready period before the workout starts (0 = skip)"
@@ -127,7 +157,7 @@ export default function TimerEditorScreen({ route, navigation }: Props) {
 
           {/* Intervals */}
           <View style={s.section}>
-            <Text style={s.sectionTitle}>Intervals</Text>
+            <Text style={s.sectionTitle} accessibilityRole="header">Intervals</Text>
             <Field
               label="Exercise"
               hint="Work interval duration (required)"
@@ -147,7 +177,7 @@ export default function TimerEditorScreen({ route, navigation }: Props) {
 
           {/* Structure */}
           <View style={s.section}>
-            <Text style={s.sectionTitle}>Structure</Text>
+            <Text style={s.sectionTitle} accessibilityRole="header">Structure</Text>
             <Field
               label="Sets"
               hint="Exercise + rest rounds per cycle"
@@ -177,7 +207,7 @@ export default function TimerEditorScreen({ route, navigation }: Props) {
 
           {/* Cool Down */}
           <View style={s.section}>
-            <Text style={s.sectionTitle}>Finish</Text>
+            <Text style={s.sectionTitle} accessibilityRole="header">Finish</Text>
             <Field
               label="Cool Down"
               hint="Cool-down interval after the last set (0 = skip)"
@@ -186,6 +216,19 @@ export default function TimerEditorScreen({ route, navigation }: Props) {
               isDark={isDark}
             />
           </View>
+
+          {/* Delete — only shown when editing an existing timer */}
+          {timerId ? (
+            <TouchableOpacity
+              style={s.deleteBtn}
+              onPress={handleDelete}
+              accessibilityLabel="Delete timer"
+              accessibilityRole="button"
+              accessibilityHint="Permanently removes this timer. Cannot be undone."
+            >
+              <Text style={s.deleteBtnText}>Delete Timer</Text>
+            </TouchableOpacity>
+          ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -217,16 +260,23 @@ function Field({ label, hint, value, onChange, min = 0, step = 5, isDark }: Fiel
   };
 
   const unit = step === 1 ? '' : 's';
+  const valueLabel = `${value}${unit}`;
 
   return (
-    <View style={s.row}>
+    <View style={s.row} accessible={false}>
       <View style={s.labelCol}>
         <Text style={s.label}>{label}</Text>
         <Text style={s.hint}>{hint}</Text>
       </View>
-      <View style={s.stepper}>
-        <TouchableOpacity style={s.stepBtn} onPress={decrement}>
-          <Text style={s.stepBtnText}>−</Text>
+      <View style={s.stepper} accessible={false}>
+        <TouchableOpacity
+          style={s.stepBtn}
+          onPress={decrement}
+          accessibilityLabel={`Decrease ${label}`}
+          accessibilityRole="button"
+          accessibilityHint={`Current value: ${valueLabel}`}
+        >
+          <Text style={s.stepBtnText} importantForAccessibility="no">−</Text>
         </TouchableOpacity>
         <TextInput
           style={s.stepInput}
@@ -234,10 +284,18 @@ function Field({ label, hint, value, onChange, min = 0, step = 5, isDark }: Fiel
           keyboardType="number-pad"
           onChangeText={handleText}
           selectTextOnFocus
+          accessibilityLabel={`${label} value`}
+          accessibilityHint={hint}
         />
-        {unit ? <Text style={s.unit}>{unit}</Text> : null}
-        <TouchableOpacity style={s.stepBtn} onPress={increment}>
-          <Text style={s.stepBtnText}>+</Text>
+        {unit ? <Text style={s.unit} importantForAccessibility="no">{unit}</Text> : null}
+        <TouchableOpacity
+          style={s.stepBtn}
+          onPress={increment}
+          accessibilityLabel={`Increase ${label}`}
+          accessibilityRole="button"
+          accessibilityHint={`Current value: ${valueLabel}`}
+        >
+          <Text style={s.stepBtnText} importantForAccessibility="no">+</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -296,6 +354,19 @@ function makeStyles(isDark: boolean) {
       paddingVertical: 12,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: border,
+    },
+    deleteBtn: {
+      backgroundColor: '#EF4444',
+      borderRadius: 14,
+      paddingVertical: 16,
+      alignItems: 'center',
+      marginTop: 8,
+      marginBottom: 16,
+    },
+    deleteBtnText: {
+      fontSize: 17,
+      fontWeight: '600',
+      color: '#FFFFFF',
     },
   });
 }
