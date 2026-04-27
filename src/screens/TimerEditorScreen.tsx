@@ -259,43 +259,60 @@ function Field({ label, hint, value, onChange, min = 0, step = 5, isDark }: Fiel
     else if (text === '') onChange(min);
   };
 
-  const unit = step === 1 ? '' : 's';
-  const valueLabel = `${value}${unit}`;
+  const isTime = step !== 1;
+  const spokenValue = isTime
+    ? value < 60
+      ? `${value} second${value !== 1 ? 's' : ''}`
+      : `${Math.floor(value / 60)} minute${Math.floor(value / 60) !== 1 ? 's' : ''}${value % 60 > 0 ? ` ${value % 60} seconds` : ''}`
+    : String(value);
 
   return (
     <View style={s.row} accessible={false}>
-      <View style={s.labelCol}>
+      {/* Label + hint hidden from accessibility — the TextInput carries the full label */}
+      <View style={s.labelCol} importantForAccessibility="no-hide-descendants">
         <Text style={s.label}>{label}</Text>
         <Text style={s.hint}>{hint}</Text>
       </View>
       <View style={s.stepper} accessible={false}>
+        {/* − button visible to sighted users only */}
         <TouchableOpacity
           style={s.stepBtn}
           onPress={decrement}
-          accessibilityLabel={`Decrease ${label}`}
-          accessibilityRole="button"
-          accessibilityHint={`Current value: ${valueLabel}`}
+          accessible={false}
+          importantForAccessibility="no"
         >
-          <Text style={s.stepBtnText} importantForAccessibility="no">−</Text>
+          <Text style={s.stepBtnText}>−</Text>
         </TouchableOpacity>
+
+        {/* Single VoiceOver/TalkBack focus point: adjustable role, swipe up/down to change */}
         <TextInput
           style={s.stepInput}
           value={String(value)}
           keyboardType="number-pad"
           onChangeText={handleText}
           selectTextOnFocus
-          accessibilityLabel={`${label} value`}
-          accessibilityHint={hint}
+          accessibilityRole="adjustable"
+          accessibilityLabel={`${label}, ${spokenValue}`}
+          accessibilityHint={`${hint}. Swipe up to increase, swipe down to decrease`}
+          accessibilityActions={[
+            { name: 'increment', label: 'increase' },
+            { name: 'decrement', label: 'decrease' },
+          ]}
+          onAccessibilityAction={(event) => {
+            if (event.nativeEvent.actionName === 'increment') increment();
+            if (event.nativeEvent.actionName === 'decrement') decrement();
+          }}
         />
-        {unit ? <Text style={s.unit} importantForAccessibility="no">{unit}</Text> : null}
+        {isTime ? <Text style={s.unit} importantForAccessibility="no">s</Text> : null}
+
+        {/* + button visible to sighted users only */}
         <TouchableOpacity
           style={s.stepBtn}
           onPress={increment}
-          accessibilityLabel={`Increase ${label}`}
-          accessibilityRole="button"
-          accessibilityHint={`Current value: ${valueLabel}`}
+          accessible={false}
+          importantForAccessibility="no"
         >
-          <Text style={s.stepBtnText} importantForAccessibility="no">+</Text>
+          <Text style={s.stepBtnText}>+</Text>
         </TouchableOpacity>
       </View>
     </View>
