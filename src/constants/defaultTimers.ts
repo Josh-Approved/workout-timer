@@ -60,4 +60,5 @@ export const DEFAULT_SOUND_SETTINGS: SoundSettings = {
 
 export const DEFAULT_SETTINGS: AppSettings = {
   sounds: DEFAULT_SOUND_SETTINGS,
+  audioAccessibilityMode: false,
 };
