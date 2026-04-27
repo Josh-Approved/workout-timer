@@ -9,6 +9,7 @@ import {
   SafeAreaView,
   Linking,
   Alert,
+  Switch,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -39,17 +40,21 @@ export default function SettingsScreen({ navigation }: Props) {
   const s = makeStyles(isDark);
 
   const [sounds, setSounds] = useState<SoundSettings>(DEFAULT_SETTINGS.sounds);
+  const [audioMode, setAudioMode] = useState(DEFAULT_SETTINGS.audioAccessibilityMode);
 
   useFocusEffect(
     useCallback(() => {
-      loadSettings().then((settings) => setSounds(settings.sounds));
+      loadSettings().then((settings) => {
+        setSounds(settings.sounds);
+        setAudioMode(settings.audioAccessibilityMode);
+      });
     }, [])
   );
 
   const updateSound = async (key: keyof Omit<SoundSettings, 'countdownDuration'>, value: SoundStyle) => {
     const updated = { ...sounds, [key]: value };
     setSounds(updated);
-    await saveSettings({ sounds: updated });
+    await saveSettings({ sounds: updated, audioAccessibilityMode: audioMode });
     if (value !== 'none') {
       AudioEngine.playSound(value).catch(() => {});
     }
@@ -58,17 +63,23 @@ export default function SettingsScreen({ navigation }: Props) {
   const updateCountdownDuration = async (value: number) => {
     const updated = { ...sounds, countdownDuration: value };
     setSounds(updated);
-    await saveSettings({ sounds: updated });
+    await saveSettings({ sounds: updated, audioAccessibilityMode: audioMode });
+  };
+
+  const updateAudioMode = async (value: boolean) => {
+    setAudioMode(value);
+    await saveSettings({ sounds, audioAccessibilityMode: value });
   };
 
   const handleReset = () => {
-    Alert.alert('Reset to Defaults', 'Restore all sound settings to defaults?', [
+    Alert.alert('Reset to Defaults', 'Restore all settings to defaults?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Reset',
         style: 'destructive',
         onPress: async () => {
           setSounds(DEFAULT_SETTINGS.sounds);
+          setAudioMode(DEFAULT_SETTINGS.audioAccessibilityMode);
           await saveSettings(DEFAULT_SETTINGS);
         },
       },
@@ -169,6 +180,26 @@ export default function SettingsScreen({ navigation }: Props) {
               </ScrollView>
             </View>
           ))}
+        </View>
+
+        {/* Accessibility */}
+        <Text style={s.sectionHeader}>ACCESSIBILITY</Text>
+        <View style={s.card}>
+          <View style={s.row} accessible={true} accessibilityLabel={`Audio guidance, ${audioMode ? 'on' : 'off'}`}>
+            <View style={s.rowLabel}>
+              <Text style={s.rowTitle}>Audio Guidance</Text>
+              <Text style={s.rowHint}>Speaks each phase name, set, and duration aloud</Text>
+            </View>
+            <Switch
+              value={audioMode}
+              onValueChange={updateAudioMode}
+              trackColor={{ false: '#767577', true: '#3B82F6' }}
+              thumbColor="#FFFFFF"
+              accessibilityRole="switch"
+              accessibilityLabel="Audio guidance"
+              accessibilityState={{ checked: audioMode }}
+            />
+          </View>
         </View>
 
         {/* About */}

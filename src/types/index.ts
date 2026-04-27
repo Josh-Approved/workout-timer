@@ -58,6 +58,7 @@ export interface SoundSettings {
 
 export interface AppSettings {
   sounds: SoundSettings;
+  audioAccessibilityMode: boolean;
 }
 
 export type WorkoutPhase =
