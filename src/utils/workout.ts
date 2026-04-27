@@ -1,4 +1,4 @@
-import { TimerConfig, PhaseStep } from '../types';
+import { TimerConfig, PhaseStep, WorkoutPhase } from '../types';
 
 export function buildWorkoutSequence(timer: TimerConfig): PhaseStep[] {
   const steps: PhaseStep[] = [];
@@ -55,11 +55,53 @@ export function getTotalDuration(timer: TimerConfig): number {
 }
 
 export function getTimerSummary(timer: TimerConfig): string {
-  const parts: string[] = [`${timer.exercise}s work`];
-  if (timer.rest > 0) parts.push(`${timer.rest}s rest`);
+  const dur = (n: number) =>
+    n < 60 ? `${n} second${n !== 1 ? 's' : ''}` : `${Math.floor(n / 60)} min`;
+  const parts: string[] = [`${dur(timer.exercise)} work`];
+  if (timer.rest > 0) parts.push(`${dur(timer.rest)} rest`);
   parts.push(`${timer.sets} set${timer.sets !== 1 ? 's' : ''}`);
   if (timer.cycles > 1) parts.push(`${timer.cycles} cycles`);
   return parts.join(' · ');
+}
+
+export function formatDurationSpoken(seconds: number): string {
+  if (seconds < 60) return `${seconds} second${seconds !== 1 ? 's' : ''}`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  const mins = `${m} minute${m !== 1 ? 's' : ''}`;
+  if (s === 0) return mins;
+  return `${mins} and ${s} second${s !== 1 ? 's' : ''}`;
+}
+
+export function buildPhaseAnnouncement(
+  step: PhaseStep,
+  totalSetsInCycle: number,
+  maxCycles: number,
+): string {
+  const PHASE_SPOKEN: Record<WorkoutPhase, string> = {
+    initial_countdown: 'Get ready',
+    warm_up: 'Warm up',
+    exercise: 'Exercise',
+    rest: 'Rest',
+    recovery: 'Recovery',
+    cool_down: 'Cool down',
+    complete: 'Workout complete',
+  };
+
+  const name = PHASE_SPOKEN[step.phase];
+  const dur = formatDurationSpoken(step.duration);
+
+  if ((step.phase === 'exercise' || step.phase === 'rest') && step.setNumber != null && totalSetsInCycle > 0) {
+    const setCtx = `set ${step.setNumber} of ${totalSetsInCycle}`;
+    const cycCtx = maxCycles > 1 && step.cycleNumber != null ? `, cycle ${step.cycleNumber} of ${maxCycles}` : '';
+    return `${name}, ${setCtx}${cycCtx}, ${dur}`;
+  }
+
+  if (step.phase === 'recovery' && step.cycleNumber != null && maxCycles > 1) {
+    return `${name}, after cycle ${step.cycleNumber} of ${maxCycles}, ${dur}`;
+  }
+
+  return `${name}, ${dur}`;
 }
 
 export function generateId(): string {

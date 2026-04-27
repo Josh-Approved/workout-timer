@@ -9,11 +9,12 @@ import {
   SafeAreaView,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import * as Speech from 'expo-speech';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList, PhaseStep, SoundSettings, WorkoutPhase } from '../types';
 import { loadTimers, loadSettings } from '../storage/storage';
-import { buildWorkoutSequence, formatTime, getTotalDuration } from '../utils/workout';
+import { buildWorkoutSequence, formatTime, formatDurationSpoken, getTotalDuration, buildPhaseAnnouncement } from '../utils/workout';
 import { AudioEngine } from '../audio/AudioEngine';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ActiveWorkout'>;
@@ -54,6 +55,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
   const soundsRef = useRef<SoundSettings | null>(null);
   const totalDurationRef = useRef(0);
   const maxCyclesRef = useRef(0);
+  const speechModeRef = useRef(false);
   const isRunningRef = useRef(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -83,11 +85,13 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       soundsRef.current = settings.sounds;
       totalDurationRef.current = getTotalDuration(timer);
       maxCyclesRef.current = getMaxCycles(steps);
+      speechModeRef.current = settings.audioAccessibilityMode;
 
       if (steps.length === 0) return;
 
       // Fire the start sound for the first phase, then begin
-      firePhaseStart(steps[0].phase, settings.sounds);
+      const maxCycles = getMaxCycles(steps);
+      firePhaseStart(steps[0], settings.sounds, steps, maxCycles, settings.audioAccessibilityMode);
       const initial: DisplayState = { mode: 'phase', stepIndex: 0, timeRemaining: steps[0].duration };
       stateRef.current = initial;
       setDisplayState(initial);
@@ -125,7 +129,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     // Interval ended — advance instantly
     const nextIdx = s.stepIndex + 1;
     if (nextIdx >= steps.length) {
-      playComplete(sounds);
+      playComplete(sounds, speechModeRef.current);
       const next: DisplayState = { mode: 'complete', stepIndex: s.stepIndex, timeRemaining: 0 };
       stateRef.current = next;
       setDisplayState(next);
@@ -136,7 +140,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     }
 
     const nextStep = steps[nextIdx];
-    firePhaseStart(nextStep.phase, sounds);
+    firePhaseStart(nextStep, sounds, steps, maxCyclesRef.current, speechModeRef.current);
     const next: DisplayState = { mode: 'phase', stepIndex: nextIdx, timeRemaining: nextStep.duration };
     stateRef.current = next;
     setDisplayState(next);
@@ -184,7 +188,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     if (displayState.mode === 'complete') return;
     const s = stateRef.current;
     const currentStep = stepsRef.current[s.stepIndex];
-    firePhaseStart(currentStep.phase, soundsRef.current!);
+    firePhaseStart(currentStep, soundsRef.current!, stepsRef.current, maxCyclesRef.current, speechModeRef.current);
     const next: DisplayState = { mode: 'phase', stepIndex: s.stepIndex, timeRemaining: currentStep.duration };
     stateRef.current = next;
     setDisplayState(next);
@@ -198,7 +202,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     const nextIdx = s.stepIndex + 1;
 
     if (nextIdx >= steps.length) {
-      playComplete(sounds);
+      playComplete(sounds, speechModeRef.current);
       const next: DisplayState = { mode: 'complete', stepIndex: s.stepIndex, timeRemaining: 0 };
       stateRef.current = next;
       setDisplayState(next);
@@ -209,7 +213,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     }
 
     const nextStep = steps[nextIdx];
-    firePhaseStart(nextStep.phase, sounds);
+    firePhaseStart(nextStep, sounds, steps, maxCyclesRef.current, speechModeRef.current);
     const next: DisplayState = { mode: 'phase', stepIndex: nextIdx, timeRemaining: nextStep.duration };
     stateRef.current = next;
     setDisplayState(next);
@@ -233,13 +237,28 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     displayState.mode === 'complete' ? 'complete' : currentStep?.phase ?? 'exercise';
   const phaseColor = PHASE_COLORS[phase];
 
-  const setDisplay = currentStep?.setNumber != null
-    ? `${currentStep.setNumber} / ${getTotalSets(stepsRef.current, currentStep)}`
-    : '—';
+  const totalSetsInCycle = currentStep != null ? getTotalSets(stepsRef.current, currentStep) : 0;
 
-  const cycleDisplay = maxCyclesRef.current > 0
-    ? `${currentStep?.cycleNumber ?? '—'} / ${maxCyclesRef.current}`
+  const setDisplay = currentStep?.setNumber != null
+    ? `${currentStep.setNumber} / ${totalSetsInCycle}`
+    : '—';
+  const setA11yLabel = currentStep?.setNumber != null
+    ? `Set, ${currentStep.setNumber} of ${totalSetsInCycle}`
+    : 'Set, not applicable';
+
+  const maxCycles = maxCyclesRef.current;
+  const cycleDisplay = maxCycles > 0
+    ? `${currentStep?.cycleNumber ?? '—'} / ${maxCycles}`
     : '1 / 1';
+  const cycleA11yLabel = maxCycles > 1 && currentStep?.cycleNumber != null
+    ? `Cycle, ${currentStep.cycleNumber} of ${maxCycles}`
+    : 'Cycle, 1 of 1';
+
+  const totalA11yLabel = `Total time, ${formatDurationSpoken(totalDurationRef.current)}`;
+
+  const timerA11yLabel = displayState.mode === 'complete'
+    ? 'Workout complete'
+    : `${formatDurationSpoken(displayState.timeRemaining)} remaining`;
 
   const s = makeStyles(isDark, phaseColor);
 
@@ -254,55 +273,109 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
   return (
     <SafeAreaView style={s.container}>
       {/* Phase label */}
-      <View style={s.phaseRow}>
-        <Text style={s.phaseLabel}>{PHASE_LABELS[phase]}</Text>
+      <View
+        style={s.phaseRow}
+        accessible={true}
+        accessibilityLabel={PHASE_LABELS[phase]}
+        accessibilityRole="text"
+      >
+        <Text style={s.phaseLabel} importantForAccessibility="no">{PHASE_LABELS[phase]}</Text>
       </View>
 
       {/* Big timer */}
-      <View style={s.timerContainer}>
+      <View
+        style={s.timerContainer}
+        accessible={true}
+        accessibilityLabel={timerA11yLabel}
+        accessibilityRole="text"
+        accessibilityLiveRegion="none"
+      >
         {displayState.mode === 'complete' ? (
-          <Text style={s.completeText}>Done! 🎉</Text>
+          <Text style={s.completeText} importantForAccessibility="no">Done! 🎉</Text>
         ) : (
-          <Text style={s.timer}>{formatTime(displayState.timeRemaining)}</Text>
+          <Text style={s.timer} importantForAccessibility="no">{formatTime(displayState.timeRemaining)}</Text>
         )}
       </View>
 
       {/* Info panels: Set · Cycle · Total */}
-      <View style={s.infoRow}>
-        <View style={s.infoPanel}>
-          <Text style={s.infoLabel}>SET</Text>
-          <Text style={s.infoValue}>{setDisplay}</Text>
+      <View style={s.infoRow} accessible={false}>
+        <View
+          style={s.infoPanel}
+          accessible={true}
+          accessibilityLabel={setA11yLabel}
+          accessibilityRole="text"
+        >
+          <Text style={s.infoLabel} importantForAccessibility="no">SET</Text>
+          <Text style={s.infoValue} importantForAccessibility="no">{setDisplay}</Text>
         </View>
-        <View style={[s.infoPanel, s.infoPanelBorder]}>
-          <Text style={s.infoLabel}>CYCLE</Text>
-          <Text style={s.infoValue}>{cycleDisplay}</Text>
+        <View
+          style={[s.infoPanel, s.infoPanelBorder]}
+          accessible={true}
+          accessibilityLabel={cycleA11yLabel}
+          accessibilityRole="text"
+        >
+          <Text style={s.infoLabel} importantForAccessibility="no">CYCLE</Text>
+          <Text style={s.infoValue} importantForAccessibility="no">{cycleDisplay}</Text>
         </View>
-        <View style={[s.infoPanel, s.infoPanelBorder]}>
-          <Text style={s.infoLabel}>TOTAL</Text>
-          <Text style={s.infoValue}>{formatTime(totalDurationRef.current)}</Text>
+        <View
+          style={[s.infoPanel, s.infoPanelBorder]}
+          accessible={true}
+          accessibilityLabel={totalA11yLabel}
+          accessibilityRole="text"
+        >
+          <Text style={s.infoLabel} importantForAccessibility="no">TOTAL</Text>
+          <Text style={s.infoValue} importantForAccessibility="no">{formatTime(totalDurationRef.current)}</Text>
         </View>
       </View>
 
       {/* Controls */}
       {displayState.mode !== 'complete' ? (
         <View style={s.controls}>
-          <TouchableOpacity style={s.secondaryBtn} onPress={handleRestart} hitSlop={8}>
-            <Text style={s.secondaryBtnText}>⏮</Text>
+          <TouchableOpacity
+            style={s.secondaryBtn}
+            onPress={handleRestart}
+            hitSlop={8}
+            accessibilityLabel="Restart current interval"
+            accessibilityRole="button"
+          >
+            <Text style={s.secondaryBtnText} importantForAccessibility="no">⏮</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={s.stopBtn} onPress={handleStop} hitSlop={8}>
-            <Text style={s.stopBtnText}>■</Text>
+          <TouchableOpacity
+            style={s.stopBtn}
+            onPress={handleStop}
+            hitSlop={8}
+            accessibilityLabel="Stop workout"
+            accessibilityRole="button"
+          >
+            <Text style={s.stopBtnText} importantForAccessibility="no">■</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[s.playPauseBtn, { backgroundColor: phaseColor }]} onPress={togglePause}>
-            <Text style={s.playPauseBtnText}>{isRunning ? '⏸' : '▶'}</Text>
+          <TouchableOpacity
+            style={[s.playPauseBtn, { backgroundColor: phaseColor }]}
+            onPress={togglePause}
+            accessibilityLabel={isRunning ? 'Pause' : 'Resume'}
+            accessibilityRole="button"
+          >
+            <Text style={s.playPauseBtnText} importantForAccessibility="no">{isRunning ? '⏸' : '▶'}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={s.secondaryBtn} onPress={handleSkip} hitSlop={8}>
-            <Text style={s.secondaryBtnText}>⏭</Text>
+          <TouchableOpacity
+            style={s.secondaryBtn}
+            onPress={handleSkip}
+            hitSlop={8}
+            accessibilityLabel="Skip to next interval"
+            accessibilityRole="button"
+          >
+            <Text style={s.secondaryBtnText} importantForAccessibility="no">⏭</Text>
           </TouchableOpacity>
         </View>
       ) : (
         <View style={s.controls}>
-          <TouchableOpacity style={s.doneBtn} onPress={() => navigation.goBack()}>
-            <Text style={s.doneBtnText}>Back to Timers</Text>
+          <TouchableOpacity
+            style={s.doneBtn}
+            onPress={() => navigation.goBack()}
+            accessibilityLabel="Back to timers"
+            accessibilityRole="button"
+          >
+            <Text style={s.doneBtnText} importantForAccessibility="no">Back to Timers</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -312,7 +385,13 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
-function firePhaseStart(phase: WorkoutPhase, sounds: SoundSettings): void {
+function firePhaseStart(
+  step: PhaseStep,
+  sounds: SoundSettings,
+  allSteps: PhaseStep[],
+  maxCycles: number,
+  speechMode: boolean,
+): void {
   const styleMap: Partial<Record<WorkoutPhase, keyof SoundSettings>> = {
     warm_up: 'warmUpStart',
     exercise: 'workStart',
@@ -321,14 +400,24 @@ function firePhaseStart(phase: WorkoutPhase, sounds: SoundSettings): void {
     cool_down: 'coolDownStart',
     initial_countdown: 'warmUpStart',
   };
-  const key = styleMap[phase];
+  const key = styleMap[step.phase];
   if (key) AudioEngine.playSound(sounds[key] as any).catch(() => {});
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+  if (speechMode) {
+    const totalSetsInCycle =
+      step.phase === 'exercise' || step.phase === 'rest'
+        ? getTotalSets(allSteps, step)
+        : 0;
+    Speech.speak(buildPhaseAnnouncement(step, totalSetsInCycle, maxCycles), { language: 'en-US' });
+  }
 }
 
-function playComplete(sounds: SoundSettings): void {
+function playComplete(sounds: SoundSettings, speechMode: boolean): void {
   AudioEngine.playSound(sounds.workoutComplete).catch(() => {});
   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+  if (speechMode) {
+    Speech.speak('Workout complete', { language: 'en-US' });
+  }
 }
 
 function getTotalSets(steps: PhaseStep[], current: PhaseStep): number {
