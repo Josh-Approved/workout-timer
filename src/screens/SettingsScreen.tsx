@@ -110,38 +110,78 @@ export default function SettingsScreen({ navigation }: Props) {
       </View>
 
       <ScrollView contentContainerStyle={s.scroll}>
+        {/* Accessibility */}
+        <Text style={s.sectionHeader}>ACCESSIBILITY</Text>
+        <View style={s.card}>
+          <View style={s.row}>
+            <View style={s.rowLabel} importantForAccessibility="no-hide-descendants">
+              <Text style={s.rowTitle}>Audio Guidance</Text>
+              <Text style={s.rowHint}>Speaks each phase name, set, and duration aloud</Text>
+            </View>
+            <Switch
+              value={audioMode}
+              onValueChange={updateAudioMode}
+              trackColor={{ false: '#767577', true: '#3B82F6' }}
+              thumbColor="#FFFFFF"
+              accessibilityRole="switch"
+              accessibilityLabel={`Audio Guidance, speaks each phase name, set, and duration aloud`}
+              accessibilityState={{ checked: audioMode }}
+            />
+          </View>
+        </View>
+
         {/* Countdown Duration */}
         <Text style={s.sectionHeader}>COUNTDOWN</Text>
         <View style={s.card}>
           <View style={s.row}>
-            <View style={s.rowLabel}>
-              <Text style={s.rowTitle}>Countdown Duration</Text>
-              <Text style={s.rowHint}>Seconds of beeping before each interval (0 = off)</Text>
+            <View
+              style={s.rowLabel}
+              accessible={true}
+              accessibilityRole="text"
+              accessibilityLabel="Countdown Duration. Seconds of beeping before each interval. Zero is off."
+            >
+              <Text style={s.rowTitle} importantForAccessibility="no">Countdown Duration</Text>
+              <Text style={s.rowHint} importantForAccessibility="no">Seconds of beeping before each interval (0 = off)</Text>
             </View>
-            <View style={s.stepper}>
+            <View
+              style={s.stepper}
+              accessible={true}
+              accessibilityRole="adjustable"
+              accessibilityLabel={
+                sounds.countdownDuration === 0
+                  ? 'Off'
+                  : `${sounds.countdownDuration} second${sounds.countdownDuration !== 1 ? 's' : ''}`
+              }
+              accessibilityHint="Swipe up to increase, swipe down to decrease"
+              accessibilityActions={[
+                { name: 'increment', label: 'increase' },
+                { name: 'decrement', label: 'decrease' },
+              ]}
+              onAccessibilityAction={(event) => {
+                if (event.nativeEvent.actionName === 'increment')
+                  updateCountdownDuration(Math.min(10, sounds.countdownDuration + 1));
+                if (event.nativeEvent.actionName === 'decrement')
+                  updateCountdownDuration(Math.max(0, sounds.countdownDuration - 1));
+              }}
+            >
               <TouchableOpacity
                 style={s.stepBtn}
                 onPress={() => updateCountdownDuration(Math.max(0, sounds.countdownDuration - 1))}
-                accessibilityLabel="Decrease countdown duration"
-                accessibilityRole="button"
-                accessibilityHint={`Current value: ${sounds.countdownDuration} seconds`}
+                accessible={false}
+                importantForAccessibility="no"
               >
-                <Text style={s.stepBtnText} importantForAccessibility="no">−</Text>
+                <Text style={s.stepBtnText}>−</Text>
               </TouchableOpacity>
-              <Text
-                style={s.stepValue}
-                accessibilityLabel={`${sounds.countdownDuration} seconds`}
-              >
+              <Text style={s.stepValue} importantForAccessibility="no">
                 {sounds.countdownDuration}s
               </Text>
               <TouchableOpacity
                 style={s.stepBtn}
                 onPress={() => updateCountdownDuration(Math.min(10, sounds.countdownDuration + 1))}
-                accessibilityLabel="Increase countdown duration"
-                accessibilityRole="button"
-                accessibilityHint={`Current value: ${sounds.countdownDuration} seconds`}
+                accessible={false}
+                importantForAccessibility="no"
               >
-                <Text style={s.stepBtnText} importantForAccessibility="no">+</Text>
+                <Text style={s.stepBtnText}>+</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -180,26 +220,6 @@ export default function SettingsScreen({ navigation }: Props) {
               </ScrollView>
             </View>
           ))}
-        </View>
-
-        {/* Accessibility */}
-        <Text style={s.sectionHeader}>ACCESSIBILITY</Text>
-        <View style={s.card}>
-          <View style={s.row} accessible={true} accessibilityLabel={`Audio guidance, ${audioMode ? 'on' : 'off'}`}>
-            <View style={s.rowLabel}>
-              <Text style={s.rowTitle}>Audio Guidance</Text>
-              <Text style={s.rowHint}>Speaks each phase name, set, and duration aloud</Text>
-            </View>
-            <Switch
-              value={audioMode}
-              onValueChange={updateAudioMode}
-              trackColor={{ false: '#767577', true: '#3B82F6' }}
-              thumbColor="#FFFFFF"
-              accessibilityRole="switch"
-              accessibilityLabel="Audio guidance"
-              accessibilityState={{ checked: audioMode }}
-            />
-          </View>
         </View>
 
         {/* About */}
