@@ -232,7 +232,7 @@ export default function SettingsScreen({ navigation }: Props) {
             accessibilityRole="link"
             accessibilityHint="Opens buymeacoffee.com in your browser"
           >
-            <Text style={s.rowTitle}>☕  Buy me a coffee</Text>
+            <Text style={s.rowTitle}>☕  Buy me a coffee?</Text>
             <Text style={s.chevron} importantForAccessibility="no">›</Text>
           </TouchableOpacity>
           <View style={[s.row, s.rowBorder]}>
