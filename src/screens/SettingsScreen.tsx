@@ -33,6 +33,7 @@ const SOUND_EVENTS: SoundEventRow[] = [
   { key: 'recoveryStart', label: 'Recovery Start' },
   { key: 'coolDownStart', label: 'Cool Down Start' },
   { key: 'workoutComplete', label: 'Workout Complete' },
+  { key: 'halfwaySound', label: 'Halfway Through Interval' },
 ];
 
 export default function SettingsScreen({ navigation }: Props) {

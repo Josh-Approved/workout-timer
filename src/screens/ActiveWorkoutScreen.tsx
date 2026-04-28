@@ -62,6 +62,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
   const speechModeRef = useRef(false);
   const isRunningRef = useRef(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const halfwayFiredRef = useRef(false);
 
   const stateRef = useRef<DisplayState>({ mode: 'phase', stepIndex: 0, timeRemaining: 0 });
   const [displayState, setDisplayState] = useState<DisplayState>(stateRef.current);
@@ -131,6 +132,17 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
         AudioEngine.playTick().catch(() => {});
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
       }
+      const currentStep = steps[s.stepIndex];
+      if (
+        currentStep &&
+        !halfwayFiredRef.current &&
+        currentStep.duration >= 4 &&
+        sounds.halfwaySound !== 'none' &&
+        newTime === Math.floor(currentStep.duration / 2)
+      ) {
+        AudioEngine.playSound(sounds.halfwaySound).catch(() => {});
+        halfwayFiredRef.current = true;
+      }
       const next = { ...s, timeRemaining: newTime };
       stateRef.current = next;
       setDisplayState(next);
@@ -151,6 +163,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
 
     const nextStep = steps[nextIdx];
     firePhaseStart(nextStep, sounds, steps, maxCyclesRef.current, speechModeRef.current);
+    halfwayFiredRef.current = false;
     const next: DisplayState = { mode: 'phase', stepIndex: nextIdx, timeRemaining: nextStep.duration };
     stateRef.current = next;
     setDisplayState(next);
@@ -199,6 +212,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     const s = stateRef.current;
     const currentStep = stepsRef.current[s.stepIndex];
     firePhaseStart(currentStep, soundsRef.current!, stepsRef.current, maxCyclesRef.current, speechModeRef.current);
+    halfwayFiredRef.current = false;
     const next: DisplayState = { mode: 'phase', stepIndex: s.stepIndex, timeRemaining: currentStep.duration };
     stateRef.current = next;
     setDisplayState(next);
@@ -224,6 +238,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
 
     const nextStep = steps[nextIdx];
     firePhaseStart(nextStep, sounds, steps, maxCyclesRef.current, speechModeRef.current);
+    halfwayFiredRef.current = false;
     const next: DisplayState = { mode: 'phase', stepIndex: nextIdx, timeRemaining: nextStep.duration };
     stateRef.current = next;
     setDisplayState(next);

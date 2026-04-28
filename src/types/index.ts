@@ -53,6 +53,7 @@ export interface SoundSettings {
   recoveryStart: SoundStyle;
   coolDownStart: SoundStyle;
   workoutComplete: SoundStyle;
+  halfwaySound: SoundStyle;
   countdownDuration: number;
 }
 

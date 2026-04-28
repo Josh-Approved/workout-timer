@@ -6,14 +6,14 @@ export const DEFAULT_TIMERS: TimerConfig[] = [
   {
     id: 'default_tabata',
     name: 'Standard Tabata',
-    initialCountdown: 0,
+    initialCountdown: 30,
     warmUp: 0,
     exercise: 20,
     rest: 10,
     sets: 8,
     recovery: 0,
     cycles: 1,
-    coolDown: 0,
+    coolDown: 120,
     createdAt: now,
     updatedAt: now,
   },
@@ -55,6 +55,7 @@ export const DEFAULT_SOUND_SETTINGS: SoundSettings = {
   recoveryStart: 'bell',
   coolDownStart: 'ascending_chime',
   workoutComplete: 'ascending_chime',
+  halfwaySound: 'none',
   countdownDuration: 3,
 };
 
