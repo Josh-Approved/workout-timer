@@ -285,6 +285,17 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     ? 'Workout complete'
     : `${formatDurationSpoken(displayState.timeRemaining)} remaining`;
 
+  // Progress through the entire workout (0–1)
+  const elapsedSeconds = stepsRef.current
+    .slice(0, displayState.stepIndex)
+    .reduce((sum, step) => sum + step.duration, 0)
+    + (displayState.mode === 'complete'
+        ? (currentStep?.duration ?? 0)
+        : (currentStep ? currentStep.duration - displayState.timeRemaining : 0));
+  const progressFraction = totalDurationRef.current > 0
+    ? Math.min(1, elapsedSeconds / totalDurationRef.current)
+    : 0;
+
   const s = makeStyles(isDark, phaseColor, isLandscape);
 
   // ── Shared elements ───────────────────────────────────────────────────────
@@ -363,6 +374,39 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     </View>
   );
 
+  const progressBar = (
+    <View
+      style={s.progressOuter}
+      accessible={true}
+      accessibilityLabel={`Workout progress, ${Math.round(progressFraction * 100)} percent`}
+      accessibilityRole="progressbar"
+    >
+      {/* Colored segments — one per PhaseStep */}
+      <View style={s.progressTrack}>
+        {stepsRef.current.map((step, idx) => (
+          <View
+            key={idx}
+            style={{ flex: step.duration, height: '100%', backgroundColor: PHASE_COLORS[step.phase] }}
+          />
+        ))}
+        {/* Consumed overlay slides in from the left */}
+        <View
+          style={[
+            s.progressConsumed,
+            { width: `${progressFraction * 100}%` as any },
+          ]}
+        />
+      </View>
+      {/* Scrubber thumb */}
+      <View
+        style={[
+          s.progressThumb,
+          { left: `${progressFraction * 100}%` as any },
+        ]}
+      />
+    </View>
+  );
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   if (!loaded) {
@@ -376,52 +420,58 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
   if (isLandscape) {
     return (
       <SafeAreaView style={s.container}>
-        {/* Left: phase label + mega timer */}
-        <View style={s.leftCol}>
-          <View
-            style={s.phaseRow}
-            accessible={true}
-            accessibilityLabel={PHASE_LABELS[phase]}
-            accessibilityRole="text"
-          >
-            <Text style={s.phaseLabel} importantForAccessibility="no">{PHASE_LABELS[phase]}</Text>
+        {/* Two-column content area */}
+        <View style={s.landscapeTopRow}>
+          {/* Left: phase label + mega timer */}
+          <View style={s.leftCol}>
+            <View
+              style={s.phaseRow}
+              accessible={true}
+              accessibilityLabel={PHASE_LABELS[phase]}
+              accessibilityRole="text"
+            >
+              <Text style={s.phaseLabel} importantForAccessibility="no">{PHASE_LABELS[phase]}</Text>
+            </View>
+            {timerDisplay}
           </View>
-          {timerDisplay}
+
+          {/* Right: info stack + controls */}
+          <View style={s.rightCol}>
+            <View style={s.infoStack} accessible={false}>
+              <View
+                style={s.infoStackRow}
+                accessible={true}
+                accessibilityLabel={setA11yLabel}
+                accessibilityRole="text"
+              >
+                <Text style={s.infoLabel} importantForAccessibility="no">SET</Text>
+                <Text style={s.infoValue} importantForAccessibility="no">{setDisplay}</Text>
+              </View>
+              <View
+                style={[s.infoStackRow, s.infoStackRowBorder]}
+                accessible={true}
+                accessibilityLabel={cycleA11yLabel}
+                accessibilityRole="text"
+              >
+                <Text style={s.infoLabel} importantForAccessibility="no">CYCLE</Text>
+                <Text style={s.infoValue} importantForAccessibility="no">{cycleDisplay}</Text>
+              </View>
+              <View
+                style={[s.infoStackRow, s.infoStackRowBorder]}
+                accessible={true}
+                accessibilityLabel={totalA11yLabel}
+                accessibilityRole="text"
+              >
+                <Text style={s.infoLabel} importantForAccessibility="no">TOTAL</Text>
+                <Text style={s.infoValue} importantForAccessibility="no">{formatTime(totalDurationRef.current)}</Text>
+              </View>
+            </View>
+            {controls}
+          </View>
         </View>
 
-        {/* Right: info stack + controls */}
-        <View style={s.rightCol}>
-          <View style={s.infoStack} accessible={false}>
-            <View
-              style={s.infoStackRow}
-              accessible={true}
-              accessibilityLabel={setA11yLabel}
-              accessibilityRole="text"
-            >
-              <Text style={s.infoLabel} importantForAccessibility="no">SET</Text>
-              <Text style={s.infoValue} importantForAccessibility="no">{setDisplay}</Text>
-            </View>
-            <View
-              style={[s.infoStackRow, s.infoStackRowBorder]}
-              accessible={true}
-              accessibilityLabel={cycleA11yLabel}
-              accessibilityRole="text"
-            >
-              <Text style={s.infoLabel} importantForAccessibility="no">CYCLE</Text>
-              <Text style={s.infoValue} importantForAccessibility="no">{cycleDisplay}</Text>
-            </View>
-            <View
-              style={[s.infoStackRow, s.infoStackRowBorder]}
-              accessible={true}
-              accessibilityLabel={totalA11yLabel}
-              accessibilityRole="text"
-            >
-              <Text style={s.infoLabel} importantForAccessibility="no">TOTAL</Text>
-              <Text style={s.infoValue} importantForAccessibility="no">{formatTime(totalDurationRef.current)}</Text>
-            </View>
-          </View>
-          {controls}
-        </View>
+        {/* Full-width progress bar across both columns */}
+        {progressBar}
       </SafeAreaView>
     );
   }
@@ -468,6 +518,8 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
           <Text style={s.infoValue} importantForAccessibility="no">{formatTime(totalDurationRef.current)}</Text>
         </View>
       </View>
+
+      {progressBar}
 
       {controls}
     </SafeAreaView>
@@ -535,7 +587,7 @@ function makeStyles(isDark: boolean, phaseColor: string, isLandscape: boolean) {
     container: {
       flex: 1,
       backgroundColor: bg,
-      flexDirection: isLandscape ? 'row' : 'column',
+      flexDirection: 'column',
       alignItems: isLandscape ? 'stretch' : 'center',
       justifyContent: isLandscape ? 'flex-start' : 'space-between',
       paddingVertical: isLandscape ? 0 : 24,
@@ -570,7 +622,7 @@ function makeStyles(isDark: boolean, phaseColor: string, isLandscape: boolean) {
       backgroundColor: panelBg,
       borderRadius: 16,
       marginHorizontal: 24,
-      marginBottom: 20,
+      marginBottom: 12,
       overflow: 'hidden',
     },
     infoPanel: { flex: 1, alignItems: 'center', paddingVertical: 12 },
@@ -636,7 +688,55 @@ function makeStyles(isDark: boolean, phaseColor: string, isLandscape: boolean) {
     },
     doneBtnText: { fontSize: 18, fontWeight: '600', color: '#FFFFFF' },
 
+    // ── Progress bar ─────────────────────────────────────────────────────────
+    progressOuter: {
+      alignSelf: 'stretch',
+      marginHorizontal: isLandscape ? 16 : 20,
+      marginBottom: isLandscape ? 10 : 10,
+      height: 22,
+      justifyContent: 'center',
+    },
+    progressTrack: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      top: 6,
+      height: 10,
+      borderRadius: 5,
+      flexDirection: 'row',
+      overflow: 'hidden',
+      backgroundColor: isDark ? '#2A2A2A' : '#E0E0E0',
+    },
+    progressConsumed: {
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0,0,0,0.45)',
+    },
+    progressThumb: {
+      position: 'absolute',
+      top: 1,
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: '#FFFFFF',
+      transform: [{ translateX: -10 }],
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.35,
+      shadowRadius: 4,
+      elevation: 6,
+      borderWidth: 1.5,
+      borderColor: 'rgba(0,0,0,0.12)',
+    },
+
     // ── Landscape ───────────────────────────────────────────────────────────
+    landscapeTopRow: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'stretch',
+    },
     leftCol: {
       flex: 3,
       alignItems: 'center',
