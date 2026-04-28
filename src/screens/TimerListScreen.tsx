@@ -59,7 +59,7 @@ export default function TimerListScreen({ navigation }: Props) {
             accessibilityRole="link"
             accessibilityHint="Opens buymeacoffee.com in your browser"
           >
-            <Text style={s.bmacText}>☕  Buy me a coffee</Text>
+            <Text style={s.bmacText}>☕  Buy me a coffee?</Text>
           </TouchableOpacity>
         }
         ListEmptyComponent={
