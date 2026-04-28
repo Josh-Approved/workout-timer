@@ -3,6 +3,7 @@ import { useColorScheme } from 'react-native';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
+import * as ScreenOrientation from 'expo-screen-orientation';
 import { RootStackParamList } from './src/types';
 import { AudioEngine } from './src/audio/AudioEngine';
 import TimerListScreen from './src/screens/TimerListScreen';
@@ -17,6 +18,7 @@ export default function App() {
 
   useEffect(() => {
     AudioEngine.initialize().catch(() => {});
+    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
   }, []);
 
   return (
