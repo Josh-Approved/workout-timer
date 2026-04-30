@@ -181,7 +181,7 @@ function makeStyles(isDark: boolean) {
       paddingHorizontal: 16,
       paddingVertical: 10,
     },
-    editText: { fontSize: 14, color: '#3B82F6', fontWeight: '500' },
+    editText: { fontSize: 14, color: '#1D4ED8', fontWeight: '500' },
 
     empty: { alignItems: 'center', paddingTop: 80, gap: 6 },
     emptyText: { fontSize: 16, color: sub },

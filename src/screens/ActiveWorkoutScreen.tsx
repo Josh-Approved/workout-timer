@@ -8,6 +8,7 @@ import {
   Alert,
   SafeAreaView,
   useWindowDimensions,
+  AccessibilityInfo,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import * as Speech from 'expo-speech';
@@ -560,6 +561,8 @@ function playComplete(sounds: SoundSettings, speechMode: boolean): void {
   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
   if (speechMode) {
     Speech.speak('Workout complete', { language: 'en-US' });
+  } else {
+    AccessibilityInfo.announceForAccessibility('Workout complete');
   }
 }
 

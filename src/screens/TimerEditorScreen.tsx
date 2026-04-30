@@ -324,7 +324,7 @@ function Field({ label, hint, value, onChange, min = 0, step = 5, isDark }: Fiel
 function makeStyles(isDark: boolean) {
   const bg = isDark ? '#121212' : '#F5F5F5';
   const text = isDark ? '#FFFFFF' : '#111111';
-  const sub = isDark ? '#888' : '#888';
+  const sub = isDark ? '#888' : '#6B6B6B';
   const border = isDark ? '#2A2A2A' : '#E8E8E8';
   const cardBg = isDark ? '#1E1E1E' : '#FFFFFF';
 
@@ -339,9 +339,9 @@ function makeStyles(isDark: boolean) {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: border,
     },
-    headerBack: { fontSize: 17, color: '#3B82F6' },
+    headerBack: { fontSize: 17, color: '#1D4ED8' },
     headerTitle: { fontSize: 17, fontWeight: '600', color: text },
-    headerSave: { fontSize: 17, color: '#3B82F6', fontWeight: '600' },
+    headerSave: { fontSize: 17, color: '#1D4ED8', fontWeight: '600' },
     scroll: { padding: 16, paddingBottom: 60 },
     section: {
       backgroundColor: cardBg,
@@ -373,7 +373,7 @@ function makeStyles(isDark: boolean) {
       borderTopColor: border,
     },
     deleteBtn: {
-      backgroundColor: '#EF4444',
+      backgroundColor: '#C81C1C',
       borderRadius: 14,
       paddingVertical: 16,
       alignItems: 'center',
@@ -390,7 +390,7 @@ function makeStyles(isDark: boolean) {
 
 function fieldStyles(isDark: boolean) {
   const text = isDark ? '#FFFFFF' : '#111111';
-  const sub = isDark ? '#999' : '#888';
+  const sub = isDark ? '#999' : '#6B6B6B';
   const border = isDark ? '#2A2A2A' : '#E8E8E8';
   const btnBg = isDark ? '#2C2C2E' : '#F2F2F7';
 
@@ -412,6 +412,8 @@ function fieldStyles(isDark: boolean) {
       width: 32,
       height: 32,
       borderRadius: 8,
+      borderWidth: 1,
+      borderColor: isDark ? '#737373' : '#AAAAAA',
       justifyContent: 'center',
       alignItems: 'center',
     },
