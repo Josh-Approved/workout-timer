@@ -112,27 +112,27 @@ export default function SettingsScreen({ navigation }: Props) {
 
       <ScrollView contentContainerStyle={s.scroll}>
         {/* Accessibility */}
-        <Text style={s.sectionHeader}>ACCESSIBILITY</Text>
+        <Text style={s.sectionHeader} accessibilityRole="header">ACCESSIBILITY</Text>
         <View style={s.card}>
           <View style={s.row}>
             <View style={s.rowLabel} importantForAccessibility="no-hide-descendants">
-              <Text style={s.rowTitle}>Audio Guidance</Text>
-              <Text style={s.rowHint}>Speaks each phase name, set, and duration aloud</Text>
+              <Text style={s.rowTitle}>Voice Cues</Text>
+              <Text style={s.rowHint}>Speaks phase name, set, and duration aloud during your workout</Text>
             </View>
             <Switch
               value={audioMode}
               onValueChange={updateAudioMode}
-              trackColor={{ false: '#767577', true: '#3B82F6' }}
+              trackColor={{ false: '#767577', true: '#1D4ED8' }}
               thumbColor="#FFFFFF"
               accessibilityRole="switch"
-              accessibilityLabel={`Audio Guidance, speaks each phase name, set, and duration aloud`}
+              accessibilityLabel="Voice Cues, speaks phase name, set, and duration aloud during your workout"
               accessibilityState={{ checked: audioMode }}
             />
           </View>
         </View>
 
         {/* Countdown Duration */}
-        <Text style={s.sectionHeader}>COUNTDOWN</Text>
+        <Text style={s.sectionHeader} accessibilityRole="header">COUNTDOWN</Text>
         <View style={s.card}>
           <View style={s.row}>
             <View
@@ -189,7 +189,7 @@ export default function SettingsScreen({ navigation }: Props) {
         </View>
 
         {/* Sound Events */}
-        <Text style={s.sectionHeader}>SOUNDS</Text>
+        <Text style={s.sectionHeader} accessibilityRole="header">SOUNDS</Text>
         <Text style={s.sectionHint}>Tap a sound to preview it.</Text>
         <View style={s.card}>
           {SOUND_EVENTS.map((event, idx) => (
@@ -199,6 +199,8 @@ export default function SettingsScreen({ navigation }: Props) {
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={s.pillRow}
+                accessibilityRole="radiogroup"
+                accessibilityLabel={`${event.label} sound`}
               >
                 {ALL_SOUND_STYLES.map((style) => {
                   const active = sounds[event.key] === style;
@@ -224,7 +226,7 @@ export default function SettingsScreen({ navigation }: Props) {
         </View>
 
         {/* About */}
-        <Text style={s.sectionHeader}>ABOUT</Text>
+        <Text style={s.sectionHeader} accessibilityRole="header">ABOUT</Text>
         <View style={s.card}>
           <TouchableOpacity
             style={s.row}
@@ -250,10 +252,10 @@ function makeStyles(isDark: boolean) {
   const bg = isDark ? '#121212' : '#F5F5F5';
   const cardBg = isDark ? '#1E1E1E' : '#FFFFFF';
   const text = isDark ? '#FFFFFF' : '#111111';
-  const sub = isDark ? '#888' : '#888';
+  const sub = isDark ? '#888' : '#6B6B6B';
   const border = isDark ? '#2A2A2A' : '#E8E8E8';
   const btnBg = isDark ? '#2C2C2E' : '#F2F2F7';
-  const pillActiveBg = '#3B82F6';
+  const pillActiveBg = '#1D4ED8';
 
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: bg },
@@ -266,9 +268,9 @@ function makeStyles(isDark: boolean) {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: border,
     },
-    headerBack: { fontSize: 17, color: '#3B82F6' },
+    headerBack: { fontSize: 17, color: '#1D4ED8' },
     headerTitle: { fontSize: 17, fontWeight: '600', color: text },
-    headerReset: { fontSize: 15, color: '#EF4444' },
+    headerReset: { fontSize: 15, color: '#C81C1C' },
     scroll: { padding: 16, paddingBottom: 60 },
     sectionHeader: {
       fontSize: 12,
@@ -317,6 +319,8 @@ function makeStyles(isDark: boolean) {
       width: 32,
       height: 32,
       borderRadius: 8,
+      borderWidth: 1,
+      borderColor: isDark ? '#737373' : '#AAAAAA',
       justifyContent: 'center',
       alignItems: 'center',
     },
