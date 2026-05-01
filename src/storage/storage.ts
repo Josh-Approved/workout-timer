@@ -4,6 +4,7 @@ import { DEFAULT_TIMERS, DEFAULT_SETTINGS } from '../constants/defaultTimers';
 
 const TIMERS_KEY = '@fwt/timers';
 const SETTINGS_KEY = '@fwt/settings';
+const SETTINGS_VERSION = 2;
 
 export async function loadTimers(): Promise<TimerConfig[]> {
   try {
@@ -44,6 +45,10 @@ export async function loadSettings(): Promise<AppSettings> {
     const json = await AsyncStorage.getItem(SETTINGS_KEY);
     if (json) {
       const saved = JSON.parse(json);
+      if (!saved._version || saved._version < SETTINGS_VERSION) {
+        await saveSettings(DEFAULT_SETTINGS);
+        return DEFAULT_SETTINGS;
+      }
       return {
         ...DEFAULT_SETTINGS,
         ...saved,
@@ -57,5 +62,5 @@ export async function loadSettings(): Promise<AppSettings> {
 }
 
 export async function saveSettings(settings: AppSettings): Promise<void> {
-  await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...settings, _version: SETTINGS_VERSION }));
 }

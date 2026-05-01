@@ -11,12 +11,23 @@ import {
   Alert,
   Switch,
 } from 'react-native';
+import * as Speech from 'expo-speech';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList, SoundSettings, SoundStyle, ALL_SOUND_STYLES, SOUND_STYLE_LABELS } from '../types';
+import { RootStackParamList, SoundSettings, SoundStyle, ALL_SOUND_STYLES, TONE_SOUND_STYLES, SOUND_STYLE_LABELS } from '../types';
 import { loadSettings, saveSettings } from '../storage/storage';
 import { DEFAULT_SETTINGS } from '../constants/defaultTimers';
 import { AudioEngine } from '../audio/AudioEngine';
+
+const VOICE_PREVIEW_PHRASES: Partial<Record<keyof Omit<SoundSettings, 'countdownDuration'>, string>> = {
+  warmUpStart: 'Warm Up',
+  workStart: 'Exercise',
+  restStart: 'Rest',
+  recoveryStart: 'Recovery',
+  coolDownStart: 'Cool Down',
+  workoutComplete: 'Workout Complete',
+  halfwaySound: 'Halfway',
+};
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
 
@@ -56,7 +67,10 @@ export default function SettingsScreen({ navigation }: Props) {
     const updated = { ...sounds, [key]: value };
     setSounds(updated);
     await saveSettings({ sounds: updated, audioAccessibilityMode: audioMode });
-    if (value !== 'none') {
+    if (value === 'voice') {
+      const phrase = VOICE_PREVIEW_PHRASES[key];
+      if (phrase) Speech.speak(phrase, { language: 'en-US' });
+    } else if (value !== 'none') {
       AudioEngine.playSound(value).catch(() => {});
     }
   };
@@ -202,7 +216,7 @@ export default function SettingsScreen({ navigation }: Props) {
                 accessibilityRole="radiogroup"
                 accessibilityLabel={`${event.label} sound`}
               >
-                {ALL_SOUND_STYLES.map((style) => {
+                {(event.key === 'countdownTick' ? TONE_SOUND_STYLES : ALL_SOUND_STYLES).map((style) => {
                   const active = sounds[event.key] === style;
                   return (
                     <TouchableOpacity

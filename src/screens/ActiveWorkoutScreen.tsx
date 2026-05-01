@@ -141,7 +141,9 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
         sounds.halfwaySound !== 'none' &&
         newTime === Math.floor(currentStep.duration / 2)
       ) {
-        AudioEngine.playSound(sounds.halfwaySound).catch(() => {});
+        const halfStyle = sounds.halfwaySound as string;
+        if (halfStyle === 'voice') speakAndReactivate('Halfway');
+        else AudioEngine.playSound(sounds.halfwaySound).catch(() => {});
         halfwayFiredRef.current = true;
       }
       const next = { ...s, timeRemaining: newTime };
@@ -280,8 +282,6 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     ? `Cycle, ${currentStep.cycleNumber} of ${maxCycles}`
     : 'Cycle, 1 of 1';
 
-  const totalA11yLabel = `Total time, ${formatDurationSpoken(totalDurationRef.current)}`;
-
   const timerA11yLabel = displayState.mode === 'complete'
     ? 'Workout complete'
     : `${formatDurationSpoken(displayState.timeRemaining)} remaining`;
@@ -296,6 +296,9 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
   const progressFraction = totalDurationRef.current > 0
     ? Math.min(1, elapsedSeconds / totalDurationRef.current)
     : 0;
+
+  const totalRemaining = Math.max(0, totalDurationRef.current - elapsedSeconds);
+  const totalA11yLabel = `Total remaining, ${formatDurationSpoken(totalRemaining)}`;
 
   const s = makeStyles(isDark, phaseColor, isLandscape);
 
@@ -464,7 +467,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
                 accessibilityRole="text"
               >
                 <Text style={s.infoLabel} importantForAccessibility="no">TOTAL</Text>
-                <Text style={s.infoValue} importantForAccessibility="no">{formatTime(totalDurationRef.current)}</Text>
+                <Text style={s.infoValue} importantForAccessibility="no">{formatTime(totalRemaining)}</Text>
               </View>
             </View>
             {controls}
@@ -516,7 +519,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
           accessibilityRole="text"
         >
           <Text style={s.infoLabel} importantForAccessibility="no">TOTAL</Text>
-          <Text style={s.infoValue} importantForAccessibility="no">{formatTime(totalDurationRef.current)}</Text>
+          <Text style={s.infoValue} importantForAccessibility="no">{formatTime(totalRemaining)}</Text>
         </View>
       </View>
 
@@ -528,6 +531,32 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────
+
+const VOICE_PHASE_PHRASES: Partial<Record<WorkoutPhase, string>> = {
+  initial_countdown: 'Get Ready',
+  warm_up: 'Warm Up',
+  exercise: 'Exercise',
+  rest: 'Rest',
+  recovery: 'Recovery',
+  cool_down: 'Cool Down',
+};
+
+function speakAndReactivate(phrase: string): void {
+  Speech.stop();
+  Speech.speak(phrase, {
+    language: 'en-US',
+    onDone: () => { AudioEngine.reactivate().catch(() => {}); },
+    onError: () => { AudioEngine.reactivate().catch(() => {}); },
+  });
+}
+
+function playSoundOrVoice(style: string, voicePhrase: string): void {
+  if (style === 'voice') {
+    if (voicePhrase) speakAndReactivate(voicePhrase);
+  } else if (style !== 'none') {
+    AudioEngine.playSound(style as any).catch(() => {});
+  }
+}
 
 function firePhaseStart(
   step: PhaseStep,
@@ -545,24 +574,35 @@ function firePhaseStart(
     initial_countdown: 'warmUpStart',
   };
   const key = styleMap[step.phase];
-  if (key) AudioEngine.playSound(sounds[key] as any).catch(() => {});
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
-  if (speechMode) {
-    const totalSetsInCycle =
-      step.phase === 'exercise' || step.phase === 'rest'
-        ? getTotalSets(allSteps, step)
-        : 0;
-    Speech.speak(buildPhaseAnnouncement(step, totalSetsInCycle, maxCycles), { language: 'en-US' });
+
+  if (!key) return;
+
+  const style = sounds[key] as string;
+  const totalSetsInCycle =
+    step.phase === 'exercise' || step.phase === 'rest' ? getTotalSets(allSteps, step) : 0;
+
+  if (style === 'voice' && speechMode) {
+    // Single utterance: phase name + context (avoids double-speak and session drop)
+    speakAndReactivate(buildPhaseAnnouncement(step, totalSetsInCycle, maxCycles));
+  } else {
+    playSoundOrVoice(style, VOICE_PHASE_PHRASES[step.phase] ?? '');
+    if (speechMode) {
+      speakAndReactivate(buildPhaseAnnouncement(step, totalSetsInCycle, maxCycles));
+    }
   }
 }
 
 function playComplete(sounds: SoundSettings, speechMode: boolean): void {
-  AudioEngine.playSound(sounds.workoutComplete).catch(() => {});
+  const style = sounds.workoutComplete as string;
   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-  if (speechMode) {
-    Speech.speak('Workout complete', { language: 'en-US' });
+  AccessibilityInfo.announceForAccessibility('Workout complete');
+
+  if (style === 'voice' && speechMode) {
+    speakAndReactivate('Workout complete');
   } else {
-    AccessibilityInfo.announceForAccessibility('Workout complete');
+    playSoundOrVoice(style, 'Workout Complete');
+    if (speechMode) speakAndReactivate('Workout complete');
   }
 }
 
