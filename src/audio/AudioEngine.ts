@@ -1,5 +1,5 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import { Audio } from 'expo-av';
+import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { SoundStyle } from '../types';
 
 interface ToneSpec {
@@ -109,7 +109,7 @@ class AudioEngineClass {
   async initialize(): Promise<void> {
     if (this.initialized) return;
     try {
-      await Audio.setAudioModeAsync({
+      await setAudioModeAsync({
         playsInSilentModeIOS: true,
         shouldDuckAndroid: false,
         staysActiveInBackground: true,
@@ -149,14 +149,16 @@ class AudioEngineClass {
     if (uri) this.play(uri);
   }
 
-  private async play(uri: string): Promise<void> {
+  private play(uri: string): void {
     try {
-      const { sound } = await Audio.Sound.createAsync({ uri }, { shouldPlay: true });
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          sound.unloadAsync().catch(() => {});
+      const player = createAudioPlayer({ uri });
+      const subscription = player.addListener('playbackStatusUpdate', (status) => {
+        if (status.didJustFinish) {
+          subscription.remove();
+          player.remove();
         }
       });
+      player.play();
     } catch {
       // Silently ignore audio playback errors
     }
