@@ -8,7 +8,8 @@ interface ToneSpec {
   delayAfter: number;
 }
 
-const SOUND_DEFINITIONS: Record<Exclude<SoundStyle, 'none'>, ToneSpec[]> = {
+const SOUND_DEFINITIONS: Record<Exclude<SoundStyle, 'none' | 'voice'>, ToneSpec[]> = {
+  click: [{ frequency: 1800, duration: 0.018, delayAfter: 0 }],
   beep: [{ frequency: 880, duration: 0.15, delayAfter: 0 }],
   double_beep: [
     { frequency: 880, duration: 0.1, delayAfter: 0.08 },
@@ -110,10 +111,10 @@ class AudioEngineClass {
     if (this.initialized) return;
     try {
       await setAudioModeAsync({
-        playsInSilentModeIOS: true,
-        shouldDuckAndroid: false,
-        staysActiveInBackground: true,
-      });
+        playsInSilentMode: true,
+        interruptionMode: 'mixWithOthers',
+        shouldPlayInBackground: true,
+      } as any);
       const cacheDir = FileSystem.cacheDirectory ?? '';
       await this.cache('tick', TICK_SPEC, cacheDir);
       for (const [style, tones] of Object.entries(SOUND_DEFINITIONS)) {
@@ -136,6 +137,18 @@ class AudioEngineClass {
       });
     }
     this.uris.set(key, uri);
+  }
+
+  async reactivate(): Promise<void> {
+    try {
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        interruptionMode: 'mixWithOthers',
+        shouldPlayInBackground: true,
+      } as any);
+    } catch {
+      // ignore
+    }
   }
 
   async playSound(style: SoundStyle): Promise<void> {

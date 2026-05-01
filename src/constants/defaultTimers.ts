@@ -49,12 +49,12 @@ export const DEFAULT_TIMERS: TimerConfig[] = [
 
 export const DEFAULT_SOUND_SETTINGS: SoundSettings = {
   countdownTick: 'beep',
-  warmUpStart: 'ascending_chime',
-  workStart: 'triple_tone',
-  restStart: 'double_beep',
-  recoveryStart: 'bell',
-  coolDownStart: 'ascending_chime',
-  workoutComplete: 'ascending_chime',
+  warmUpStart: 'voice',
+  workStart: 'voice',
+  restStart: 'voice',
+  recoveryStart: 'voice',
+  coolDownStart: 'voice',
+  workoutComplete: 'voice',
   halfwaySound: 'none',
   countdownDuration: 3,
 };

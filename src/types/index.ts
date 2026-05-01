@@ -14,32 +14,50 @@ export interface TimerConfig {
 }
 
 export type SoundStyle =
+  | 'voice'
   | 'beep'
   | 'double_beep'
   | 'ascending_chime'
   | 'bell'
   | 'buzz'
+  | 'click'
   | 'long_beep'
   | 'triple_tone'
   | 'none';
 
 export const SOUND_STYLE_LABELS: Record<SoundStyle, string> = {
+  voice: 'Voice',
   beep: 'Beep',
   double_beep: 'Double Beep',
   ascending_chime: 'Ascending Chime',
   bell: 'Bell',
   buzz: 'Buzz',
+  click: 'Click',
   long_beep: 'Long Beep',
   triple_tone: 'Triple Tone',
   none: 'None',
 };
 
 export const ALL_SOUND_STYLES: SoundStyle[] = [
+  'voice',
   'beep',
   'double_beep',
   'ascending_chime',
   'bell',
   'buzz',
+  'click',
+  'long_beep',
+  'triple_tone',
+  'none',
+];
+
+export const TONE_SOUND_STYLES: SoundStyle[] = [
+  'beep',
+  'double_beep',
+  'ascending_chime',
+  'bell',
+  'buzz',
+  'click',
   'long_beep',
   'triple_tone',
   'none',
