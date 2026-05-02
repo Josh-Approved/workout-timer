@@ -14,6 +14,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList, TimerConfig } from '../types';
 import { loadTimers } from '../storage/storage';
 import { getTimerSummary, getTotalDuration, formatTime } from '../utils/workout';
+import { buildFeedbackEmailUrl } from '../utils/feedback';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TimerList'>;
 
@@ -52,15 +53,26 @@ export default function TimerListScreen({ navigation }: Props) {
         keyExtractor={(item) => item.id}
         contentContainerStyle={s.list}
         ListFooterComponent={
-          <TouchableOpacity
-            style={s.bmacRow}
-            onPress={() => Linking.openURL('https://buymeacoffee.com/jtysonwilliams')}
-            accessibilityLabel="Buy me a coffee"
-            accessibilityRole="link"
-            accessibilityHint="Opens buymeacoffee.com in your browser"
-          >
-            <Text style={s.bmacText}>☕  Buy me a coffee?</Text>
-          </TouchableOpacity>
+          <View style={s.footer}>
+            <TouchableOpacity
+              style={s.bmacRow}
+              onPress={() => Linking.openURL('https://buymeacoffee.com/jtysonwilliams')}
+              accessibilityLabel="Buy me a coffee"
+              accessibilityRole="link"
+              accessibilityHint="Opens buymeacoffee.com in your browser"
+            >
+              <Text style={s.bmacText}>☕  Buy me a coffee?</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={s.feedbackRow}
+              onPress={() => Linking.openURL(buildFeedbackEmailUrl())}
+              accessibilityLabel="Send feedback"
+              accessibilityRole="link"
+              accessibilityHint="Opens your email app to send feedback or report a bug"
+            >
+              <Text style={s.feedbackText}>✉️  Send feedback</Text>
+            </TouchableOpacity>
+          </View>
         }
         ListEmptyComponent={
           <View style={s.empty} accessibilityLiveRegion="polite">
@@ -185,8 +197,11 @@ function makeStyles(isDark: boolean) {
 
     empty: { alignItems: 'center', paddingTop: 80, gap: 6 },
     emptyText: { fontSize: 16, color: sub },
-    bmacRow: { alignItems: 'center', paddingVertical: 24 },
+    footer: { alignItems: 'center' },
+    bmacRow: { alignItems: 'center', paddingVertical: 20 },
     bmacText: { fontSize: 15, color: sub },
+    feedbackRow: { alignItems: 'center', paddingBottom: 24 },
+    feedbackText: { fontSize: 14, color: sub },
     fab: {
       position: 'absolute',
       right: 24,
