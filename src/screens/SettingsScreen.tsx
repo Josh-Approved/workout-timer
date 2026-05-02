@@ -18,6 +18,7 @@ import { RootStackParamList, SoundSettings, SoundStyle, ALL_SOUND_STYLES, TONE_S
 import { loadSettings, saveSettings } from '../storage/storage';
 import { DEFAULT_SETTINGS } from '../constants/defaultTimers';
 import { AudioEngine } from '../audio/AudioEngine';
+import { buildFeedbackEmailUrl } from '../utils/feedback';
 
 const VOICE_PREVIEW_PHRASES: Partial<Record<keyof Omit<SoundSettings, 'countdownDuration'>, string>> = {
   warmUpStart: 'Warm Up',
@@ -250,6 +251,16 @@ export default function SettingsScreen({ navigation }: Props) {
             accessibilityHint="Opens buymeacoffee.com in your browser"
           >
             <Text style={s.rowTitle}>☕  Buy me a coffee?</Text>
+            <Text style={s.chevron} importantForAccessibility="no">›</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[s.row, s.rowBorder]}
+            onPress={() => Linking.openURL(buildFeedbackEmailUrl())}
+            accessibilityLabel="Send feedback"
+            accessibilityRole="link"
+            accessibilityHint="Opens your email app to send feedback or report a bug"
+          >
+            <Text style={s.rowTitle}>✉️  Send feedback</Text>
             <Text style={s.chevron} importantForAccessibility="no">›</Text>
           </TouchableOpacity>
           <View style={[s.row, s.rowBorder]}>

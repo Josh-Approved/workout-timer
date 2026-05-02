@@ -19,6 +19,8 @@ import { RootStackParamList, PhaseStep, SoundSettings, WorkoutPhase } from '../t
 import { loadTimers, loadSettings } from '../storage/storage';
 import { buildWorkoutSequence, formatTime, formatDurationSpoken, getTotalDuration, buildPhaseAnnouncement } from '../utils/workout';
 import { AudioEngine } from '../audio/AudioEngine';
+import { recordWorkoutComplete } from '../storage/reviewStorage';
+import ReviewModal from '../components/ReviewModal';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ActiveWorkout'>;
 
@@ -69,6 +71,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
   const [displayState, setDisplayState] = useState<DisplayState>(stateRef.current);
   const [isRunning, setIsRunning] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [showReview, setShowReview] = useState(false);
 
   // ── Orientation ───────────────────────────────────────────────────────────
 
@@ -194,6 +197,13 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     }
     return stopInterval;
   }, [loaded]);
+
+  useEffect(() => {
+    if (displayState.mode !== 'complete') return;
+    recordWorkoutComplete().then((shouldPrompt) => {
+      if (shouldPrompt) setShowReview(true);
+    });
+  }, [displayState.mode]);
 
   // ── Controls ──────────────────────────────────────────────────────────────
 
@@ -476,6 +486,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
 
         {/* Full-width progress bar across both columns */}
         {progressBar}
+        <ReviewModal visible={showReview} onDismiss={() => setShowReview(false)} />
       </SafeAreaView>
     );
   }
@@ -526,6 +537,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       {progressBar}
 
       {controls}
+      <ReviewModal visible={showReview} onDismiss={() => setShowReview(false)} />
     </SafeAreaView>
   );
 }
