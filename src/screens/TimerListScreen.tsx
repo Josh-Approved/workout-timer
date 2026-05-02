@@ -3,25 +3,35 @@ import {
   View,
   Text,
   FlatList,
-  TouchableOpacity,
+  Pressable,
   StyleSheet,
-  useColorScheme,
   SafeAreaView,
   Linking,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Coffee, Mail, Play, Plus, Settings as SettingsIcon } from 'lucide-react-native';
 import { RootStackParamList, TimerConfig } from '../types';
 import { loadTimers } from '../storage/storage';
 import { getTimerSummary, getTotalDuration, formatTime } from '../utils/workout';
 import { buildFeedbackEmailUrl } from '../utils/feedback';
+import {
+  useTheme,
+  fontFamily,
+  space,
+  radius,
+  type as t,
+  hairline,
+  target,
+  Colors,
+} from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TimerList'>;
 
 export default function TimerListScreen({ navigation }: Props) {
   const [timers, setTimers] = useState<TimerConfig[]>([]);
-  const isDark = useColorScheme() === 'dark';
-  const s = makeStyles(isDark);
+  const { c } = useTheme();
+  const s = makeStyles(c);
 
   useFocusEffect(
     useCallback(() => {
@@ -32,20 +42,18 @@ export default function TimerListScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={s.container}>
       <View style={s.header}>
-        <Text
-          style={s.title}
-          accessibilityRole="header"
-        >
-          Free Workout Timer
+        <Text style={s.title} accessibilityRole="header">
+          Free workout timer
         </Text>
-        <TouchableOpacity
+        <Pressable
           onPress={() => navigation.navigate('Settings')}
           hitSlop={8}
           accessibilityLabel="Settings"
           accessibilityRole="button"
+          style={({ pressed }) => [s.iconBtn, pressed && s.pressed]}
         >
-          <Text style={s.headerIcon}>⚙️</Text>
-        </TouchableOpacity>
+          <SettingsIcon size={22} color={c.fg} strokeWidth={1.5} />
+        </Pressable>
       </View>
 
       <FlatList
@@ -54,24 +62,26 @@ export default function TimerListScreen({ navigation }: Props) {
         contentContainerStyle={s.list}
         ListFooterComponent={
           <View style={s.footer}>
-            <TouchableOpacity
-              style={s.bmacRow}
+            <Pressable
+              style={({ pressed }) => [s.linkRow, pressed && s.pressed]}
               onPress={() => Linking.openURL('https://buymeacoffee.com/jtysonwilliams')}
               accessibilityLabel="Buy me a coffee"
               accessibilityRole="link"
               accessibilityHint="Opens buymeacoffee.com in your browser"
             >
-              <Text style={s.bmacText}>☕  Buy me a coffee?</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={s.feedbackRow}
+              <Coffee size={18} color={c.fgMuted} strokeWidth={1.5} />
+              <Text style={s.linkText}>Buy me a coffee?</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [s.linkRow, pressed && s.pressed]}
               onPress={() => Linking.openURL(buildFeedbackEmailUrl())}
               accessibilityLabel="Send feedback"
               accessibilityRole="link"
               accessibilityHint="Opens your email app to send feedback or report a bug"
             >
-              <Text style={s.feedbackText}>✉️  Send feedback</Text>
-            </TouchableOpacity>
+              <Mail size={18} color={c.fgMuted} strokeWidth={1.5} />
+              <Text style={s.linkText}>Send feedback</Text>
+            </Pressable>
           </View>
         }
         ListEmptyComponent={
@@ -81,11 +91,7 @@ export default function TimerListScreen({ navigation }: Props) {
           </View>
         }
         renderItem={({ item }) => (
-          <View
-            style={s.card}
-            accessible={false}
-          >
-            {/* Main row: info left, play button right (vertically centered) */}
+          <View style={s.card} accessible={false}>
             <View style={s.cardMain}>
               <View style={s.cardInfo}>
                 <Text style={s.cardName}>{item.name}</Text>
@@ -94,130 +100,152 @@ export default function TimerListScreen({ navigation }: Props) {
                   Total · {formatTime(getTotalDuration(item))}
                 </Text>
               </View>
-              <TouchableOpacity
-                style={s.playBtn}
+              <Pressable
+                style={({ pressed }) => [s.playBtn, pressed && s.pressed]}
                 onPress={() => navigation.navigate('ActiveWorkout', { timerId: item.id })}
                 accessibilityLabel={`Start ${item.name}`}
                 accessibilityRole="button"
                 accessibilityHint="Begins the workout"
               >
-                <Text style={s.playBtnText} importantForAccessibility="no">▶</Text>
-              </TouchableOpacity>
+                <Play size={20} color={c.inkButtonText} strokeWidth={1.75} fill={c.inkButtonText} />
+              </Pressable>
             </View>
 
-            {/* Footer row: edit button */}
             <View style={s.cardFooter}>
-              <TouchableOpacity
+              <Pressable
                 onPress={() => navigation.navigate('TimerEditor', { timerId: item.id })}
                 accessibilityLabel={`Edit ${item.name}`}
                 accessibilityRole="button"
                 hitSlop={8}
+                style={({ pressed }) => [pressed && s.pressed]}
               >
                 <Text style={s.editText}>Edit</Text>
-              </TouchableOpacity>
+              </Pressable>
             </View>
           </View>
         )}
       />
 
-      <TouchableOpacity
-        style={s.fab}
+      <Pressable
+        style={({ pressed }) => [s.fab, pressed && s.pressed]}
         onPress={() => navigation.navigate('TimerEditor', {})}
         accessibilityLabel="Create new timer"
         accessibilityRole="button"
       >
-        <Text style={s.fabText} importantForAccessibility="no">+</Text>
-      </TouchableOpacity>
+        <Plus size={28} color={c.inkButtonText} strokeWidth={1.75} />
+      </Pressable>
     </SafeAreaView>
   );
 }
 
-function makeStyles(isDark: boolean) {
-  const bg = isDark ? '#121212' : '#F5F5F5';
-  const cardBg = isDark ? '#1E1E1E' : '#FFFFFF';
-  const text = isDark ? '#FFFFFF' : '#111111';
-  const sub = isDark ? '#AAAAAA' : '#666666';
-  const border = isDark ? '#2A2A2A' : '#E8E8E8';
-
+function makeStyles(c: Colors) {
   return StyleSheet.create({
-    container: { flex: 1, backgroundColor: bg },
+    container: { flex: 1, backgroundColor: c.bg },
     header: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingHorizontal: 20,
-      paddingVertical: 14,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: border,
+      paddingHorizontal: space.s6,
+      paddingVertical: space.s4,
+      borderBottomWidth: hairline,
+      borderBottomColor: c.hairline,
     },
-    title: { fontSize: 22, fontWeight: '700', color: text },
-    headerIcon: { fontSize: 22 },
-    list: { padding: 16, paddingBottom: 100 },
+    title: {
+      ...t.md,
+      color: c.fg,
+      fontFamily: fontFamily.sansSemibold,
+    },
+    iconBtn: {
+      width: target.min,
+      height: target.min,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    pressed: { opacity: 0.7 },
+    list: { padding: space.s5, paddingBottom: 120 },
 
-    // Card: column layout
     card: {
-      backgroundColor: cardBg,
-      borderRadius: 14,
-      marginBottom: 12,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: isDark ? 0 : 0.07,
-      shadowRadius: 4,
-      elevation: 2,
+      backgroundColor: c.bgElevated,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: c.hairline,
+      marginBottom: space.s4,
       overflow: 'hidden',
     },
-    // Top section: info + vertically-centered play button
     cardMain: {
       flexDirection: 'row',
       alignItems: 'center',
-      padding: 16,
+      padding: space.s5,
     },
-    cardInfo: { flex: 1, marginRight: 12 },
-    cardName: { fontSize: 17, fontWeight: '600', color: text, marginBottom: 4 },
-    cardSummary: { fontSize: 13, color: sub, marginBottom: 2 },
-    cardDuration: { fontSize: 12, color: sub },
+    cardInfo: { flex: 1, marginRight: space.s4 },
+    cardName: {
+      ...t.md,
+      color: c.fg,
+      fontFamily: fontFamily.sansSemibold,
+      marginBottom: space.s2,
+    },
+    cardSummary: {
+      ...t.sm,
+      color: c.fgMuted,
+      fontFamily: fontFamily.sans,
+      marginBottom: space.s1,
+    },
+    cardDuration: {
+      ...t.xs,
+      color: c.fgSubtle,
+      fontFamily: fontFamily.mono,
+    },
     playBtn: {
-      backgroundColor: '#EF4444',
-      width: 46,
-      height: 46,
-      borderRadius: 23,
+      backgroundColor: c.inkButton,
+      width: 48,
+      height: 48,
+      borderRadius: radius.pill,
       justifyContent: 'center',
       alignItems: 'center',
     },
-    playBtnText: { fontSize: 18, color: '#FFFFFF', marginLeft: 2 },
 
-    // Footer: edit button
     cardFooter: {
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: border,
-      paddingHorizontal: 16,
-      paddingVertical: 10,
+      borderTopWidth: hairline,
+      borderTopColor: c.hairline,
+      paddingHorizontal: space.s5,
+      paddingVertical: space.s3,
     },
-    editText: { fontSize: 14, color: '#1D4ED8', fontWeight: '500' },
+    editText: {
+      ...t.sm,
+      color: c.fg,
+      fontFamily: fontFamily.sansMedium,
+      textDecorationLine: 'underline',
+      textDecorationColor: c.hairlineStrong,
+    },
 
-    empty: { alignItems: 'center', paddingTop: 80, gap: 6 },
-    emptyText: { fontSize: 16, color: sub },
-    footer: { alignItems: 'center' },
-    bmacRow: { alignItems: 'center', paddingVertical: 20 },
-    bmacText: { fontSize: 15, color: sub },
-    feedbackRow: { alignItems: 'center', paddingBottom: 24 },
-    feedbackText: { fontSize: 14, color: sub },
+    empty: { alignItems: 'center', paddingTop: space.s9, gap: space.s2 },
+    emptyText: {
+      ...t.base,
+      color: c.fgMuted,
+      fontFamily: fontFamily.sans,
+    },
+    footer: { alignItems: 'center', gap: space.s5, paddingTop: space.s7 },
+    linkRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space.s3,
+      paddingVertical: space.s3,
+    },
+    linkText: {
+      ...t.sm,
+      color: c.fgMuted,
+      fontFamily: fontFamily.sans,
+    },
     fab: {
       position: 'absolute',
-      right: 24,
-      bottom: 40,
+      right: space.s6,
+      bottom: space.s8,
       width: 56,
       height: 56,
-      borderRadius: 28,
-      backgroundColor: '#EF4444',
+      borderRadius: radius.pill,
+      backgroundColor: c.inkButton,
       justifyContent: 'center',
       alignItems: 'center',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 3 },
-      shadowOpacity: 0.3,
-      shadowRadius: 6,
-      elevation: 6,
     },
-    fabText: { fontSize: 30, color: '#FFFFFF', lineHeight: 34 },
   });
 }

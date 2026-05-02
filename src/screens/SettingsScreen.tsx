@@ -2,10 +2,9 @@ import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
+  Pressable,
   ScrollView,
   StyleSheet,
-  useColorScheme,
   SafeAreaView,
   Linking,
   Alert,
@@ -14,11 +13,37 @@ import {
 import * as Speech from 'expo-speech';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList, SoundSettings, SoundStyle, ALL_SOUND_STYLES, TONE_SOUND_STYLES, SOUND_STYLE_LABELS } from '../types';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Coffee,
+  Mail,
+  Minus,
+  Plus,
+} from 'lucide-react-native';
+import {
+  RootStackParamList,
+  SoundSettings,
+  SoundStyle,
+  ALL_SOUND_STYLES,
+  TONE_SOUND_STYLES,
+  SOUND_STYLE_LABELS,
+} from '../types';
 import { loadSettings, saveSettings } from '../storage/storage';
 import { DEFAULT_SETTINGS } from '../constants/defaultTimers';
 import { AudioEngine } from '../audio/AudioEngine';
 import { buildFeedbackEmailUrl } from '../utils/feedback';
+import Wordmark from '../components/Wordmark';
+import {
+  useTheme,
+  fontFamily,
+  space,
+  radius,
+  type as t,
+  hairline,
+  tracking,
+  Colors,
+} from '../theme';
 
 const VOICE_PREVIEW_PHRASES: Partial<Record<keyof Omit<SoundSettings, 'countdownDuration'>, string>> = {
   warmUpStart: 'Warm Up',
@@ -38,19 +63,19 @@ interface SoundEventRow {
 }
 
 const SOUND_EVENTS: SoundEventRow[] = [
-  { key: 'countdownTick', label: 'Countdown Tick' },
-  { key: 'warmUpStart', label: 'Warm Up Start' },
-  { key: 'workStart', label: 'Exercise Start' },
-  { key: 'restStart', label: 'Rest Start' },
-  { key: 'recoveryStart', label: 'Recovery Start' },
-  { key: 'coolDownStart', label: 'Cool Down Start' },
-  { key: 'workoutComplete', label: 'Workout Complete' },
-  { key: 'halfwaySound', label: 'Halfway Through Interval' },
+  { key: 'countdownTick', label: 'Countdown tick' },
+  { key: 'warmUpStart', label: 'Warm up start' },
+  { key: 'workStart', label: 'Exercise start' },
+  { key: 'restStart', label: 'Rest start' },
+  { key: 'recoveryStart', label: 'Recovery start' },
+  { key: 'coolDownStart', label: 'Cool down start' },
+  { key: 'workoutComplete', label: 'Workout complete' },
+  { key: 'halfwaySound', label: 'Halfway through interval' },
 ];
 
 export default function SettingsScreen({ navigation }: Props) {
-  const isDark = useColorScheme() === 'dark';
-  const s = makeStyles(isDark);
+  const { c } = useTheme();
+  const s = makeStyles(c);
 
   const [sounds, setSounds] = useState<SoundSettings>(DEFAULT_SETTINGS.sounds);
   const [audioMode, setAudioMode] = useState(DEFAULT_SETTINGS.audioAccessibilityMode);
@@ -88,7 +113,7 @@ export default function SettingsScreen({ navigation }: Props) {
   };
 
   const handleReset = () => {
-    Alert.alert('Reset to Defaults', 'Restore all settings to defaults?', [
+    Alert.alert('Reset to defaults', 'Restore all settings to defaults?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Reset',
@@ -105,63 +130,65 @@ export default function SettingsScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={s.container}>
       <View style={s.header}>
-        <TouchableOpacity
+        <Pressable
           onPress={() => navigation.goBack()}
           hitSlop={8}
           accessibilityLabel="Back"
           accessibilityRole="button"
+          style={({ pressed }) => [s.headerSide, pressed && s.pressed]}
         >
-          <Text style={s.headerBack}>‹ Back</Text>
-        </TouchableOpacity>
+          <ChevronLeft size={22} color={c.fg} strokeWidth={1.5} />
+          <Text style={s.headerBackText}>Back</Text>
+        </Pressable>
         <Text style={s.headerTitle} accessibilityRole="header">Settings</Text>
-        <TouchableOpacity
+        <Pressable
           onPress={handleReset}
           hitSlop={8}
           accessibilityLabel="Reset to defaults"
           accessibilityRole="button"
           accessibilityHint="Restores all sound settings to their defaults"
+          style={({ pressed }) => [s.headerSide, s.headerSideRight, pressed && s.pressed]}
         >
           <Text style={s.headerReset}>Reset</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       <ScrollView contentContainerStyle={s.scroll}>
-        {/* Accessibility */}
-        <Text style={s.sectionHeader} accessibilityRole="header">ACCESSIBILITY</Text>
+        <Text style={s.sectionHeader} accessibilityRole="header">Accessibility</Text>
         <View style={s.card}>
           <View style={s.row}>
             <View style={s.rowLabel} importantForAccessibility="no-hide-descendants">
-              <Text style={s.rowTitle}>Voice Cues</Text>
-              <Text style={s.rowHint}>Speaks phase name, set, and duration aloud during your workout</Text>
+              <Text style={s.rowTitle}>Voice cues</Text>
+              <Text style={s.rowHint}>Speaks phase name, set, and duration aloud during your workout.</Text>
             </View>
             <Switch
               value={audioMode}
               onValueChange={updateAudioMode}
-              trackColor={{ false: '#767577', true: '#1D4ED8' }}
-              thumbColor="#FFFFFF"
+              trackColor={{ false: c.hairlineStrong, true: c.fg }}
+              thumbColor={c.bgElevated}
+              ios_backgroundColor={c.hairlineStrong}
               accessibilityRole="switch"
-              accessibilityLabel="Voice Cues, speaks phase name, set, and duration aloud during your workout"
+              accessibilityLabel="Voice cues"
               accessibilityState={{ checked: audioMode }}
             />
           </View>
         </View>
 
-        {/* Countdown Duration */}
-        <Text style={s.sectionHeader} accessibilityRole="header">COUNTDOWN</Text>
+        <Text style={s.sectionHeader} accessibilityRole="header">Countdown</Text>
         <View style={s.card}>
           <View style={s.row}>
             <View
               style={s.rowLabel}
-              accessible={true}
+              accessible
               accessibilityRole="text"
-              accessibilityLabel="Countdown Duration. Seconds of beeping before each interval. Zero is off."
+              accessibilityLabel="Countdown duration. Seconds of beeping before each interval. Zero is off."
             >
-              <Text style={s.rowTitle} importantForAccessibility="no">Countdown Duration</Text>
-              <Text style={s.rowHint} importantForAccessibility="no">Seconds of beeping before each interval (0 = off)</Text>
+              <Text style={s.rowTitle} importantForAccessibility="no">Countdown duration</Text>
+              <Text style={s.rowHint} importantForAccessibility="no">Seconds of beeping before each interval (0 = off).</Text>
             </View>
             <View
               style={s.stepper}
-              accessible={true}
+              accessible
               accessibilityRole="adjustable"
               accessibilityLabel={
                 sounds.countdownDuration === 0
@@ -180,31 +207,30 @@ export default function SettingsScreen({ navigation }: Props) {
                   updateCountdownDuration(Math.max(0, sounds.countdownDuration - 1));
               }}
             >
-              <TouchableOpacity
-                style={s.stepBtn}
+              <Pressable
+                style={({ pressed }) => [s.stepBtn, pressed && s.pressed]}
                 onPress={() => updateCountdownDuration(Math.max(0, sounds.countdownDuration - 1))}
                 accessible={false}
                 importantForAccessibility="no"
               >
-                <Text style={s.stepBtnText}>−</Text>
-              </TouchableOpacity>
+                <Minus size={16} color={c.fg} strokeWidth={1.75} />
+              </Pressable>
               <Text style={s.stepValue} importantForAccessibility="no">
                 {sounds.countdownDuration}s
               </Text>
-              <TouchableOpacity
-                style={s.stepBtn}
+              <Pressable
+                style={({ pressed }) => [s.stepBtn, pressed && s.pressed]}
                 onPress={() => updateCountdownDuration(Math.min(10, sounds.countdownDuration + 1))}
                 accessible={false}
                 importantForAccessibility="no"
               >
-                <Text style={s.stepBtnText}>+</Text>
-              </TouchableOpacity>
+                <Plus size={16} color={c.fg} strokeWidth={1.75} />
+              </Pressable>
             </View>
           </View>
         </View>
 
-        {/* Sound Events */}
-        <Text style={s.sectionHeader} accessibilityRole="header">SOUNDS</Text>
+        <Text style={s.sectionHeader} accessibilityRole="header">Sounds</Text>
         <Text style={s.sectionHint}>Tap a sound to preview it.</Text>
         <View style={s.card}>
           {SOUND_EVENTS.map((event, idx) => (
@@ -220,9 +246,13 @@ export default function SettingsScreen({ navigation }: Props) {
                 {(event.key === 'countdownTick' ? TONE_SOUND_STYLES : ALL_SOUND_STYLES).map((style) => {
                   const active = sounds[event.key] === style;
                   return (
-                    <TouchableOpacity
+                    <Pressable
                       key={style}
-                      style={[s.pill, active && s.pillActive]}
+                      style={({ pressed }) => [
+                        s.pill,
+                        active && s.pillActive,
+                        pressed && s.pressed,
+                      ]}
                       onPress={() => updateSound(event.key, style)}
                       accessibilityRole="radio"
                       accessibilityState={{ selected: active }}
@@ -232,7 +262,7 @@ export default function SettingsScreen({ navigation }: Props) {
                       <Text style={[s.pillText, active && s.pillTextActive]} importantForAccessibility="no">
                         {SOUND_STYLE_LABELS[style]}
                       </Text>
-                    </TouchableOpacity>
+                    </Pressable>
                   );
                 })}
               </ScrollView>
@@ -240,135 +270,167 @@ export default function SettingsScreen({ navigation }: Props) {
           ))}
         </View>
 
-        {/* About */}
-        <Text style={s.sectionHeader} accessibilityRole="header">ABOUT</Text>
+        <Text style={s.sectionHeader} accessibilityRole="header">About</Text>
         <View style={s.card}>
-          <TouchableOpacity
-            style={s.row}
+          <Pressable
+            style={({ pressed }) => [s.row, pressed && s.pressed]}
             onPress={() => Linking.openURL('https://buymeacoffee.com/jtysonwilliams')}
             accessibilityLabel="Buy me a coffee"
             accessibilityRole="link"
             accessibilityHint="Opens buymeacoffee.com in your browser"
           >
-            <Text style={s.rowTitle}>☕  Buy me a coffee?</Text>
-            <Text style={s.chevron} importantForAccessibility="no">›</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[s.row, s.rowBorder]}
+            <View style={s.aboutRowLeft}>
+              <Coffee size={18} color={c.fg} strokeWidth={1.5} />
+              <Text style={s.rowTitle}>Buy me a coffee?</Text>
+            </View>
+            <ChevronRight size={18} color={c.fgMuted} strokeWidth={1.5} />
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [s.row, s.rowBorder, pressed && s.pressed]}
             onPress={() => Linking.openURL(buildFeedbackEmailUrl())}
             accessibilityLabel="Send feedback"
             accessibilityRole="link"
             accessibilityHint="Opens your email app to send feedback or report a bug"
           >
-            <Text style={s.rowTitle}>✉️  Send feedback</Text>
-            <Text style={s.chevron} importantForAccessibility="no">›</Text>
-          </TouchableOpacity>
+            <View style={s.aboutRowLeft}>
+              <Mail size={18} color={c.fg} strokeWidth={1.5} />
+              <Text style={s.rowTitle}>Send feedback</Text>
+            </View>
+            <ChevronRight size={18} color={c.fgMuted} strokeWidth={1.5} />
+          </Pressable>
           <View style={[s.row, s.rowBorder]}>
             <Text style={s.rowTitle}>Version</Text>
             <Text style={s.rowValue}>1.0.0</Text>
           </View>
+        </View>
+
+        <View style={s.stamp}>
+          <Wordmark />
+          <Text style={s.stampText}>
+            Made by two people. Your data stays on your device. The code is on GitHub.
+          </Text>
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function makeStyles(isDark: boolean) {
-  const bg = isDark ? '#121212' : '#F5F5F5';
-  const cardBg = isDark ? '#1E1E1E' : '#FFFFFF';
-  const text = isDark ? '#FFFFFF' : '#111111';
-  const sub = isDark ? '#888' : '#6B6B6B';
-  const border = isDark ? '#2A2A2A' : '#E8E8E8';
-  const btnBg = isDark ? '#2C2C2E' : '#F2F2F7';
-  const pillActiveBg = '#1D4ED8';
-
+function makeStyles(c: Colors) {
   return StyleSheet.create({
-    container: { flex: 1, backgroundColor: bg },
+    container: { flex: 1, backgroundColor: c.bg },
     header: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
       alignItems: 'center',
-      paddingHorizontal: 20,
-      paddingVertical: 14,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: border,
+      paddingHorizontal: space.s5,
+      paddingVertical: space.s3,
+      borderBottomWidth: hairline,
+      borderBottomColor: c.hairline,
     },
-    headerBack: { fontSize: 17, color: '#1D4ED8' },
-    headerTitle: { fontSize: 17, fontWeight: '600', color: text },
-    headerReset: { fontSize: 15, color: '#C81C1C' },
-    scroll: { padding: 16, paddingBottom: 60 },
+    headerSide: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space.s1,
+    },
+    headerSideRight: { justifyContent: 'flex-end' },
+    pressed: { opacity: 0.7 },
+    headerBackText: { ...t.base, color: c.fg, fontFamily: fontFamily.sans },
+    headerTitle: {
+      ...t.base,
+      color: c.fg,
+      fontFamily: fontFamily.sansSemibold,
+      textAlign: 'center',
+    },
+    headerReset: { ...t.sm, color: c.danger, fontFamily: fontFamily.sansMedium },
+
+    scroll: { padding: space.s5, paddingBottom: space.s8 },
     sectionHeader: {
-      fontSize: 12,
-      fontWeight: '600',
-      color: sub,
-      letterSpacing: 0.8,
-      marginBottom: 6,
-      marginTop: 8,
-      paddingHorizontal: 4,
+      ...t.xs,
+      fontFamily: fontFamily.sansMedium,
+      color: c.fgMuted,
+      letterSpacing: tracking.wide,
+      textTransform: 'uppercase',
+      marginBottom: space.s3,
+      marginTop: space.s3,
+      paddingHorizontal: space.s1,
     },
     sectionHint: {
-      fontSize: 12,
-      color: sub,
-      marginBottom: 8,
-      paddingHorizontal: 4,
+      ...t.xs,
+      color: c.fgMuted,
+      fontFamily: fontFamily.sans,
+      marginBottom: space.s3,
+      paddingHorizontal: space.s1,
+      marginTop: -space.s2,
     },
     card: {
-      backgroundColor: cardBg,
-      borderRadius: 14,
-      marginBottom: 24,
+      backgroundColor: c.bgElevated,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: c.hairline,
+      marginBottom: space.s6,
       overflow: 'hidden',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: isDark ? 0 : 0.06,
-      shadowRadius: 3,
-      elevation: 1,
     },
     row: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 16,
-      paddingVertical: 14,
+      justifyContent: 'space-between',
+      paddingHorizontal: space.s5,
+      paddingVertical: space.s4,
     },
-    rowBorder: {
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: border,
-    },
-    rowLabel: { flex: 1, marginRight: 12 },
-    rowTitle: { fontSize: 15, color: text, fontWeight: '500' },
-    rowHint: { fontSize: 12, color: sub, marginTop: 2 },
-    rowValue: { fontSize: 15, color: sub },
-    chevron: { fontSize: 20, color: sub },
-    stepper: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    rowBorder: { borderTopWidth: hairline, borderTopColor: c.hairline },
+    rowLabel: { flex: 1, marginRight: space.s4 },
+    rowTitle: { ...t.sm, color: c.fg, fontFamily: fontFamily.sansMedium },
+    rowHint: { ...t.xs, color: c.fgMuted, fontFamily: fontFamily.sans, marginTop: 2 },
+    rowValue: { ...t.sm, color: c.fgMuted, fontFamily: fontFamily.mono },
+    aboutRowLeft: { flexDirection: 'row', alignItems: 'center', gap: space.s3 },
+
+    stepper: { flexDirection: 'row', alignItems: 'center', gap: space.s2 },
     stepBtn: {
-      backgroundColor: btnBg,
       width: 32,
       height: 32,
-      borderRadius: 8,
+      borderRadius: radius.sm,
       borderWidth: 1,
-      borderColor: isDark ? '#737373' : '#AAAAAA',
+      borderColor: c.hairlineStrong,
+      backgroundColor: c.bg,
       justifyContent: 'center',
       alignItems: 'center',
     },
-    stepBtnText: { fontSize: 20, color: text, lineHeight: 24 },
-    stepValue: { fontSize: 16, fontWeight: '600', color: text, minWidth: 32, textAlign: 'center' },
-    soundRow: {
-      paddingHorizontal: 16,
-      paddingVertical: 12,
+    stepValue: {
+      ...t.base,
+      fontFamily: fontFamily.monoMedium,
+      color: c.fg,
+      minWidth: 36,
+      textAlign: 'center',
     },
-    soundRowBorder: {
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: border,
+
+    soundRow: { paddingHorizontal: space.s5, paddingVertical: space.s4 },
+    soundRowBorder: { borderTopWidth: hairline, borderTopColor: c.hairline },
+    soundEventLabel: {
+      ...t.sm,
+      fontFamily: fontFamily.sansMedium,
+      color: c.fg,
+      marginBottom: space.s3,
     },
-    soundEventLabel: { fontSize: 14, fontWeight: '500', color: text, marginBottom: 8 },
-    pillRow: { flexDirection: 'row', gap: 8 },
+    pillRow: { flexDirection: 'row', gap: space.s2 },
     pill: {
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 20,
-      backgroundColor: btnBg,
+      paddingHorizontal: space.s4,
+      paddingVertical: space.s2,
+      borderRadius: radius.pill,
+      borderWidth: 1,
+      borderColor: c.hairlineStrong,
+      backgroundColor: c.bg,
     },
-    pillActive: { backgroundColor: pillActiveBg },
-    pillText: { fontSize: 13, color: text },
-    pillTextActive: { color: '#FFFFFF', fontWeight: '600' },
+    pillActive: { backgroundColor: c.fg, borderColor: c.fg },
+    pillText: { ...t.sm, color: c.fg, fontFamily: fontFamily.sans },
+    pillTextActive: { color: c.bg, fontFamily: fontFamily.sansMedium },
+
+    stamp: { alignItems: 'center', paddingVertical: space.s5, gap: space.s3 },
+    stampText: {
+      ...t.xs,
+      color: c.fgMuted,
+      fontFamily: fontFamily.sans,
+      textAlign: 'center',
+      paddingHorizontal: space.s6,
+    },
   });
 }

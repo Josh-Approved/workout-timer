@@ -2,9 +2,8 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
+  Pressable,
   StyleSheet,
-  useColorScheme,
   Alert,
   SafeAreaView,
   useWindowDimensions,
@@ -14,13 +13,30 @@ import * as Haptics from 'expo-haptics';
 import * as Speech from 'expo-speech';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
+import { Check, Pause, Play, SkipBack, SkipForward, Square } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList, PhaseStep, SoundSettings, WorkoutPhase } from '../types';
 import { loadTimers, loadSettings } from '../storage/storage';
-import { buildWorkoutSequence, formatTime, formatDurationSpoken, getTotalDuration, buildPhaseAnnouncement } from '../utils/workout';
+import {
+  buildWorkoutSequence,
+  formatTime,
+  formatDurationSpoken,
+  getTotalDuration,
+  buildPhaseAnnouncement,
+} from '../utils/workout';
 import { AudioEngine } from '../audio/AudioEngine';
 import { recordWorkoutComplete } from '../storage/reviewStorage';
 import ReviewModal from '../components/ReviewModal';
+import {
+  useTheme,
+  fontFamily,
+  space,
+  radius,
+  type as ts,
+  hairline,
+  tracking,
+  Colors,
+} from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ActiveWorkout'>;
 
@@ -32,29 +48,19 @@ interface DisplayState {
   timeRemaining: number;
 }
 
-const PHASE_COLORS: Record<WorkoutPhase, string> = {
-  initial_countdown: '#6B7280',
-  warm_up: '#F59E0B',
-  exercise: '#F97316',
-  rest: '#3B82F6',
-  recovery: '#10B981',
-  cool_down: '#06B6D4',
-  complete: '#22C55E',
-};
-
 const PHASE_LABELS: Record<WorkoutPhase, string> = {
-  initial_countdown: 'GET READY',
-  warm_up: 'WARM UP',
-  exercise: 'EXERCISE',
-  rest: 'REST',
-  recovery: 'RECOVERY',
-  cool_down: 'COOL DOWN',
-  complete: 'COMPLETE',
+  initial_countdown: 'Get ready',
+  warm_up: 'Warm up',
+  exercise: 'Exercise',
+  rest: 'Rest',
+  recovery: 'Recovery',
+  cool_down: 'Cool down',
+  complete: 'Complete',
 };
 
 export default function ActiveWorkoutScreen({ route, navigation }: Props) {
   const { timerId } = route.params;
-  const isDark = useColorScheme() === 'dark';
+  const { c } = useTheme();
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
 
@@ -73,8 +79,6 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
   const [loaded, setLoaded] = useState(false);
   const [showReview, setShowReview] = useState(false);
 
-  // ── Orientation ───────────────────────────────────────────────────────────
-
   useEffect(() => {
     ScreenOrientation.unlockAsync().catch(() => {});
     return () => {
@@ -82,15 +86,13 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     };
   }, []);
 
-  // ── Load ──────────────────────────────────────────────────────────────────
-
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const [timers, settings] = await Promise.all([loadTimers(), loadSettings()]);
       if (cancelled) return;
 
-      const timer = timers.find((t) => t.id === timerId);
+      const timer = timers.find((tt) => tt.id === timerId);
       if (!timer) {
         Alert.alert('Error', 'Timer not found.', [
           { text: 'OK', onPress: () => navigation.goBack() },
@@ -122,8 +124,6 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       deactivateKeepAwake();
     };
   }, [timerId]);
-
-  // ── Tick ──────────────────────────────────────────────────────────────────
 
   const tick = useCallback(() => {
     const s = stateRef.current;
@@ -175,8 +175,6 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     setDisplayState(next);
   }, []);
 
-  // ── Interval management ───────────────────────────────────────────────────
-
   const startInterval = useCallback(() => {
     if (intervalRef.current) return;
     intervalRef.current = setInterval(tick, 1000);
@@ -204,8 +202,6 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       if (shouldPrompt) setShowReview(true);
     });
   }, [displayState.mode]);
-
-  // ── Controls ──────────────────────────────────────────────────────────────
 
   const togglePause = () => {
     if (displayState.mode === 'complete') return;
@@ -258,7 +254,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
   };
 
   const handleStop = () => {
-    Alert.alert('Stop Workout', 'End this workout?', [
+    Alert.alert('Stop workout', 'End this workout?', [
       { text: 'Keep going', style: 'cancel' },
       {
         text: 'Stop',
@@ -268,12 +264,9 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     ]);
   };
 
-  // ── Derived display ───────────────────────────────────────────────────────
-
   const currentStep = stepsRef.current[displayState.stepIndex] ?? null;
   const phase: WorkoutPhase =
     displayState.mode === 'complete' ? 'complete' : currentStep?.phase ?? 'exercise';
-  const phaseColor = PHASE_COLORS[phase];
 
   const totalSetsInCycle = currentStep != null ? getTotalSets(stepsRef.current, currentStep) : 0;
 
@@ -296,7 +289,6 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     ? 'Workout complete'
     : `${formatDurationSpoken(displayState.timeRemaining)} remaining`;
 
-  // Progress through the entire workout (0–1)
   const elapsedSeconds = stepsRef.current
     .slice(0, displayState.stepIndex)
     .reduce((sum, step) => sum + step.duration, 0)
@@ -310,20 +302,21 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
   const totalRemaining = Math.max(0, totalDurationRef.current - elapsedSeconds);
   const totalA11yLabel = `Total remaining, ${formatDurationSpoken(totalRemaining)}`;
 
-  const s = makeStyles(isDark, phaseColor, isLandscape);
-
-  // ── Shared elements ───────────────────────────────────────────────────────
+  const s = makeStyles(c, isLandscape);
 
   const timerDisplay = (
     <View
       style={s.timerContainer}
-      accessible={true}
+      accessible
       accessibilityLabel={timerA11yLabel}
       accessibilityRole="text"
       accessibilityLiveRegion="none"
     >
       {displayState.mode === 'complete' ? (
-        <Text style={s.completeText} importantForAccessibility="no">Done! 🎉</Text>
+        <View style={s.completeRow} importantForAccessibility="no">
+          <Check size={isLandscape ? 56 : 44} color={c.accent} strokeWidth={2} />
+          <Text style={s.completeText}>Done</Text>
+        </View>
       ) : (
         <Text
           style={s.timer}
@@ -339,89 +332,71 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
 
   const controls = displayState.mode !== 'complete' ? (
     <View style={s.controls}>
-      <TouchableOpacity
-        style={s.secondaryBtn}
+      <Pressable
+        style={({ pressed }) => [s.secondaryBtn, pressed && s.pressed]}
         onPress={handleRestart}
         hitSlop={8}
         accessibilityLabel="Restart current interval"
         accessibilityRole="button"
       >
-        <Text style={s.secondaryBtnText} importantForAccessibility="no">⏮</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={s.stopBtn}
+        <SkipBack size={20} color={c.fg} strokeWidth={1.5} />
+      </Pressable>
+      <Pressable
+        style={({ pressed }) => [s.secondaryBtn, pressed && s.pressed]}
         onPress={handleStop}
         hitSlop={8}
         accessibilityLabel="Stop workout"
         accessibilityRole="button"
       >
-        <Text style={s.stopBtnText} importantForAccessibility="no">■</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[s.playPauseBtn, { backgroundColor: phaseColor }]}
+        <Square size={18} color={c.danger} strokeWidth={1.75} fill={c.danger} />
+      </Pressable>
+      <Pressable
+        style={({ pressed }) => [s.playPauseBtn, pressed && s.pressed]}
         onPress={togglePause}
         accessibilityLabel={isRunning ? 'Pause' : 'Resume'}
         accessibilityRole="button"
       >
-        <Text style={s.playPauseBtnText} importantForAccessibility="no">{isRunning ? '⏸' : '▶'}</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={s.secondaryBtn}
+        {isRunning ? (
+          <Pause size={28} color={c.inkButtonText} strokeWidth={1.75} fill={c.inkButtonText} />
+        ) : (
+          <Play size={28} color={c.inkButtonText} strokeWidth={1.75} fill={c.inkButtonText} />
+        )}
+      </Pressable>
+      <Pressable
+        style={({ pressed }) => [s.secondaryBtn, pressed && s.pressed]}
         onPress={handleSkip}
         hitSlop={8}
         accessibilityLabel="Skip to next interval"
         accessibilityRole="button"
       >
-        <Text style={s.secondaryBtnText} importantForAccessibility="no">⏭</Text>
-      </TouchableOpacity>
+        <SkipForward size={20} color={c.fg} strokeWidth={1.5} />
+      </Pressable>
     </View>
   ) : (
     <View style={s.controls}>
-      <TouchableOpacity
-        style={s.doneBtn}
+      <Pressable
+        style={({ pressed }) => [s.doneBtn, pressed && s.pressed]}
         onPress={() => navigation.goBack()}
         accessibilityLabel="Back to timers"
         accessibilityRole="button"
       >
-        <Text style={s.doneBtnText} importantForAccessibility="no">Back to Timers</Text>
-      </TouchableOpacity>
+        <Text style={s.doneBtnText} importantForAccessibility="no">Back to timers</Text>
+      </Pressable>
     </View>
   );
 
   const progressBar = (
     <View
       style={s.progressOuter}
-      accessible={true}
+      accessible
       accessibilityLabel={`Workout progress, ${Math.round(progressFraction * 100)} percent`}
       accessibilityRole="progressbar"
     >
-      {/* Colored segments — one per PhaseStep */}
       <View style={s.progressTrack}>
-        {stepsRef.current.map((step, idx) => (
-          <View
-            key={idx}
-            style={{ flex: step.duration, height: '100%', backgroundColor: PHASE_COLORS[step.phase] }}
-          />
-        ))}
-        {/* Consumed overlay slides in from the left */}
-        <View
-          style={[
-            s.progressConsumed,
-            { width: `${progressFraction * 100}%` as any },
-          ]}
-        />
+        <View style={[s.progressFill, { width: `${progressFraction * 100}%` as any }]} />
       </View>
-      {/* Scrubber thumb */}
-      <View
-        style={[
-          s.progressThumb,
-          { left: `${progressFraction * 100}%` as any },
-        ]}
-      />
     </View>
   );
-
-  // ── Render ────────────────────────────────────────────────────────────────
 
   if (!loaded) {
     return (
@@ -434,49 +409,48 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
   if (isLandscape) {
     return (
       <SafeAreaView style={s.container}>
-        {/* Two-column content area */}
         <View style={s.landscapeTopRow}>
-          {/* Left: phase label + mega timer */}
           <View style={s.leftCol}>
             <View
               style={s.phaseRow}
-              accessible={true}
+              accessible
               accessibilityLabel={PHASE_LABELS[phase]}
               accessibilityRole="text"
             >
-              <Text style={s.phaseLabel} importantForAccessibility="no">{PHASE_LABELS[phase]}</Text>
+              <Text style={s.phaseLabel} importantForAccessibility="no">
+                {PHASE_LABELS[phase]}
+              </Text>
             </View>
             {timerDisplay}
           </View>
 
-          {/* Right: info stack + controls */}
           <View style={s.rightCol}>
             <View style={s.infoStack} accessible={false}>
               <View
                 style={s.infoStackRow}
-                accessible={true}
+                accessible
                 accessibilityLabel={setA11yLabel}
                 accessibilityRole="text"
               >
-                <Text style={s.infoLabel} importantForAccessibility="no">SET</Text>
+                <Text style={s.infoLabel} importantForAccessibility="no">Set</Text>
                 <Text style={s.infoValue} importantForAccessibility="no">{setDisplay}</Text>
               </View>
               <View
                 style={[s.infoStackRow, s.infoStackRowBorder]}
-                accessible={true}
+                accessible
                 accessibilityLabel={cycleA11yLabel}
                 accessibilityRole="text"
               >
-                <Text style={s.infoLabel} importantForAccessibility="no">CYCLE</Text>
+                <Text style={s.infoLabel} importantForAccessibility="no">Cycle</Text>
                 <Text style={s.infoValue} importantForAccessibility="no">{cycleDisplay}</Text>
               </View>
               <View
                 style={[s.infoStackRow, s.infoStackRowBorder]}
-                accessible={true}
+                accessible
                 accessibilityLabel={totalA11yLabel}
                 accessibilityRole="text"
               >
-                <Text style={s.infoLabel} importantForAccessibility="no">TOTAL</Text>
+                <Text style={s.infoLabel} importantForAccessibility="no">Total</Text>
                 <Text style={s.infoValue} importantForAccessibility="no">{formatTime(totalRemaining)}</Text>
               </View>
             </View>
@@ -484,7 +458,6 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
           </View>
         </View>
 
-        {/* Full-width progress bar across both columns */}
         {progressBar}
         <ReviewModal visible={showReview} onDismiss={() => setShowReview(false)} />
       </SafeAreaView>
@@ -495,11 +468,13 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     <SafeAreaView style={s.container}>
       <View
         style={s.phaseRow}
-        accessible={true}
+        accessible
         accessibilityLabel={PHASE_LABELS[phase]}
         accessibilityRole="text"
       >
-        <Text style={s.phaseLabel} importantForAccessibility="no">{PHASE_LABELS[phase]}</Text>
+        <Text style={s.phaseLabel} importantForAccessibility="no">
+          {PHASE_LABELS[phase]}
+        </Text>
       </View>
 
       {timerDisplay}
@@ -507,29 +482,29 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       <View style={s.infoRow} accessible={false}>
         <View
           style={s.infoPanel}
-          accessible={true}
+          accessible
           accessibilityLabel={setA11yLabel}
           accessibilityRole="text"
         >
-          <Text style={s.infoLabel} importantForAccessibility="no">SET</Text>
+          <Text style={s.infoLabel} importantForAccessibility="no">Set</Text>
           <Text style={s.infoValue} importantForAccessibility="no">{setDisplay}</Text>
         </View>
         <View
           style={[s.infoPanel, s.infoPanelBorder]}
-          accessible={true}
+          accessible
           accessibilityLabel={cycleA11yLabel}
           accessibilityRole="text"
         >
-          <Text style={s.infoLabel} importantForAccessibility="no">CYCLE</Text>
+          <Text style={s.infoLabel} importantForAccessibility="no">Cycle</Text>
           <Text style={s.infoValue} importantForAccessibility="no">{cycleDisplay}</Text>
         </View>
         <View
           style={[s.infoPanel, s.infoPanelBorder]}
-          accessible={true}
+          accessible
           accessibilityLabel={totalA11yLabel}
           accessibilityRole="text"
         >
-          <Text style={s.infoLabel} importantForAccessibility="no">TOTAL</Text>
+          <Text style={s.infoLabel} importantForAccessibility="no">Total</Text>
           <Text style={s.infoValue} importantForAccessibility="no">{formatTime(totalRemaining)}</Text>
         </View>
       </View>
@@ -541,8 +516,6 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     </SafeAreaView>
   );
 }
-
-// ── Helpers ───────────────────────────────────────────────────────────────
 
 const VOICE_PHASE_PHRASES: Partial<Record<WorkoutPhase, string>> = {
   initial_countdown: 'Get Ready',
@@ -595,7 +568,6 @@ function firePhaseStart(
     step.phase === 'exercise' || step.phase === 'rest' ? getTotalSets(allSteps, step) : 0;
 
   if (style === 'voice' && speechMode) {
-    // Single utterance: phase name + context (avoids double-speak and session drop)
     speakAndReactivate(buildPhaseAnnouncement(step, totalSetsInCycle, maxCycles));
   } else {
     playSoundOrVoice(style, VOICE_PHASE_PHRASES[step.phase] ?? '');
@@ -629,34 +601,33 @@ function getMaxCycles(steps: PhaseStep[]): number {
   return steps.reduce((max, s) => Math.max(max, s.cycleNumber ?? 0), 0);
 }
 
-// ── Styles ────────────────────────────────────────────────────────────────
-
-function makeStyles(isDark: boolean, phaseColor: string, isLandscape: boolean) {
-  const bg = isDark ? '#0A0A0A' : '#FAFAFA';
-  const text = isDark ? '#FFFFFF' : '#111111';
-  const sub = isDark ? '#AAAAAA' : '#666666';
-  const panelBg = isDark ? '#1A1A1A' : '#F0F0F0';
-  const panelBorder = isDark ? '#2A2A2A' : '#DDDDDD';
-
+function makeStyles(c: Colors, isLandscape: boolean) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: bg,
+      backgroundColor: c.bg,
       flexDirection: 'column',
       alignItems: isLandscape ? 'stretch' : 'center',
       justifyContent: isLandscape ? 'flex-start' : 'space-between',
-      paddingVertical: isLandscape ? 0 : 24,
+      paddingVertical: isLandscape ? 0 : space.s6,
     },
-    loading: { flex: 1, fontSize: 18, color: text, textAlign: 'center', marginTop: 100 },
+    loading: {
+      flex: 1,
+      ...ts.md,
+      color: c.fg,
+      fontFamily: fontFamily.sans,
+      textAlign: 'center',
+      marginTop: 100,
+    },
+    pressed: { opacity: 0.7 },
 
-    // ── Portrait ────────────────────────────────────────────────────────────
-    phaseRow: { alignItems: 'center', paddingTop: isLandscape ? 12 : 16 },
+    phaseRow: { alignItems: 'center', paddingTop: isLandscape ? space.s4 : space.s5 },
     phaseLabel: {
-      fontSize: isLandscape ? 22 : 28,
-      fontWeight: '800',
-      color: phaseColor,
-      letterSpacing: 2,
-      textTransform: 'uppercase',
+      fontSize: isLandscape ? 22 : 26,
+      lineHeight: isLandscape ? 28 : 32,
+      fontFamily: fontFamily.sansSemibold,
+      color: c.fg,
+      letterSpacing: tracking.tight,
     },
     timerContainer: {
       alignItems: 'center',
@@ -665,128 +636,102 @@ function makeStyles(isDark: boolean, phaseColor: string, isLandscape: boolean) {
       width: isLandscape ? '100%' : undefined,
     },
     timer: {
-      fontSize: isLandscape ? 144 : 96,
-      fontWeight: '200',
-      color: text,
+      fontSize: isLandscape ? 144 : 104,
+      fontFamily: fontFamily.mono,
+      color: c.fg,
       fontVariant: ['tabular-nums'],
       letterSpacing: -2,
     },
-    completeText: { fontSize: isLandscape ? 56 : 48, fontWeight: '700', color: '#22C55E' },
+    completeRow: { flexDirection: 'row', alignItems: 'center', gap: space.s4 },
+    completeText: {
+      fontSize: isLandscape ? 56 : 48,
+      fontFamily: fontFamily.sansSemibold,
+      color: c.fg,
+      letterSpacing: tracking.tight,
+    },
+
     infoRow: {
       flexDirection: 'row',
-      backgroundColor: panelBg,
-      borderRadius: 16,
-      marginHorizontal: 24,
-      marginBottom: 12,
+      backgroundColor: c.bgElevated,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: c.hairline,
+      marginHorizontal: space.s6,
+      marginBottom: space.s4,
       overflow: 'hidden',
+      alignSelf: 'stretch',
     },
-    infoPanel: { flex: 1, alignItems: 'center', paddingVertical: 12 },
-    infoPanelBorder: {
-      borderLeftWidth: StyleSheet.hairlineWidth,
-      borderLeftColor: panelBorder,
-    },
+    infoPanel: { flex: 1, alignItems: 'center', paddingVertical: space.s4 },
+    infoPanelBorder: { borderLeftWidth: hairline, borderLeftColor: c.hairline },
     infoLabel: {
-      fontSize: isLandscape ? 11 : 10,
-      fontWeight: '700',
-      color: sub,
-      letterSpacing: 1,
-      marginBottom: isLandscape ? 0 : 4,
+      ...ts.xs,
+      fontFamily: fontFamily.sansMedium,
+      color: c.fgMuted,
+      letterSpacing: tracking.wide,
+      textTransform: 'uppercase',
+      marginBottom: isLandscape ? 0 : space.s1,
     },
     infoValue: {
-      fontSize: isLandscape ? 20 : 17,
-      fontWeight: '600',
-      color: text,
+      ...ts.base,
+      fontFamily: fontFamily.monoMedium,
+      color: c.fg,
       fontVariant: ['tabular-nums'],
     },
+
     controls: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 14,
-      paddingBottom: isLandscape ? 0 : 8,
+      gap: space.s4,
+      paddingBottom: isLandscape ? 0 : space.s3,
     },
     secondaryBtn: {
       width: 48,
       height: 48,
-      borderRadius: 24,
-      backgroundColor: isDark ? '#2C2C2E' : '#E5E7EB',
+      borderRadius: radius.pill,
+      borderWidth: 1,
+      borderColor: c.hairlineStrong,
+      backgroundColor: c.bgElevated,
       justifyContent: 'center',
       alignItems: 'center',
     },
-    secondaryBtnText: { fontSize: 20 },
-    stopBtn: {
-      width: 52,
-      height: 52,
-      borderRadius: 26,
-      backgroundColor: isDark ? '#2C2C2E' : '#E5E7EB',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    stopBtnText: { fontSize: 18, color: '#EF4444' },
     playPauseBtn: {
       width: 72,
       height: 72,
-      borderRadius: 36,
+      borderRadius: radius.pill,
+      backgroundColor: c.inkButton,
       justifyContent: 'center',
       alignItems: 'center',
-      shadowColor: phaseColor,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.4,
-      shadowRadius: 8,
-      elevation: 6,
     },
-    playPauseBtnText: { fontSize: 28, color: '#FFFFFF' },
     doneBtn: {
-      backgroundColor: '#22C55E',
-      paddingHorizontal: 32,
-      paddingVertical: 16,
-      borderRadius: 30,
+      backgroundColor: c.inkButton,
+      paddingHorizontal: space.s7,
+      paddingVertical: space.s4,
+      borderRadius: radius.pill,
     },
-    doneBtnText: { fontSize: 18, fontWeight: '600', color: '#FFFFFF' },
+    doneBtnText: {
+      ...ts.base,
+      fontFamily: fontFamily.sansSemibold,
+      color: c.inkButtonText,
+    },
 
-    // ── Progress bar ─────────────────────────────────────────────────────────
     progressOuter: {
       alignSelf: 'stretch',
-      marginHorizontal: isLandscape ? 16 : 20,
-      marginBottom: isLandscape ? 10 : 10,
-      height: 32,
+      marginHorizontal: space.s6,
+      marginBottom: space.s4,
+      height: 6,
       justifyContent: 'center',
     },
     progressTrack: {
-      position: 'absolute',
-      left: 0,
-      right: 0,
-      top: 7,
-      height: 18,
-      borderRadius: 9,
-      flexDirection: 'row',
+      height: 6,
+      borderRadius: radius.pill,
+      backgroundColor: c.hairline,
       overflow: 'hidden',
-      backgroundColor: isDark ? '#2A2A2A' : '#E0E0E0',
     },
-    progressConsumed: {
-      position: 'absolute',
-      left: 0,
-      top: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0,0,0,0.45)',
-    },
-    progressThumb: {
-      position: 'absolute',
-      top: 1,
-      width: 30,
-      height: 30,
-      borderRadius: 15,
-      backgroundColor: '#FFFFFF',
-      transform: [{ translateX: -15 }],
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.35,
-      shadowRadius: 4,
-      elevation: 6,
-      borderWidth: 1.5,
-      borderColor: 'rgba(0,0,0,0.12)',
+    progressFill: {
+      height: '100%',
+      backgroundColor: c.fg,
     },
 
-    // ── Landscape ───────────────────────────────────────────────────────────
     landscapeTopRow: {
       flex: 1,
       flexDirection: 'row',
@@ -796,32 +741,31 @@ function makeStyles(isDark: boolean, phaseColor: string, isLandscape: boolean) {
       flex: 3,
       alignItems: 'center',
       justifyContent: 'space-around',
-      paddingVertical: 12,
-      paddingLeft: 8,
+      paddingVertical: space.s4,
+      paddingLeft: space.s3,
     },
     rightCol: {
       flex: 2,
       alignItems: 'center',
       justifyContent: 'space-evenly',
-      paddingVertical: 12,
-      paddingRight: 8,
+      paddingVertical: space.s4,
+      paddingRight: space.s3,
     },
     infoStack: {
       width: '100%',
-      backgroundColor: panelBg,
-      borderRadius: 16,
+      backgroundColor: c.bgElevated,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: c.hairline,
       overflow: 'hidden',
     },
     infoStackRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingHorizontal: 20,
-      paddingVertical: 11,
+      paddingHorizontal: space.s5,
+      paddingVertical: space.s3,
     },
-    infoStackRowBorder: {
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: panelBorder,
-    },
+    infoStackRowBorder: { borderTopWidth: hairline, borderTopColor: c.hairline },
   });
 }
