@@ -20,17 +20,10 @@ name: QA e2e
 on:
   pull_request:
   workflow_dispatch:
-    inputs:
-      surface:
-        description: Run subset
-        required: false
-        default: all
-        type: choice
-        options: [all, ios, android, chrome]
 
 jobs:
   ios:
-    if: hashFiles('app.json') != '' && (github.event_name == 'pull_request' || github.event.inputs.surface == 'all' || github.event.inputs.surface == 'ios')
+    if: hashFiles('app.json') != ''
     runs-on: macos-14
     timeout-minutes: 45
     env:
@@ -107,7 +100,7 @@ jobs:
             qa/captures/ios/
 
   android:
-    if: hashFiles('app.json') != '' && (github.event_name == 'pull_request' || github.event.inputs.surface == 'all' || github.event.inputs.surface == 'android')
+    if: hashFiles('app.json') != ''
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -174,7 +167,7 @@ jobs:
             qa/captures/android/
 
   extension-chrome:
-    if: hashFiles('manifest.json') != '' && (github.event_name == 'pull_request' || github.event.inputs.surface == 'all' || github.event.inputs.surface == 'chrome')
+    if: hashFiles('manifest.json') != ''
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
