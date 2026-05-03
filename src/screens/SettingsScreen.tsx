@@ -15,7 +15,6 @@ import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
   ChevronLeft,
-  ChevronRight,
   Coffee,
   Mail,
   Minus,
@@ -26,7 +25,6 @@ import {
   SoundSettings,
   SoundStyle,
   ALL_SOUND_STYLES,
-  TONE_SOUND_STYLES,
   SOUND_STYLE_LABELS,
 } from '../types';
 import { loadSettings, saveSettings } from '../storage/storage';
@@ -63,7 +61,6 @@ interface SoundEventRow {
 }
 
 const SOUND_EVENTS: SoundEventRow[] = [
-  { key: 'countdownTick', label: 'Countdown tick' },
   { key: 'warmUpStart', label: 'Warm up start' },
   { key: 'workStart', label: 'Exercise start' },
   { key: 'restStart', label: 'Rest start' },
@@ -243,7 +240,7 @@ export default function SettingsScreen({ navigation }: Props) {
                 accessibilityRole="radiogroup"
                 accessibilityLabel={`${event.label} sound`}
               >
-                {(event.key === 'countdownTick' ? TONE_SOUND_STYLES : ALL_SOUND_STYLES).map((style) => {
+                {ALL_SOUND_STYLES.map((style) => {
                   const active = sounds[event.key] === style;
                   return (
                     <Pressable
@@ -272,36 +269,33 @@ export default function SettingsScreen({ navigation }: Props) {
 
         <Text style={s.sectionHeader} accessibilityRole="header">About</Text>
         <View style={s.card}>
+          <View style={s.row}>
+            <Text style={s.rowTitle}>Version</Text>
+            <Text style={s.rowValue}>1.0.0</Text>
+          </View>
+        </View>
+
+        <View style={s.aboutButtons}>
           <Pressable
-            style={({ pressed }) => [s.row, pressed && s.pressed]}
+            style={({ pressed }) => [s.secondaryButton, pressed && s.pressed]}
             onPress={() => Linking.openURL('https://buymeacoffee.com/jtysonwilliams')}
             accessibilityLabel="Buy me a coffee"
             accessibilityRole="link"
             accessibilityHint="Opens buymeacoffee.com in your browser"
           >
-            <View style={s.aboutRowLeft}>
-              <Coffee size={18} color={c.fg} strokeWidth={1.5} />
-              <Text style={s.rowTitle}>Buy me a coffee?</Text>
-            </View>
-            <ChevronRight size={18} color={c.fgMuted} strokeWidth={1.5} />
+            <Coffee size={18} color={c.fg} strokeWidth={1.5} />
+            <Text style={s.secondaryButtonText}>Buy me a coffee</Text>
           </Pressable>
           <Pressable
-            style={({ pressed }) => [s.row, s.rowBorder, pressed && s.pressed]}
+            style={({ pressed }) => [s.secondaryButton, pressed && s.pressed]}
             onPress={() => Linking.openURL(buildFeedbackEmailUrl())}
             accessibilityLabel="Send feedback"
             accessibilityRole="link"
             accessibilityHint="Opens your email app to send feedback or report a bug"
           >
-            <View style={s.aboutRowLeft}>
-              <Mail size={18} color={c.fg} strokeWidth={1.5} />
-              <Text style={s.rowTitle}>Send feedback</Text>
-            </View>
-            <ChevronRight size={18} color={c.fgMuted} strokeWidth={1.5} />
+            <Mail size={18} color={c.fg} strokeWidth={1.5} />
+            <Text style={s.secondaryButtonText}>Send feedback</Text>
           </Pressable>
-          <View style={[s.row, s.rowBorder]}>
-            <Text style={s.rowTitle}>Version</Text>
-            <Text style={s.rowValue}>1.0.0</Text>
-          </View>
         </View>
 
         <View style={s.stamp}>
@@ -377,12 +371,30 @@ function makeStyles(c: Colors) {
       paddingHorizontal: space.s5,
       paddingVertical: space.s4,
     },
-    rowBorder: { borderTopWidth: hairline, borderTopColor: c.hairline },
     rowLabel: { flex: 1, marginRight: space.s4 },
     rowTitle: { ...t.sm, color: c.fg, fontFamily: fontFamily.sansMedium },
     rowHint: { ...t.xs, color: c.fgMuted, fontFamily: fontFamily.sans, marginTop: 2 },
     rowValue: { ...t.sm, color: c.fgMuted, fontFamily: fontFamily.mono },
-    aboutRowLeft: { flexDirection: 'row', alignItems: 'center', gap: space.s3 },
+
+    aboutButtons: { gap: space.s3, marginBottom: space.s6 },
+    secondaryButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: space.s3,
+      minHeight: 44,
+      paddingHorizontal: space.s5,
+      paddingVertical: space.s3,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: c.hairlineStrong,
+      backgroundColor: c.bgElevated,
+    },
+    secondaryButtonText: {
+      ...t.sm,
+      color: c.fg,
+      fontFamily: fontFamily.sansMedium,
+    },
 
     stepper: { flexDirection: 'row', alignItems: 'center', gap: space.s2 },
     stepBtn: {
