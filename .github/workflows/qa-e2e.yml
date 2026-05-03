@@ -55,6 +55,15 @@ jobs:
         run: npm ci
       - name: Expo prebuild (ios)
         run: npx expo prebuild --platform ios --clean --no-install
+      - name: Bundle JS (ios)
+        run: |
+          mkdir -p ios
+          npx expo export:embed \
+            --platform ios \
+            --dev false \
+            --entry-file index.ts \
+            --bundle-output ios/main.jsbundle \
+            --assets-dest ios
       - name: Cache CocoaPods
         uses: actions/cache@v4
         with:
@@ -69,8 +78,14 @@ jobs:
       - name: Detect Xcode workspace + scheme
         id: xcode
         run: |
+          set -e
+          ls ios
           WS=$(ls ios | grep '\.xcworkspace$' | head -1)
-          SCHEME="${WS%.xcworkspace}"
+          if [ -z "$WS" ]; then echo "::error::no .xcworkspace found in ios/"; exit 1; fi
+          SCHEME=$(xcodebuild -workspace "ios/$WS" -list 2>/dev/null | awk '/Schemes:/{f=1; next} f && NF{print $1; exit}')
+          if [ -z "$SCHEME" ]; then echo "::error::no scheme found in workspace"; exit 1; fi
+          echo "Workspace: ios/$WS"
+          echo "Scheme: $SCHEME"
           echo "workspace=ios/$WS" >> "$GITHUB_OUTPUT"
           echo "scheme=$SCHEME" >> "$GITHUB_OUTPUT"
       - name: Build for iPhone simulator
@@ -139,6 +154,15 @@ jobs:
         run: npm ci
       - name: Expo prebuild (android)
         run: npx expo prebuild --platform android --clean --no-install
+      - name: Bundle JS (android)
+        run: |
+          mkdir -p android/app/src/main/assets android/app/src/main/res
+          npx expo export:embed \
+            --platform android \
+            --dev false \
+            --entry-file index.ts \
+            --bundle-output android/app/src/main/assets/index.android.bundle \
+            --assets-dest android/app/src/main/res
       - name: Cache Gradle
         uses: actions/cache@v4
         with:
