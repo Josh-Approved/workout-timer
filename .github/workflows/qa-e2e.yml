@@ -1,4 +1,4 @@
-name: QA · e2e
+name: QA e2e
 
 # Layer 2 — drives the app through scripted flows on cloud sims/emulators,
 # captures screenshots at named waypoints, frames them via the vendored
