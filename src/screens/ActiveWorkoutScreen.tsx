@@ -392,8 +392,27 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       accessibilityLabel={`Workout progress, ${Math.round(progressFraction * 100)} percent`}
       accessibilityRole="progressbar"
     >
-      <View style={s.progressTrack}>
-        <View style={[s.progressFill, { width: `${progressFraction * 100}%` as any }]} />
+      <View style={s.segmentRow} importantForAccessibility="no">
+        {stepsRef.current.map((step, i) => {
+          let segFill = 0;
+          if (displayState.mode === 'complete' || i < displayState.stepIndex) segFill = 1;
+          else if (i === displayState.stepIndex && step.duration > 0) {
+            segFill = (step.duration - displayState.timeRemaining) / step.duration;
+          }
+          const isWork = step.phase === 'exercise';
+          return (
+            <View
+              key={i}
+              style={[
+                s.segment,
+                { flex: Math.max(1, step.duration), backgroundColor: isWork ? c.hairlineStrong : c.hairline },
+              ]}
+              importantForAccessibility="no"
+            >
+              <View style={[s.segmentFill, { width: `${segFill * 100}%` as any }]} />
+            </View>
+          );
+        })}
       </View>
     </View>
   );
@@ -718,16 +737,20 @@ function makeStyles(c: Colors, isLandscape: boolean) {
       alignSelf: 'stretch',
       marginHorizontal: space.s6,
       marginBottom: space.s4,
-      height: 6,
+      height: 8,
       justifyContent: 'center',
     },
-    progressTrack: {
-      height: 6,
-      borderRadius: radius.pill,
-      backgroundColor: c.hairline,
+    segmentRow: {
+      flexDirection: 'row',
+      height: 8,
+      gap: 2,
+    },
+    segment: {
+      height: 8,
+      borderRadius: 2,
       overflow: 'hidden',
     },
-    progressFill: {
+    segmentFill: {
       height: '100%',
       backgroundColor: c.fg,
     },
