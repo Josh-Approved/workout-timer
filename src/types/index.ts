@@ -51,20 +51,7 @@ export const ALL_SOUND_STYLES: SoundStyle[] = [
   'none',
 ];
 
-export const TONE_SOUND_STYLES: SoundStyle[] = [
-  'beep',
-  'double_beep',
-  'ascending_chime',
-  'bell',
-  'buzz',
-  'click',
-  'long_beep',
-  'triple_tone',
-  'none',
-];
-
 export interface SoundSettings {
-  countdownTick: SoundStyle;
   warmUpStart: SoundStyle;
   workStart: SoundStyle;
   restStart: SoundStyle;

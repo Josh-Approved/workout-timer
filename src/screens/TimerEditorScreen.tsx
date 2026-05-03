@@ -3,19 +3,30 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
+  Pressable,
   ScrollView,
   StyleSheet,
-  useColorScheme,
   Alert,
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { ChevronLeft, Minus, Plus } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList, TimerConfig } from '../types';
 import { loadTimers, saveTimer, deleteTimer } from '../storage/storage';
 import { generateId } from '../utils/workout';
+import {
+  useTheme,
+  fontFamily,
+  space,
+  radius,
+  type as t,
+  hairline,
+  target,
+  tracking,
+  Colors,
+} from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TimerEditor'>;
 
@@ -33,17 +44,17 @@ const EMPTY_TIMER: Omit<TimerConfig, 'id' | 'createdAt' | 'updatedAt'> = {
 
 export default function TimerEditorScreen({ route, navigation }: Props) {
   const { timerId } = route.params ?? {};
-  const isDark = useColorScheme() === 'dark';
-  const s = makeStyles(isDark);
+  const { c } = useTheme();
+  const s = makeStyles(c);
 
   const [form, setForm] = useState({ ...EMPTY_TIMER });
 
   useEffect(() => {
     if (timerId) {
       loadTimers().then((timers) => {
-        const t = timers.find((x) => x.id === timerId);
-        if (t) {
-          const { id, createdAt, updatedAt, ...fields } = t;
+        const found = timers.find((x) => x.id === timerId);
+        if (found) {
+          const { id, createdAt, updatedAt, ...fields } = found;
           setForm(fields);
         }
       });
@@ -55,7 +66,7 @@ export default function TimerEditorScreen({ route, navigation }: Props) {
 
   const handleSave = async () => {
     if (!form.name.trim()) {
-      Alert.alert('Name required', 'Please give your timer a name.');
+      Alert.alert('Name required', 'Give your timer a name.');
       return;
     }
     if (form.exercise < 1) {
@@ -75,8 +86,8 @@ export default function TimerEditorScreen({ route, navigation }: Props) {
 
   const handleDelete = () => {
     Alert.alert(
-      'Delete Timer',
-      `Permanently delete "${form.name}"? This cannot be undone.`,
+      'Delete timer',
+      `Permanently delete "${form.name}"? This can't be undone.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -94,25 +105,28 @@ export default function TimerEditorScreen({ route, navigation }: Props) {
   return (
     <SafeAreaView style={s.container}>
       <View style={s.header}>
-        <TouchableOpacity
+        <Pressable
           onPress={() => navigation.goBack()}
           hitSlop={8}
           accessibilityLabel="Back"
           accessibilityRole="button"
+          style={({ pressed }) => [s.headerSide, pressed && s.pressed]}
         >
-          <Text style={s.headerBack}>‹ Back</Text>
-        </TouchableOpacity>
+          <ChevronLeft size={22} color={c.fg} strokeWidth={1.5} />
+          <Text style={s.headerBackText}>Back</Text>
+        </Pressable>
         <Text style={s.headerTitle} accessibilityRole="header">
-          {timerId ? 'Edit Timer' : 'New Timer'}
+          {timerId ? 'Edit timer' : 'New timer'}
         </Text>
-        <TouchableOpacity
+        <Pressable
           onPress={handleSave}
           hitSlop={8}
           accessibilityLabel="Save timer"
           accessibilityRole="button"
+          style={({ pressed }) => [s.headerSide, s.headerSideRight, pressed && s.pressed]}
         >
           <Text style={s.headerSave}>Save</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       <KeyboardAvoidingView
@@ -120,122 +134,124 @@ export default function TimerEditorScreen({ route, navigation }: Props) {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
-          {/* Name */}
           <View style={s.section}>
-            <Text style={s.sectionTitle} accessibilityRole="header">Timer Name</Text>
-            <TextInput
-              style={s.nameInput}
-              value={form.name}
-              onChangeText={(v) => set('name', v)}
-              placeholder="e.g. Leg Day Tabata"
-              placeholderTextColor={isDark ? '#555' : '#BBB'}
-              maxLength={60}
-              returnKeyType="done"
-              accessibilityLabel="Timer name"
-              accessibilityHint="Enter a name for this timer"
-            />
+            <Text style={s.sectionTitle} accessibilityRole="header">Name</Text>
+            <View style={s.sectionBody}>
+              <TextInput
+                style={s.nameInput}
+                value={form.name}
+                onChangeText={(v) => set('name', v)}
+                placeholder="e.g. Leg day tabata"
+                placeholderTextColor={c.fgSubtle}
+                maxLength={60}
+                returnKeyType="done"
+                accessibilityLabel="Timer name"
+                accessibilityHint="Enter a name for this timer"
+              />
+            </View>
           </View>
 
-          {/* Preparation */}
           <View style={s.section}>
             <Text style={s.sectionTitle} accessibilityRole="header">Preparation</Text>
-            <Field
-              label="Initial Countdown"
-              hint="Get-ready period before the workout starts (0 = skip)"
-              value={form.initialCountdown}
-              onChange={(v) => set('initialCountdown', v)}
-              isDark={isDark}
-            />
-            <Field
-              label="Warm Up"
-              hint="Warm-up interval before first set (0 = skip)"
-              value={form.warmUp}
-              onChange={(v) => set('warmUp', v)}
-              isDark={isDark}
-            />
+            <View style={s.sectionBody}>
+              <Field
+                label="Initial countdown"
+                hint="Get-ready period before the workout starts (0 = skip)"
+                value={form.initialCountdown}
+                onChange={(v) => set('initialCountdown', v)}
+                colors={c}
+              />
+              <Field
+                label="Warm up"
+                hint="Warm-up interval before first set (0 = skip)"
+                value={form.warmUp}
+                onChange={(v) => set('warmUp', v)}
+                colors={c}
+              />
+            </View>
           </View>
 
-          {/* Intervals */}
           <View style={s.section}>
             <Text style={s.sectionTitle} accessibilityRole="header">Intervals</Text>
-            <Field
-              label="Exercise"
-              hint="Work interval duration (required)"
-              value={form.exercise}
-              onChange={(v) => set('exercise', Math.max(1, v))}
-              min={1}
-              isDark={isDark}
-            />
-            <Field
-              label="Rest"
-              hint="Rest between exercise sets (0 = no rest)"
-              value={form.rest}
-              onChange={(v) => set('rest', v)}
-              isDark={isDark}
-            />
+            <View style={s.sectionBody}>
+              <Field
+                label="Exercise"
+                hint="Work interval duration (required)"
+                value={form.exercise}
+                onChange={(v) => set('exercise', Math.max(1, v))}
+                min={1}
+                colors={c}
+              />
+              <Field
+                label="Rest"
+                hint="Rest between exercise sets (0 = no rest)"
+                value={form.rest}
+                onChange={(v) => set('rest', v)}
+                colors={c}
+              />
+            </View>
           </View>
 
-          {/* Structure */}
           <View style={s.section}>
             <Text style={s.sectionTitle} accessibilityRole="header">Structure</Text>
-            <Field
-              label="Sets"
-              hint="Exercise + rest rounds per cycle"
-              value={form.sets}
-              onChange={(v) => set('sets', Math.max(1, v))}
-              min={1}
-              step={1}
-              isDark={isDark}
-            />
-            <Field
-              label="Cycles"
-              hint="How many times to repeat all sets"
-              value={form.cycles}
-              onChange={(v) => set('cycles', Math.max(1, v))}
-              min={1}
-              step={1}
-              isDark={isDark}
-            />
-            <Field
-              label="Recovery"
-              hint="Rest between cycles (0 = no recovery)"
-              value={form.recovery}
-              onChange={(v) => set('recovery', v)}
-              isDark={isDark}
-            />
+            <View style={s.sectionBody}>
+              <Field
+                label="Sets"
+                hint="Exercise + rest rounds per cycle"
+                value={form.sets}
+                onChange={(v) => set('sets', Math.max(1, v))}
+                min={1}
+                step={1}
+                colors={c}
+              />
+              <Field
+                label="Cycles"
+                hint="How many times to repeat all sets"
+                value={form.cycles}
+                onChange={(v) => set('cycles', Math.max(1, v))}
+                min={1}
+                step={1}
+                colors={c}
+              />
+              <Field
+                label="Recovery"
+                hint="Rest between cycles (0 = no recovery)"
+                value={form.recovery}
+                onChange={(v) => set('recovery', v)}
+                colors={c}
+              />
+            </View>
           </View>
 
-          {/* Cool Down */}
           <View style={s.section}>
             <Text style={s.sectionTitle} accessibilityRole="header">Finish</Text>
-            <Field
-              label="Cool Down"
-              hint="Cool-down interval after the last set (0 = skip)"
-              value={form.coolDown}
-              onChange={(v) => set('coolDown', v)}
-              isDark={isDark}
-            />
+            <View style={s.sectionBody}>
+              <Field
+                label="Cool down"
+                hint="Cool-down interval after the last set (0 = skip)"
+                value={form.coolDown}
+                onChange={(v) => set('coolDown', v)}
+                colors={c}
+              />
+            </View>
           </View>
 
-          {/* Delete — only shown when editing an existing timer */}
           {timerId ? (
-            <TouchableOpacity
-              style={s.deleteBtn}
+            <Pressable
+              style={({ pressed }) => [s.deleteBtn, pressed && s.pressed]}
               onPress={handleDelete}
               accessibilityLabel="Delete timer"
               accessibilityRole="button"
-              accessibilityHint="Permanently removes this timer. Cannot be undone."
+              accessibilityHint="Permanently removes this timer. Can't be undone."
             >
-              <Text style={s.deleteBtnText}>Delete Timer</Text>
-            </TouchableOpacity>
+              <Text style={s.deleteBtnText}>Delete timer</Text>
+            </Pressable>
           ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
-
-// ── Field component ──────────────────────────────────────────────────────────
 
 interface FieldProps {
   label: string;
@@ -244,11 +260,11 @@ interface FieldProps {
   onChange: (v: number) => void;
   min?: number;
   step?: number;
-  isDark: boolean;
+  colors: Colors;
 }
 
-function Field({ label, hint, value, onChange, min = 0, step = 5, isDark }: FieldProps) {
-  const s = fieldStyles(isDark);
+function Field({ label, hint, value, onChange, min = 0, step = 5, colors: c }: FieldProps) {
+  const fs = fieldStyles(c);
 
   const decrement = () => onChange(Math.max(min, value - step));
   const increment = () => onChange(value + step);
@@ -267,26 +283,23 @@ function Field({ label, hint, value, onChange, min = 0, step = 5, isDark }: Fiel
     : String(value);
 
   return (
-    <View style={s.row} accessible={false}>
-      {/* Label + hint hidden from accessibility — the TextInput carries the full label */}
-      <View style={s.labelCol} importantForAccessibility="no-hide-descendants">
-        <Text style={s.label}>{label}</Text>
-        <Text style={s.hint}>{hint}</Text>
+    <View style={fs.row} accessible={false}>
+      <View style={fs.labelCol} importantForAccessibility="no-hide-descendants">
+        <Text style={fs.label}>{label}</Text>
+        <Text style={fs.hint}>{hint}</Text>
       </View>
-      <View style={s.stepper} accessible={false}>
-        {/* − button visible to sighted users only */}
-        <TouchableOpacity
-          style={s.stepBtn}
+      <View style={fs.stepper} accessible={false}>
+        <Pressable
+          style={({ pressed }) => [fs.stepBtn, pressed && { opacity: 0.7 }]}
           onPress={decrement}
           accessible={false}
           importantForAccessibility="no"
         >
-          <Text style={s.stepBtnText}>−</Text>
-        </TouchableOpacity>
+          <Minus size={16} color={c.fg} strokeWidth={1.75} />
+        </Pressable>
 
-        {/* Single VoiceOver/TalkBack focus point: adjustable role, swipe up/down to change */}
         <TextInput
-          style={s.stepInput}
+          style={fs.stepInput}
           value={String(value)}
           keyboardType="number-pad"
           onChangeText={handleText}
@@ -303,128 +316,123 @@ function Field({ label, hint, value, onChange, min = 0, step = 5, isDark }: Fiel
             if (event.nativeEvent.actionName === 'decrement') decrement();
           }}
         />
-        {isTime ? <Text style={s.unit} importantForAccessibility="no">s</Text> : null}
+        {isTime ? <Text style={fs.unit} importantForAccessibility="no">s</Text> : null}
 
-        {/* + button visible to sighted users only */}
-        <TouchableOpacity
-          style={s.stepBtn}
+        <Pressable
+          style={({ pressed }) => [fs.stepBtn, pressed && { opacity: 0.7 }]}
           onPress={increment}
           accessible={false}
           importantForAccessibility="no"
         >
-          <Text style={s.stepBtnText}>+</Text>
-        </TouchableOpacity>
+          <Plus size={16} color={c.fg} strokeWidth={1.75} />
+        </Pressable>
       </View>
     </View>
   );
 }
 
-// ── Styles ───────────────────────────────────────────────────────────────────
-
-function makeStyles(isDark: boolean) {
-  const bg = isDark ? '#121212' : '#F5F5F5';
-  const text = isDark ? '#FFFFFF' : '#111111';
-  const sub = isDark ? '#888' : '#6B6B6B';
-  const border = isDark ? '#2A2A2A' : '#E8E8E8';
-  const cardBg = isDark ? '#1E1E1E' : '#FFFFFF';
-
+function makeStyles(c: Colors) {
   return StyleSheet.create({
-    container: { flex: 1, backgroundColor: bg },
+    container: { flex: 1, backgroundColor: c.bg },
     header: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
       alignItems: 'center',
-      paddingHorizontal: 20,
-      paddingVertical: 14,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: border,
+      paddingHorizontal: space.s5,
+      paddingVertical: space.s3,
+      borderBottomWidth: hairline,
+      borderBottomColor: c.hairline,
+      minHeight: target.min + space.s2,
     },
-    headerBack: { fontSize: 17, color: '#1D4ED8' },
-    headerTitle: { fontSize: 17, fontWeight: '600', color: text },
-    headerSave: { fontSize: 17, color: '#1D4ED8', fontWeight: '600' },
-    scroll: { padding: 16, paddingBottom: 60 },
-    section: {
-      backgroundColor: cardBg,
-      borderRadius: 14,
-      marginBottom: 16,
-      overflow: 'hidden',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: isDark ? 0 : 0.06,
-      shadowRadius: 3,
-      elevation: 1,
+    headerSide: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space.s1,
     },
+    headerSideRight: { justifyContent: 'flex-end' },
+    pressed: { opacity: 0.7 },
+    headerBackText: { ...t.base, color: c.fg, fontFamily: fontFamily.sans },
+    headerTitle: {
+      ...t.base,
+      color: c.fg,
+      fontFamily: fontFamily.sansSemibold,
+      textAlign: 'center',
+    },
+    headerSave: { ...t.base, color: c.fg, fontFamily: fontFamily.sansSemibold },
+    scroll: { padding: space.s5, paddingBottom: space.s8 },
+    section: { marginBottom: space.s6 },
     sectionTitle: {
-      fontSize: 13,
-      fontWeight: '600',
-      color: sub,
+      ...t.xs,
+      fontFamily: fontFamily.sansMedium,
+      color: c.fgMuted,
+      letterSpacing: tracking.wide,
       textTransform: 'uppercase',
-      letterSpacing: 0.5,
-      paddingHorizontal: 16,
-      paddingTop: 14,
-      paddingBottom: 6,
+      marginBottom: space.s3,
+      paddingHorizontal: space.s1,
+    },
+    sectionBody: {
+      backgroundColor: c.bgElevated,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: c.hairline,
+      overflow: 'hidden',
     },
     nameInput: {
-      fontSize: 17,
-      color: isDark ? '#FFF' : '#111',
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: border,
+      ...t.base,
+      color: c.fg,
+      fontFamily: fontFamily.sans,
+      paddingHorizontal: space.s5,
+      paddingVertical: space.s4,
     },
     deleteBtn: {
-      backgroundColor: '#C81C1C',
-      borderRadius: 14,
-      paddingVertical: 16,
+      backgroundColor: c.bgElevated,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: c.hairline,
+      paddingVertical: space.s5,
       alignItems: 'center',
-      marginTop: 8,
-      marginBottom: 16,
+      marginTop: space.s3,
+      marginBottom: space.s5,
     },
     deleteBtnText: {
-      fontSize: 17,
-      fontWeight: '600',
-      color: '#FFFFFF',
+      ...t.base,
+      fontFamily: fontFamily.sansMedium,
+      color: c.danger,
     },
   });
 }
 
-function fieldStyles(isDark: boolean) {
-  const text = isDark ? '#FFFFFF' : '#111111';
-  const sub = isDark ? '#999' : '#6B6B6B';
-  const border = isDark ? '#2A2A2A' : '#E8E8E8';
-  const btnBg = isDark ? '#2C2C2E' : '#F2F2F7';
-
+function fieldStyles(c: Colors) {
   return StyleSheet.create({
     row: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: border,
+      paddingHorizontal: space.s5,
+      paddingVertical: space.s4,
+      borderTopWidth: hairline,
+      borderTopColor: c.hairline,
     },
-    labelCol: { flex: 1, marginRight: 12 },
-    label: { fontSize: 15, fontWeight: '500', color: text },
-    hint: { fontSize: 12, color: sub, marginTop: 2 },
-    stepper: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    labelCol: { flex: 1, marginRight: space.s4 },
+    label: { ...t.sm, color: c.fg, fontFamily: fontFamily.sansMedium },
+    hint: { ...t.xs, color: c.fgMuted, fontFamily: fontFamily.sans, marginTop: 2 },
+    stepper: { flexDirection: 'row', alignItems: 'center', gap: space.s2 },
     stepBtn: {
-      backgroundColor: btnBg,
       width: 32,
       height: 32,
-      borderRadius: 8,
+      borderRadius: radius.sm,
       borderWidth: 1,
-      borderColor: isDark ? '#737373' : '#AAAAAA',
+      borderColor: c.hairlineStrong,
       justifyContent: 'center',
       alignItems: 'center',
+      backgroundColor: c.bg,
     },
-    stepBtnText: { fontSize: 20, color: text, lineHeight: 24 },
     stepInput: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: text,
+      ...t.base,
+      fontFamily: fontFamily.monoMedium,
+      color: c.fg,
       minWidth: 44,
       textAlign: 'center',
     },
-    unit: { fontSize: 13, color: sub, marginLeft: 2 },
+    unit: { ...t.xs, color: c.fgMuted, fontFamily: fontFamily.mono, marginLeft: 2 },
   });
 }

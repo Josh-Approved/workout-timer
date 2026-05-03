@@ -3,15 +3,22 @@ import {
   Modal,
   View,
   Text,
-  TouchableOpacity,
+  Pressable,
   StyleSheet,
-  useColorScheme,
   Linking,
   Platform,
 } from 'react-native';
 import { markReviewOpened, dismissReviewPrompt } from '../storage/reviewStorage';
+import {
+  useTheme,
+  fontFamily,
+  space,
+  radius,
+  type as t,
+  hairline,
+  Colors,
+} from '../theme';
 
-// TODO: Replace placeholder with real App Store ID after publishing to the App Store
 const IOS_STORE_URL = 'itms-apps://itunes.apple.com/app/id[APP_STORE_ID]?action=write-review';
 const ANDROID_STORE_URL =
   'https://play.google.com/store/apps/details?id=com.jtysonwilliams.freeworkouttimer&showAllReviews=true';
@@ -22,8 +29,8 @@ interface Props {
 }
 
 export default function ReviewModal({ visible, onDismiss }: Props) {
-  const isDark = useColorScheme() === 'dark';
-  const s = makeStyles(isDark);
+  const { c } = useTheme();
+  const s = makeStyles(c);
 
   const handleReview = async () => {
     await markReviewOpened();
@@ -41,92 +48,90 @@ export default function ReviewModal({ visible, onDismiss }: Props) {
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
       <View style={s.overlay}>
         <View style={s.card}>
-          <Text style={s.title}>Enjoying Free Workout Timer?</Text>
+          <Text style={s.title}>Enjoying Free workout timer?</Text>
           <Text style={s.body}>
-            A quick rating helps more people find this free, ad-free app — and keeps it going.
+            A quick rating helps more people find this free, ad-free app.
           </Text>
-          <TouchableOpacity
-            style={s.primaryBtn}
+          <Pressable
+            style={({ pressed }) => [s.primaryBtn, pressed && s.pressed]}
             onPress={handleReview}
             accessibilityRole="button"
             accessibilityLabel="Leave a review on the app store"
           >
-            <Text style={s.primaryBtnText}>Leave a Review</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={s.secondaryBtn}
+            <Text style={s.primaryBtnText}>Leave a review</Text>
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [s.secondaryBtn, pressed && s.pressed]}
             onPress={handleDismiss}
             accessibilityRole="button"
             accessibilityLabel="Not now"
             hitSlop={8}
           >
             <Text style={s.secondaryBtnText}>Not now</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </View>
     </Modal>
   );
 }
 
-function makeStyles(isDark: boolean) {
-  const cardBg = isDark ? '#1E1E1E' : '#FFFFFF';
-  const text = isDark ? '#FFFFFF' : '#111111';
-  const sub = isDark ? '#888888' : '#6B6B6B';
-
+function makeStyles(c: Colors) {
   return StyleSheet.create({
     overlay: {
       flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.55)',
+      backgroundColor: c.bgScrim,
       justifyContent: 'center',
       alignItems: 'center',
-      padding: 32,
+      padding: space.s7,
     },
     card: {
       width: '100%',
-      backgroundColor: cardBg,
-      borderRadius: 20,
-      padding: 28,
+      backgroundColor: c.bgElevated,
+      borderRadius: radius.lg,
+      borderWidth: hairline,
+      borderColor: c.hairline,
+      padding: space.s7,
       alignItems: 'center',
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.25,
+      shadowOpacity: 0.18,
       shadowRadius: 16,
       elevation: 10,
     },
     title: {
-      fontSize: 19,
-      fontWeight: '700',
-      color: text,
+      ...t.md,
+      fontFamily: fontFamily.sansSemibold,
+      color: c.fg,
       textAlign: 'center',
-      marginBottom: 10,
+      marginBottom: space.s3,
     },
     body: {
-      fontSize: 14,
-      color: sub,
+      ...t.sm,
+      fontFamily: fontFamily.sans,
+      color: c.fgMuted,
       textAlign: 'center',
-      lineHeight: 20,
-      marginBottom: 24,
+      marginBottom: space.s6,
     },
     primaryBtn: {
-      backgroundColor: '#22C55E',
-      borderRadius: 14,
-      paddingVertical: 14,
-      paddingHorizontal: 32,
+      backgroundColor: c.inkButton,
+      borderRadius: radius.md,
+      paddingVertical: space.s4,
+      paddingHorizontal: space.s7,
       width: '100%',
       alignItems: 'center',
-      marginBottom: 12,
+      marginBottom: space.s3,
     },
     primaryBtnText: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: '#FFFFFF',
+      ...t.base,
+      fontFamily: fontFamily.sansSemibold,
+      color: c.inkButtonText,
     },
-    secondaryBtn: {
-      paddingVertical: 6,
-    },
+    secondaryBtn: { paddingVertical: space.s2 },
     secondaryBtnText: {
-      fontSize: 14,
-      color: sub,
+      ...t.sm,
+      fontFamily: fontFamily.sans,
+      color: c.fgMuted,
     },
+    pressed: { opacity: 0.7 },
   });
 }
