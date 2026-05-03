@@ -47,6 +47,10 @@ jobs:
           echo "$HOME/.maestro/bin" >> $GITHUB_PATH
       - name: Install xcbeautify
         run: brew install xcbeautify
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: false
       - name: npm ci
         run: npm ci
       - name: Expo prebuild (ios)
@@ -59,7 +63,9 @@ jobs:
           restore-keys: pods-
       - name: pod install
         working-directory: ios
-        run: pod install
+        run: |
+          gem install cocoapods --no-document
+          pod install --repo-update --verbose 2>&1 | tail -80
       - name: Detect Xcode workspace + scheme
         id: xcode
         run: |
