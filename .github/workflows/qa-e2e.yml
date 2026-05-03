@@ -78,14 +78,24 @@ jobs:
       - name: Detect Xcode workspace + scheme
         id: xcode
         run: |
-          set -e
-          ls ios
+          echo "ios/ contents:"
+          ls -la ios
           WS=$(ls ios | grep '\.xcworkspace$' | head -1)
-          if [ -z "$WS" ]; then echo "::error::no .xcworkspace found in ios/"; exit 1; fi
-          SCHEME=$(xcodebuild -workspace "ios/$WS" -list 2>/dev/null | awk '/Schemes:/{f=1; next} f && NF{print $1; exit}')
-          if [ -z "$SCHEME" ]; then echo "::error::no scheme found in workspace"; exit 1; fi
-          echo "Workspace: ios/$WS"
-          echo "Scheme: $SCHEME"
+          echo "Detected workspace dir: $WS"
+          if [ -z "$WS" ]; then
+            echo "::error::no .xcworkspace found in ios/ — pod install likely did not produce one"
+            exit 1
+          fi
+          echo "xcodebuild -list output:"
+          xcodebuild -workspace "ios/$WS" -list || true
+          SCHEME=$(xcodebuild -workspace "ios/$WS" -list 2>&1 | awk '/Schemes:/{f=1; next} f && NF{print $1; exit}')
+          echo "Detected scheme: '$SCHEME'"
+          if [ -z "$SCHEME" ]; then
+            # Fallback: derive from xcodeproj name
+            PROJ=$(ls ios | grep '\.xcodeproj$' | head -1)
+            SCHEME="${PROJ%.xcodeproj}"
+            echo "Falling back to xcodeproj-derived scheme: '$SCHEME'"
+          fi
           echo "workspace=ios/$WS" >> "$GITHUB_OUTPUT"
           echo "scheme=$SCHEME" >> "$GITHUB_OUTPUT"
       - name: Build for iPhone simulator
