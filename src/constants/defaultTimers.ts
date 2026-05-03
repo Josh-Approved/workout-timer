@@ -48,7 +48,6 @@ export const DEFAULT_TIMERS: TimerConfig[] = [
 ];
 
 export const DEFAULT_SOUND_SETTINGS: SoundSettings = {
-  countdownTick: 'beep',
   warmUpStart: 'voice',
   workStart: 'voice',
   restStart: 'voice',
