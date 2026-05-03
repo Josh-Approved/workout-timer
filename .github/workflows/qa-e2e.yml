@@ -5,8 +5,7 @@ on:
 
 jobs:
   ios:
-    if: hashFiles('app.json') != ''
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
-      - run: echo "ios bare loaded"
+      - run: echo "ios no-if"
