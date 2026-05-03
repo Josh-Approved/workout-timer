@@ -1,0 +1,16 @@
+{
+  "stores": {
+    "ios": [
+      { "id": "list",     "source": "ios/list.png",     "caption": "Your timers, one tap away." },
+      { "id": "editor",   "source": "ios/editor.png",   "caption": "Build any interval set in seconds." },
+      { "id": "active",   "source": "ios/active.png",   "caption": "Big numbers. No noise." },
+      { "id": "settings", "source": "ios/settings.png", "caption": "Sounds, haptics, screen wake — all yours." }
+    ],
+    "android": [
+      { "id": "list",     "source": "android/list.png",     "caption": "Your timers, one tap away." },
+      { "id": "editor",   "source": "android/editor.png",   "caption": "Build any interval set in seconds." },
+      { "id": "active",   "source": "android/active.png",   "caption": "Big numbers. No noise." },
+      { "id": "settings", "source": "android/settings.png", "caption": "Sounds, haptics, screen wake — all yours." }
+    ]
+  }
+}

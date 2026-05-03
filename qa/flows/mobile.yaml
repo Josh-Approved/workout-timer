@@ -1,0 +1,52 @@
+######################################################################
+# qa/flows/mobile.yaml — FWT Maestro flow for iOS + Android.
+#
+# Run by .github/workflows/qa-e2e.yml on PR + workflow_dispatch.
+# App must be built with EXPO_PUBLIC_QA_MODE=1 so QA_TIMERS seed and
+# nav animations are off.
+######################################################################
+
+appId: com.jtysonwilliams.freeworkouttimer
+env:
+  STORE: ios
+
+---
+- launchApp:
+    clearState: true
+
+# Waypoint 1 — timer list with the three QA fixture timers.
+- assertVisible: "Free workout timer"
+- assertVisible: "Standard Tabata"
+- takeScreenshot: qa/captures/${STORE}/list
+
+# Waypoint 2 — editor for Standard Tabata.
+- tapOn:
+    accessibilityLabel: "Edit Standard Tabata"
+- assertVisible:
+    accessibilityLabel: "Save timer"
+    timeout: 5000
+- takeScreenshot: qa/captures/${STORE}/editor
+- tapOn:
+    accessibilityLabel: "Back"
+
+# Waypoint 3 — active workout, mid-exercise after the 10s countdown.
+- tapOn:
+    accessibilityLabel: "Start Standard Tabata"
+- assertVisible:
+    accessibilityLabel: "Exercise"
+    timeout: 15000
+- takeScreenshot: qa/captures/${STORE}/active
+
+# Waypoint 4 — settings (after stopping the workout via the system alert).
+- tapOn:
+    accessibilityLabel: "Stop workout"
+- tapOn: "Stop"
+- assertVisible:
+    text: "Free workout timer"
+    timeout: 5000
+- tapOn:
+    accessibilityLabel: "Settings"
+- assertVisible:
+    accessibilityLabel: "Back"
+    timeout: 5000
+- takeScreenshot: qa/captures/${STORE}/settings

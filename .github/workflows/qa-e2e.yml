@@ -1,0 +1,209 @@
+name: QA · e2e
+
+# Layer 2 — drives the app through scripted flows on cloud sims/emulators,
+# captures screenshots at named waypoints, frames them via the vendored
+# render-screenshots.mjs, and uploads framed store assets as workflow artifacts.
+# Free for public repos (unlimited Linux + macOS minutes).
+#
+# Gated to pull_request + workflow_dispatch only. Do NOT add `push: main` here —
+# every push would burn 15+ minutes per platform.
+#
+# Job-to-surface mapping (jobs auto-skip if the surface doesn't apply):
+#   ios               → RN apps         (presence of app.json)
+#   android           → RN apps
+#   extension-chrome  → MV3 extensions  (presence of manifest.json)
+#
+# Each job runs the framer at the end, so framed PNGs are produced inside the
+# job and uploaded as a single per-surface artifact. No cross-job choreography,
+# no cross-repo access required.
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      surface:
+        description: Run subset
+        required: false
+        default: all
+        type: choice
+        options: [all, ios, android, chrome]
+
+jobs:
+  ios:
+    if: hashFiles('app.json') != '' && (github.event_name == 'pull_request' || github.event.inputs.surface == 'all' || github.event.inputs.surface == 'ios')
+    runs-on: macos-14
+    timeout-minutes: 45
+    env:
+      EXPO_PUBLIC_QA_MODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+      - name: Install xcbeautify
+        run: brew install xcbeautify
+      - name: npm ci
+        run: npm ci
+      - name: Expo prebuild (ios)
+        run: npx expo prebuild --platform ios --clean --no-install
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: ios/Pods
+          key: pods-${{ hashFiles('ios/Podfile.lock') }}
+          restore-keys: pods-
+      - name: pod install
+        working-directory: ios
+        run: pod install
+      - name: Detect Xcode workspace + scheme
+        id: xcode
+        run: |
+          WS=$(ls ios | grep '\.xcworkspace$' | head -1)
+          SCHEME="${WS%.xcworkspace}"
+          echo "workspace=ios/$WS" >> $GITHUB_OUTPUT
+          echo "scheme=$SCHEME" >> $GITHUB_OUTPUT
+      - name: Build for iPhone simulator
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -workspace "${{ steps.xcode.outputs.workspace }}" \
+            -scheme "${{ steps.xcode.outputs.scheme }}" \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -derivedDataPath build \
+            -destination "generic/platform=iOS Simulator" \
+            CODE_SIGNING_ALLOWED=NO | xcbeautify
+      - name: Boot iPhone 16 Pro Max + normalize status bar
+        run: |
+          xcrun simctl boot "iPhone 16 Pro Max" || true
+          xcrun simctl bootstatus "iPhone 16 Pro Max" -b
+          xcrun simctl status_bar "iPhone 16 Pro Max" override \
+            --time "9:41" \
+            --batteryState charged --batteryLevel 100 \
+            --cellularBars 4 --wifiBars 3
+      - name: Install app on simulator
+        run: |
+          APP_PATH=$(find build -name "*.app" -type d -path "*/Debug-iphonesimulator/*" | head -1)
+          echo "App path: $APP_PATH"
+          xcrun simctl install booted "$APP_PATH"
+      - name: Run Maestro flow
+        run: |
+          mkdir -p qa/captures/ios
+          maestro test qa/flows/mobile.yaml --env=PLATFORM=ios --env=STORE=ios
+      - name: Frame screenshots
+        run: node scripts/render-screenshots.mjs --store ios
+      - name: Upload iOS framed store assets
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: store-assets-ios
+          path: |
+            store-assets/screenshots/ios/
+            qa/captures/ios/
+
+  android:
+    if: hashFiles('app.json') != '' && (github.event_name == 'pull_request' || github.event.inputs.surface == 'all' || github.event.inputs.surface == 'android')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      EXPO_PUBLIC_QA_MODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+      - name: npm ci
+        run: npm ci
+      - name: Expo prebuild (android)
+        run: npx expo prebuild --platform android --clean --no-install
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('android/gradle/wrapper/gradle-wrapper.properties', 'android/build.gradle', 'android/app/build.gradle') }}
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Install Chrome (for framer)
+        run: sudo apt-get update && sudo apt-get install -y google-chrome-stable
+      - name: Run Maestro on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -camera-back none
+          disable-animations: true
+          script: |
+            adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+            mkdir -p qa/captures/android
+            maestro test qa/flows/mobile.yaml --env=PLATFORM=android --env=STORE=android
+      - name: Frame screenshots
+        env:
+          CHROME_PATH: /usr/bin/google-chrome-stable
+        run: node scripts/render-screenshots.mjs --store android
+      - name: Upload Android framed store assets
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: store-assets-android
+          path: |
+            store-assets/screenshots/android/
+            qa/captures/android/
+
+  extension-chrome:
+    if: hashFiles('manifest.json') != '' && (github.event_name == 'pull_request' || github.event.inputs.surface == 'all' || github.event.inputs.surface == 'chrome')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install dependencies
+        run: |
+          if [ -f package.json ]; then npm ci; fi
+          npm install --no-save playwright @playwright/test
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Install system Chrome (for framer)
+        run: sudo apt-get update && sudo apt-get install -y google-chrome-stable
+      - name: Run Playwright e2e
+        run: |
+          mkdir -p qa/captures/chrome
+          npx playwright test qa/flows/extension.spec.ts --reporter=list
+      - name: Frame screenshots
+        env:
+          CHROME_PATH: /usr/bin/google-chrome-stable
+        run: node scripts/render-screenshots.mjs --store chrome
+      - name: Upload Chrome framed store assets
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: store-assets-chrome
+          path: |
+            store-assets/screenshots/chrome/
+            qa/captures/chrome/
