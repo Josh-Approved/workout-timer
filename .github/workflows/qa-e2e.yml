@@ -100,10 +100,11 @@ jobs:
       - name: Run Maestro flow
         run: |
           mkdir -p qa/captures/ios
-          maestro test qa/flows/mobile.yaml --env=PLATFORM=ios --env=STORE=ios
+          maestro test qa/flows/mobile.yaml --env=PLATFORM=ios --env=STORE=ios --debug-output maestro-debug-ios
       - name: Frame screenshots
+        if: success()
         run: node scripts/render-screenshots.mjs --store ios
-      - name: Upload iOS framed store assets
+      - name: Upload iOS artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -111,6 +112,7 @@ jobs:
           path: |
             store-assets/screenshots/ios/
             qa/captures/ios/
+            maestro-debug-ios/
 
   android:
     needs: detect
@@ -165,13 +167,15 @@ jobs:
           disable-animations: true
           script: |
             adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+            adb shell pm list packages | grep freeworkouttimer || true
             mkdir -p qa/captures/android
-            maestro test qa/flows/mobile.yaml --env=PLATFORM=android --env=STORE=android
+            maestro test qa/flows/mobile.yaml --env=PLATFORM=android --env=STORE=android --debug-output maestro-debug-android
       - name: Frame screenshots
+        if: success()
         env:
           CHROME_PATH: /usr/bin/google-chrome-stable
         run: node scripts/render-screenshots.mjs --store android
-      - name: Upload Android framed store assets
+      - name: Upload Android artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -179,6 +183,7 @@ jobs:
           path: |
             store-assets/screenshots/android/
             qa/captures/android/
+            maestro-debug-android/
 
   extension-chrome:
     needs: detect
