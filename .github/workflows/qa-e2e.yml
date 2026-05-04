@@ -73,8 +73,15 @@ jobs:
       - name: pod install
         working-directory: ios
         run: |
+          set -o pipefail
           gem install cocoapods --no-document
-          pod install --repo-update
+          pod install --repo-update 2>&1 | tee ../pod-install.log
+      - name: Upload pod install log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-pod-log
+          path: pod-install.log
       - name: Detect Xcode workspace + scheme
         id: xcode
         run: |
@@ -202,8 +209,13 @@ jobs:
           script: |
             adb install -r android/app/build/outputs/apk/debug/app-debug.apk
             adb shell pm list packages | grep freeworkouttimer || true
-            mkdir -p qa/captures/android
-            maestro test qa/flows/mobile.yaml --env=PLATFORM=android --env=STORE=android --debug-output maestro-debug-android
+            mkdir -p qa/captures/android maestro-debug-android
+            adb logcat -c
+            adb logcat > maestro-debug-android/logcat.txt &
+            LOGCAT_PID=$!
+            maestro test qa/flows/mobile.yaml --env=PLATFORM=android --env=STORE=android --debug-output maestro-debug-android || MAESTRO_RC=$?
+            kill $LOGCAT_PID || true
+            exit ${MAESTRO_RC:-0}
       - name: Frame screenshots
         if: success()
         env:
