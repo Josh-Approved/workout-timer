@@ -168,6 +168,21 @@ jobs:
         run: |
           mkdir -p qa/captures/ios
           maestro test qa/flows/mobile.yaml --env=PLATFORM=ios --env=STORE=ios --debug-output maestro-debug-ios
+      - name: Show Maestro debug on failure
+        if: failure()
+        run: |
+          echo "=== maestro-debug-ios tree ==="
+          find maestro-debug-ios -type f 2>/dev/null | head -40 || true
+          echo ""
+          echo "=== last view hierarchy (head 250) ==="
+          for f in $(find maestro-debug-ios -name "view_hierarchy*.json" 2>/dev/null | sort | tail -1); do
+            head -250 "$f"
+          done
+          echo ""
+          echo "=== last commands_metadata (head 100) ==="
+          for f in $(find maestro-debug-ios -name "commands_metadata*.json" 2>/dev/null | sort | tail -1); do
+            head -100 "$f"
+          done
       - name: Frame screenshots
         if: success()
         run: node scripts/render-screenshots.mjs --store ios
@@ -242,15 +257,31 @@ jobs:
           emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -camera-back none
           disable-animations: true
           script: |
-            adb install -r android/app/build/outputs/apk/debug/app-debug.apk
-            adb shell pm list packages | grep freeworkouttimer || true
-            mkdir -p qa/captures/android maestro-debug-android
-            adb logcat -c
-            adb logcat > maestro-debug-android/logcat.txt &
-            LOGCAT_PID=$!
-            maestro test qa/flows/mobile.yaml --env=PLATFORM=android --env=STORE=android --debug-output maestro-debug-android || MAESTRO_RC=$?
-            kill $LOGCAT_PID || true
-            exit ${MAESTRO_RC:-0}
+            bash -ec '
+              adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+              adb shell pm list packages | grep freeworkouttimer || true
+              mkdir -p qa/captures/android maestro-debug-android
+              adb logcat -c
+              adb logcat > maestro-debug-android/logcat.txt &
+              LOGCAT_PID=$!
+              set +e
+              maestro test qa/flows/mobile.yaml --env=PLATFORM=android --env=STORE=android --debug-output maestro-debug-android
+              MAESTRO_RC=$?
+              kill $LOGCAT_PID || true
+              if [ $MAESTRO_RC -ne 0 ]; then
+                echo "=== maestro-debug-android tree ==="
+                find maestro-debug-android -type f 2>/dev/null | head -40 || true
+                echo ""
+                echo "=== last view hierarchy (head 250) ==="
+                for f in $(find maestro-debug-android -name "view_hierarchy*.json" 2>/dev/null | sort | tail -1); do
+                  head -250 "$f"
+                done
+                echo ""
+                echo "=== last logcat (tail 100) ==="
+                tail -100 maestro-debug-android/logcat.txt 2>/dev/null || true
+              fi
+              exit $MAESTRO_RC
+            '
       - name: Frame screenshots
         if: success()
         env:
