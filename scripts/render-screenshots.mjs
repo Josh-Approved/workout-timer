@@ -29,7 +29,14 @@ const SURFACES = {
 };
 
 const args = process.argv.slice(2);
-const positional = args.filter((a) => !a.startsWith('--'));
+// Track indices that follow a value-taking flag so they aren't mistaken
+// for the optional <app-name> positional (factory mode).
+const VALUE_FLAGS = new Set(['--store', '--shot']);
+const consumedAsValue = new Set();
+for (let i = 0; i < args.length; i++) {
+  if (VALUE_FLAGS.has(args[i])) consumedAsValue.add(i + 1);
+}
+const positional = args.filter((a, i) => !a.startsWith('--') && !consumedAsValue.has(i));
 const appNameArg = positional[0];
 const storeFlagIdx = args.indexOf('--store');
 const onlyStore = storeFlagIdx >= 0 ? args[storeFlagIdx + 1] : null;
