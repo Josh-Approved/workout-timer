@@ -105,6 +105,12 @@ jobs:
           echo "Scheme: $SCHEME"
           echo "workspace=ios/$WS" >> "$GITHUB_OUTPUT"
           echo "scheme=$SCHEME" >> "$GITHUB_OUTPUT"
+      - name: Inspect simulator runtimes + devices
+        run: |
+          echo "=== runtimes ==="
+          xcrun simctl list runtimes
+          echo "=== devices (iOS) ==="
+          xcrun simctl list devices available iOS
       - name: Build for iPhone simulator
         run: |
           set -o pipefail
@@ -114,8 +120,14 @@ jobs:
             -configuration Debug \
             -sdk iphonesimulator \
             -derivedDataPath build \
-            -destination "generic/platform=iOS Simulator" \
-            CODE_SIGNING_ALLOWED=NO | xcbeautify
+            -destination "platform=iOS Simulator,name=iPhone 16 Pro Max,OS=latest" \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee ../xcodebuild.log | xcbeautify
+      - name: Upload xcodebuild log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-xcodebuild-log
+          path: xcodebuild.log
       - name: Boot iPhone 16 Pro Max + normalize status bar
         run: |
           xcrun simctl boot "iPhone 16 Pro Max" || true
