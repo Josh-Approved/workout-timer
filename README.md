@@ -39,4 +39,4 @@ MIT — see [LICENSE](LICENSE).
 
 ## Feedback
 
-Email [jtysonwilliams@yahoo.com](mailto:jtysonwilliams@yahoo.com) with bugs, feature requests, or anything else.
+Email [feedback@joshapproved.com](mailto:feedback@joshapproved.com) with bugs, feature requests, or anything else.
