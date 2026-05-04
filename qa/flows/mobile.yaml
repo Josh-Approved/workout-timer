@@ -17,7 +17,10 @@ env:
     clearState: true
 
 # Waypoint 1 — timer list with the three QA fixture timers.
-- assertVisible: "Free workout timer"
+# First wait is generous: app boot loads fonts then renders, may take a few seconds.
+- extendedWaitUntil:
+    visible: "Free workout timer"
+    timeout: 30000
 - assertVisible: "Standard Tabata"
 - takeScreenshot: qa/captures/${STORE}/list
 
