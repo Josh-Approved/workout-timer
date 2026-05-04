@@ -74,7 +74,7 @@ jobs:
         working-directory: ios
         run: |
           gem install cocoapods --no-document
-          pod install --repo-update --verbose 2>&1 | tail -80
+          pod install --repo-update
       - name: Detect Xcode workspace + scheme
         id: xcode
         run: |
