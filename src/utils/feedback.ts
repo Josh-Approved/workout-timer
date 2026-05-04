@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
-const FEEDBACK_EMAIL = 'jtysonwilliams@yahoo.com';
+const FEEDBACK_EMAIL = 'feedback@joshapproved.com';
 
 function getDeviceModel(): string {
   try {
