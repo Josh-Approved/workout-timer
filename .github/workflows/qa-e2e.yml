@@ -129,7 +129,7 @@ jobs:
             -sdk iphonesimulator \
             -derivedDataPath build \
             -destination "generic/platform=iOS Simulator" \
-            CODE_SIGNING_ALLOWED=NO 2>&1 | tee ../xcodebuild.log | xcbeautify
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee xcodebuild.log | xcbeautify
       - name: Show xcodebuild log on failure
         if: failure()
         run: |
