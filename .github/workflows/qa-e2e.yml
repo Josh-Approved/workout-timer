@@ -107,20 +107,28 @@ jobs:
           echo "scheme=$SCHEME" >> "$GITHUB_OUTPUT"
       - name: Inspect simulator runtimes + devices
         run: |
+          echo "=== xcodebuild -version ==="
+          xcodebuild -version
           echo "=== runtimes ==="
           xcrun simctl list runtimes
           echo "=== devices (iOS) ==="
           xcrun simctl list devices available iOS
+          echo "=== xcodebuild -showdestinations (the canonical list) ==="
+          xcodebuild -workspace "${{ steps.xcode.outputs.workspace }}" -scheme "${{ steps.xcode.outputs.scheme }}" -showdestinations 2>&1 | head -80 || true
       - name: Build for iPhone simulator
         run: |
           set -o pipefail
+          # Use generic iOS Simulator destination — xcodebuild picks the correct
+          # SDK + a compatible simulator from what's installed. Avoids the trap
+          # of name/OS mismatches where a runtime is installed but xcodebuild
+          # rejects the explicit specifier.
           xcodebuild \
             -workspace "${{ steps.xcode.outputs.workspace }}" \
             -scheme "${{ steps.xcode.outputs.scheme }}" \
             -configuration Debug \
             -sdk iphonesimulator \
             -derivedDataPath build \
-            -destination "platform=iOS Simulator,name=iPhone 16 Pro Max,OS=18.6" \
+            -destination "generic/platform=iOS Simulator" \
             CODE_SIGNING_ALLOWED=NO 2>&1 | tee ../xcodebuild.log | xcbeautify
       - name: Upload xcodebuild log on failure
         if: failure()
