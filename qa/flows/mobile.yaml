@@ -16,8 +16,14 @@ env:
 - launchApp:
     clearState: true
 
+# Diagnostic: capture whatever's on screen 8s after launch, before asserting.
+# If the assertion below fails, this PNG (uploaded as artifact) shows what
+# the app actually rendered — splash, error screen, blank, etc.
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: qa/captures/${STORE}/00-launch
+
 # Waypoint 1 — timer list with the three QA fixture timers.
-# First wait is generous: app boot loads fonts then renders, may take a few seconds.
 - extendedWaitUntil:
     visible: "Free workout timer"
     timeout: 30000
