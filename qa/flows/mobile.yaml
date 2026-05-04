@@ -4,7 +4,8 @@
 # Run by .github/workflows/qa-e2e.yml on PR + workflow_dispatch.
 # Maestro's `text:` selector matches both visible text AND each platform's
 # accessibility label (RN `accessibilityLabel` → iOS accessibilityLabel /
-# Android contentDescription). There is no `accessibilityLabel:` property.
+# Android contentDescription). For waits with timeouts use `extendedWaitUntil`,
+# not `assertVisible.timeout`.
 ######################################################################
 
 appId: com.jtysonwilliams.freeworkouttimer
@@ -22,27 +23,27 @@ env:
 
 # Waypoint 2 — editor for Standard Tabata.
 - tapOn: "Edit Standard Tabata"
-- assertVisible:
-    text: "Save timer"
+- extendedWaitUntil:
+    visible: "Save timer"
     timeout: 5000
 - takeScreenshot: qa/captures/${STORE}/editor
 - tapOn: "Back"
 
 # Waypoint 3 — active workout, mid-exercise after the 10s countdown.
 - tapOn: "Start Standard Tabata"
-- assertVisible:
-    text: "Exercise"
+- extendedWaitUntil:
+    visible: "Exercise"
     timeout: 15000
 - takeScreenshot: qa/captures/${STORE}/active
 
 # Waypoint 4 — settings (after stopping the workout via the system alert).
 - tapOn: "Stop workout"
 - tapOn: "Stop"
-- assertVisible:
-    text: "Free workout timer"
+- extendedWaitUntil:
+    visible: "Free workout timer"
     timeout: 5000
 - tapOn: "Settings"
-- assertVisible:
-    text: "Back"
+- extendedWaitUntil:
+    visible: "Back"
     timeout: 5000
 - takeScreenshot: qa/captures/${STORE}/settings
