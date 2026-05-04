@@ -31,7 +31,7 @@ jobs:
   ios:
     needs: detect
     if: needs.detect.outputs.is-rn == 'true'
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 45
     env:
       EXPO_PUBLIC_QA_MODE: '1'
