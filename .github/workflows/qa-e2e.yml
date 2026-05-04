@@ -174,15 +174,18 @@ jobs:
           echo "=== maestro-debug-ios tree ==="
           find maestro-debug-ios -type f 2>/dev/null | head -40 || true
           echo ""
-          echo "=== last view hierarchy (head 250) ==="
-          for f in $(find maestro-debug-ios -name "view_hierarchy*.json" 2>/dev/null | sort | tail -1); do
-            head -250 "$f"
+          echo "=== maestro.log (full) ==="
+          for f in $(find maestro-debug-ios -name "maestro.log" 2>/dev/null | sort | tail -1); do
+            cat "$f"
           done
           echo ""
-          echo "=== last commands_metadata (head 100) ==="
-          for f in $(find maestro-debug-ios -name "commands_metadata*.json" 2>/dev/null | sort | tail -1); do
-            head -100 "$f"
+          echo "=== commands json (head 200) ==="
+          for f in $(find maestro-debug-ios -name "commands-*.json" 2>/dev/null | sort | tail -1); do
+            head -200 "$f"
           done
+          echo ""
+          echo "=== app UI hierarchy now ==="
+          maestro hierarchy 2>&1 | head -200 || true
       - name: Frame screenshots
         if: success()
         run: node scripts/render-screenshots.mjs --store ios
@@ -247,6 +250,42 @@ jobs:
           sudo udevadm trigger --name-match=kvm
       - name: Install Chrome (for framer)
         run: sudo apt-get update && sudo apt-get install -y google-chrome-stable
+      - name: Write Android e2e script to file
+        run: |
+          # android-emulator-runner@v2 runs each line of `script:` in its own
+          # `sh -c`, so cross-line variables don't propagate. Workaround: write
+          # the whole script to a file here and have `script:` call it.
+          cat > /tmp/run-android-e2e.sh <<'SCRIPT_EOF'
+          #!/usr/bin/env bash
+          set -e
+          adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+          adb shell pm list packages | grep freeworkouttimer || true
+          mkdir -p qa/captures/android maestro-debug-android
+          adb logcat -c
+          adb logcat > maestro-debug-android/logcat.txt &
+          LOGCAT_PID=$!
+          set +e
+          maestro test qa/flows/mobile.yaml --env=PLATFORM=android --env=STORE=android --debug-output maestro-debug-android
+          MAESTRO_RC=$?
+          kill $LOGCAT_PID || true
+          if [ $MAESTRO_RC -ne 0 ]; then
+            echo "=== maestro-debug-android tree ==="
+            find maestro-debug-android -type f 2>/dev/null | head -40 || true
+            echo ""
+            echo "=== maestro.log (full) ==="
+            for f in $(find maestro-debug-android -name "maestro.log" 2>/dev/null | sort | tail -1); do
+              cat "$f"
+            done
+            echo ""
+            echo "=== app UI hierarchy now ==="
+            maestro hierarchy 2>&1 | head -200 || true
+            echo ""
+            echo "=== logcat (tail 150) ==="
+            tail -150 maestro-debug-android/logcat.txt 2>/dev/null || true
+          fi
+          exit $MAESTRO_RC
+          SCRIPT_EOF
+          chmod +x /tmp/run-android-e2e.sh
       - name: Run Maestro on Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -256,32 +295,7 @@ jobs:
           profile: pixel_6
           emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -camera-back none
           disable-animations: true
-          script: |
-            bash -ec '
-              adb install -r android/app/build/outputs/apk/debug/app-debug.apk
-              adb shell pm list packages | grep freeworkouttimer || true
-              mkdir -p qa/captures/android maestro-debug-android
-              adb logcat -c
-              adb logcat > maestro-debug-android/logcat.txt &
-              LOGCAT_PID=$!
-              set +e
-              maestro test qa/flows/mobile.yaml --env=PLATFORM=android --env=STORE=android --debug-output maestro-debug-android
-              MAESTRO_RC=$?
-              kill $LOGCAT_PID || true
-              if [ $MAESTRO_RC -ne 0 ]; then
-                echo "=== maestro-debug-android tree ==="
-                find maestro-debug-android -type f 2>/dev/null | head -40 || true
-                echo ""
-                echo "=== last view hierarchy (head 250) ==="
-                for f in $(find maestro-debug-android -name "view_hierarchy*.json" 2>/dev/null | sort | tail -1); do
-                  head -250 "$f"
-                done
-                echo ""
-                echo "=== last logcat (tail 100) ==="
-                tail -100 maestro-debug-android/logcat.txt 2>/dev/null || true
-              fi
-              exit $MAESTRO_RC
-            '
+          script: /tmp/run-android-e2e.sh
       - name: Frame screenshots
         if: success()
         env:
