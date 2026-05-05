@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Coffee, Mail, Play, Plus, Settings as SettingsIcon } from 'lucide-react-native';
+import { ChevronRight, Coffee, Mail, Play, Plus, Settings as SettingsIcon, Timer } from 'lucide-react-native';
 import { RootStackParamList, TimerConfig } from '../types';
 import { loadTimers } from '../storage/storage';
 import { getTimerSummary, getTotalDuration, formatTime } from '../utils/workout';
@@ -86,42 +86,45 @@ export default function TimerListScreen({ navigation }: Props) {
         }
         ListEmptyComponent={
           <View style={s.empty} accessibilityLiveRegion="polite">
-            <Text style={s.emptyText}>No timers yet.</Text>
-            <Text style={s.emptyText}>Tap + to create one.</Text>
+            <View style={s.emptyIcon} importantForAccessibility="no">
+              <Timer size={32} color={c.fgSubtle} strokeWidth={1.25} />
+            </View>
+            <Text style={s.emptyTitle}>No timers yet</Text>
+            <Text style={s.emptyHint}>Tap + to build your first one.</Text>
           </View>
         }
         renderItem={({ item }) => (
           <View style={s.card} accessible={false}>
-            <View style={s.cardMain}>
-              <View style={s.cardInfo}>
+            <Pressable
+              style={({ pressed }) => [s.cardBody, pressed && s.cardBodyPressed]}
+              onPress={() => navigation.navigate('TimerEditor', { timerId: item.id })}
+              accessibilityLabel={`Edit ${item.name}`}
+              accessibilityRole="button"
+              accessibilityHint="Opens the editor"
+            >
+              <View style={s.cardInfo} importantForAccessibility="no">
                 <Text style={s.cardName}>{item.name}</Text>
                 <Text style={s.cardSummary}>{getTimerSummary(item)}</Text>
                 <Text style={s.cardDuration}>
                   Total · {formatTime(getTotalDuration(item))}
                 </Text>
               </View>
-              <Pressable
-                style={({ pressed }) => [s.playBtn, pressed && s.pressed]}
-                onPress={() => navigation.navigate('ActiveWorkout', { timerId: item.id })}
-                accessibilityLabel={`Start ${item.name}`}
-                accessibilityRole="button"
-                accessibilityHint="Begins the workout"
-              >
-                <Play size={20} color={c.inkButtonText} strokeWidth={1.75} fill={c.inkButtonText} />
-              </Pressable>
-            </View>
-
-            <View style={s.cardFooter}>
-              <Pressable
-                onPress={() => navigation.navigate('TimerEditor', { timerId: item.id })}
-                accessibilityLabel={`Edit ${item.name}`}
-                accessibilityRole="button"
-                hitSlop={8}
-                style={({ pressed }) => [pressed && s.pressed]}
-              >
-                <Text style={s.editText}>Edit</Text>
-              </Pressable>
-            </View>
+              <ChevronRight
+                size={20}
+                color={c.fgSubtle}
+                strokeWidth={1.5}
+                importantForAccessibility="no"
+              />
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [s.playBtn, pressed && s.pressed]}
+              onPress={() => navigation.navigate('ActiveWorkout', { timerId: item.id })}
+              accessibilityLabel={`Start ${item.name}`}
+              accessibilityRole="button"
+              accessibilityHint="Begins the workout"
+            >
+              <Play size={20} color={c.inkButtonText} strokeWidth={1.75} fill={c.inkButtonText} />
+            </Pressable>
           </View>
         )}
       />
@@ -165,6 +168,8 @@ function makeStyles(c: Colors) {
     list: { padding: space.s5, paddingBottom: 120 },
 
     card: {
+      flexDirection: 'row',
+      alignItems: 'stretch',
       backgroundColor: c.bgElevated,
       borderRadius: radius.md,
       borderWidth: 1,
@@ -172,12 +177,17 @@ function makeStyles(c: Colors) {
       marginBottom: space.s4,
       overflow: 'hidden',
     },
-    cardMain: {
+    cardBody: {
+      flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      padding: space.s5,
+      paddingLeft: space.s5,
+      paddingRight: space.s4,
+      paddingVertical: space.s5,
+      gap: space.s3,
     },
-    cardInfo: { flex: 1, marginRight: space.s4 },
+    cardBodyPressed: { backgroundColor: c.bg },
+    cardInfo: { flex: 1 },
     cardName: {
       ...t.md,
       color: c.fg,
@@ -197,30 +207,32 @@ function makeStyles(c: Colors) {
     },
     playBtn: {
       backgroundColor: c.inkButton,
-      width: 48,
-      height: 48,
-      borderRadius: radius.pill,
+      width: 56,
+      borderTopRightRadius: radius.md,
+      borderBottomRightRadius: radius.md,
       justifyContent: 'center',
       alignItems: 'center',
     },
 
-    cardFooter: {
-      borderTopWidth: hairline,
-      borderTopColor: c.hairline,
-      paddingHorizontal: space.s5,
-      paddingVertical: space.s3,
+    empty: { alignItems: 'center', paddingTop: space.s9, gap: space.s3 },
+    emptyIcon: {
+      width: 64,
+      height: 64,
+      borderRadius: radius.pill,
+      borderWidth: 1,
+      borderColor: c.hairline,
+      backgroundColor: c.bgElevated,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: space.s2,
     },
-    editText: {
-      ...t.sm,
+    emptyTitle: {
+      ...t.md,
       color: c.fg,
-      fontFamily: fontFamily.sansMedium,
-      textDecorationLine: 'underline',
-      textDecorationColor: c.hairlineStrong,
+      fontFamily: fontFamily.sansSemibold,
     },
-
-    empty: { alignItems: 'center', paddingTop: space.s9, gap: space.s2 },
-    emptyText: {
-      ...t.base,
+    emptyHint: {
+      ...t.sm,
       color: c.fgMuted,
       fontFamily: fontFamily.sans,
     },
