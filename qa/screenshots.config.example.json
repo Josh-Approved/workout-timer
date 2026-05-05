@@ -1,0 +1,18 @@
+{
+  "stores": {
+    "ios": [
+      { "id": "list",     "source": "ios/01-list.png",     "caption": "Your timers, one tap away." },
+      { "id": "active",   "source": "ios/02-active.png",   "caption": "Big numbers. No noise." },
+      { "id": "editor",   "source": "ios/03-editor.png",   "caption": "Build any interval set in seconds." },
+      { "id": "settings", "source": "ios/04-settings.png", "caption": "Sounds, haptics, screen wake — all yours." }
+    ],
+    "android": [
+      { "id": "list",     "source": "android/01-list.png",     "caption": "Your timers, one tap away." },
+      { "id": "active",   "source": "android/02-active.png",   "caption": "Big numbers. No noise." }
+    ],
+    "chrome": [
+      { "id": "popup",    "source": "chrome/01-popup.png",   "caption": "Ask a question. Get an answer from this page." },
+      { "id": "youtube",  "source": "chrome/02-youtube.png", "caption": "Works on YouTube videos with captions, too." }
+    ]
+  }
+}

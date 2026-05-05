@@ -1,0 +1,348 @@
+name: QA e2e
+
+# Layer 2 — drives the app through scripted flows on cloud sims/emulators,
+# captures screenshots at named waypoints, frames them via the vendored
+# render-screenshots.mjs, and uploads framed store assets as workflow artifacts.
+# Free for public repos (unlimited Linux + macOS minutes).
+#
+# Gated to pull_request + workflow_dispatch only. Do NOT add `push: main` here —
+# every push would burn 15+ minutes per platform.
+#
+# Surface gating runs in the `detect` job (not job-level `if:` with hashFiles,
+# which fails because the workspace isn't checked out at job-eligibility time).
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      is-rn: ${{ steps.check.outputs.is-rn }}
+      is-extension: ${{ steps.check.outputs.is-extension }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        run: |
+          [ -f app.json ] && echo "is-rn=true" >> "$GITHUB_OUTPUT" || echo "is-rn=false" >> "$GITHUB_OUTPUT"
+          [ -f manifest.json ] && echo "is-extension=true" >> "$GITHUB_OUTPUT" || echo "is-extension=false" >> "$GITHUB_OUTPUT"
+
+  ios:
+    needs: detect
+    if: needs.detect.outputs.is-rn == 'true'
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      EXPO_PUBLIC_QA_MODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+      - name: Install xcbeautify
+        run: brew install xcbeautify
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          # Xcode 26.2 SDK matches the iOS 26.2 simulator runtime pre-installed
+          # on the macos-15 runner. xcodebuild requires an exact SDK ↔ runtime
+          # match (not just SDK <= runtime); pinning to a Xcode whose SDK has
+          # no matching runtime causes "iOS X.Y is not installed" failures.
+          xcode-version: '26.2.0'
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: false
+      - name: npm ci
+        run: npm ci
+      - name: Expo prebuild (ios)
+        run: npx expo prebuild --platform ios --clean --no-install
+      - name: Bundle JS (ios)
+        run: |
+          mkdir -p ios
+          npx expo export:embed \
+            --platform ios \
+            --dev false \
+            --entry-file index.ts \
+            --bundle-output ios/main.jsbundle \
+            --assets-dest ios
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: ios/Pods
+          key: pods-${{ hashFiles('ios/Podfile.lock') }}
+          restore-keys: pods-
+      - name: pod install
+        working-directory: ios
+        run: |
+          set -o pipefail
+          gem install cocoapods --no-document
+          pod install --repo-update 2>&1 | tee ../pod-install.log
+      - name: Upload pod install log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-pod-log
+          path: pod-install.log
+      - name: Detect Xcode workspace + scheme
+        id: xcode
+        run: |
+          WS=$(ls ios | grep '\.xcworkspace$' | head -1)
+          if [ -z "$WS" ]; then
+            echo "::error::no .xcworkspace found in ios/"
+            exit 1
+          fi
+          # Scheme matches the .xcodeproj name for Expo apps; xcodebuild -list also
+          # surfaces Pod schemes (EASClient etc.) which we must NOT pick.
+          PROJ=$(ls ios | grep '\.xcodeproj$' | head -1)
+          if [ -z "$PROJ" ]; then
+            echo "::error::no .xcodeproj found in ios/"
+            exit 1
+          fi
+          SCHEME="${PROJ%.xcodeproj}"
+          echo "Workspace: ios/$WS"
+          echo "Scheme: $SCHEME"
+          echo "workspace=ios/$WS" >> "$GITHUB_OUTPUT"
+          echo "scheme=$SCHEME" >> "$GITHUB_OUTPUT"
+      - name: Inspect simulator runtimes + devices
+        run: |
+          echo "=== xcodebuild -version ==="
+          xcodebuild -version
+          echo "=== runtimes ==="
+          xcrun simctl list runtimes
+          echo "=== devices (iOS) ==="
+          xcrun simctl list devices available iOS
+          echo "=== xcodebuild -showdestinations (the canonical list) ==="
+          xcodebuild -workspace "${{ steps.xcode.outputs.workspace }}" -scheme "${{ steps.xcode.outputs.scheme }}" -showdestinations 2>&1 | head -80 || true
+      - name: Build for iPhone simulator
+        run: |
+          set -o pipefail
+          # Use generic iOS Simulator destination — xcodebuild picks the correct
+          # SDK + a compatible simulator from what's installed. Avoids the trap
+          # of name/OS mismatches where a runtime is installed but xcodebuild
+          # rejects the explicit specifier.
+          xcodebuild \
+            -workspace "${{ steps.xcode.outputs.workspace }}" \
+            -scheme "${{ steps.xcode.outputs.scheme }}" \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -derivedDataPath build \
+            -destination "generic/platform=iOS Simulator" \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee xcodebuild.log | xcbeautify
+      - name: Show xcodebuild log on failure
+        if: failure()
+        run: |
+          echo "=== xcodebuild.log (full, raw) ==="
+          if [ -f xcodebuild.log ]; then cat xcodebuild.log; else echo "(no log file)"; fi
+      - name: Upload xcodebuild log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-xcodebuild-log
+          path: xcodebuild.log
+      - name: Boot iPhone 16 Pro Max (iOS 26.2) + normalize status bar
+        id: sim
+        run: |
+          # Create a fresh iPhone 16 Pro Max on iOS 26.2, matching Xcode 26.2's
+          # bundled SDK. Multiple sims with the same name exist (one per
+          # installed runtime), so we pin via UDID.
+          UDID=$(xcrun simctl create "qa-iphone" "iPhone 16 Pro Max" "com.apple.CoreSimulator.SimRuntime.iOS-26-2")
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl status_bar "$UDID" override \
+            --time "9:41" \
+            --batteryState charged --batteryLevel 100 \
+            --cellularBars 4 --wifiBars 3
+      - name: Install app on simulator
+        run: |
+          APP_PATH=$(find build -name "*.app" -type d -path "*/Debug-iphonesimulator/*" | head -1)
+          echo "App path: $APP_PATH"
+          xcrun simctl install ${{ steps.sim.outputs.udid }} "$APP_PATH"
+      - name: Run Maestro flow
+        run: |
+          mkdir -p qa/captures/ios
+          maestro test qa/flows/mobile.yaml --env=PLATFORM=ios --env=STORE=ios --debug-output maestro-debug-ios
+      - name: Show Maestro debug on failure
+        if: failure()
+        run: |
+          echo "=== maestro-debug-ios tree ==="
+          find maestro-debug-ios -type f 2>/dev/null | head -40 || true
+          echo ""
+          echo "=== maestro.log (full) ==="
+          for f in $(find maestro-debug-ios -name "maestro.log" 2>/dev/null | sort | tail -1); do
+            cat "$f"
+          done
+          echo ""
+          echo "=== commands json (head 200) ==="
+          for f in $(find maestro-debug-ios -name "commands-*.json" 2>/dev/null | sort | tail -1); do
+            head -200 "$f"
+          done
+          echo ""
+          echo "=== app UI hierarchy now ==="
+          maestro hierarchy 2>&1 | head -200 || true
+      - name: Frame screenshots
+        if: success()
+        run: node scripts/render-screenshots.mjs --store ios
+      - name: Upload iOS artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: store-assets-ios
+          path: |
+            store-assets/screenshots/ios/
+            qa/captures/ios/
+            maestro-debug-ios/
+
+  android:
+    needs: detect
+    if: needs.detect.outputs.is-rn == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      EXPO_PUBLIC_QA_MODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+      - name: npm ci
+        run: npm ci
+      - name: Expo prebuild (android)
+        run: npx expo prebuild --platform android --clean --no-install
+      - name: Bundle JS (android)
+        run: |
+          mkdir -p android/app/src/main/assets android/app/src/main/res
+          npx expo export:embed \
+            --platform android \
+            --dev false \
+            --entry-file index.ts \
+            --bundle-output android/app/src/main/assets/index.android.bundle \
+            --assets-dest android/app/src/main/res
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('android/gradle/wrapper/gradle-wrapper.properties', 'android/build.gradle', 'android/app/build.gradle') }}
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Install Chrome (for framer)
+        run: sudo apt-get update && sudo apt-get install -y google-chrome-stable
+      - name: Write Android e2e script to file
+        run: |
+          # android-emulator-runner@v2 runs each line of `script:` in its own
+          # `sh -c`, so cross-line variables don't propagate. Workaround: write
+          # the whole script to a file here and have `script:` call it.
+          cat > /tmp/run-android-e2e.sh <<'SCRIPT_EOF'
+          #!/usr/bin/env bash
+          set -e
+          adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+          adb shell pm list packages | grep freeworkouttimer || true
+          mkdir -p qa/captures/android maestro-debug-android
+          adb logcat -c
+          adb logcat > maestro-debug-android/logcat.txt &
+          LOGCAT_PID=$!
+          set +e
+          maestro test qa/flows/mobile.yaml --env=PLATFORM=android --env=STORE=android --debug-output maestro-debug-android
+          MAESTRO_RC=$?
+          kill $LOGCAT_PID || true
+          if [ $MAESTRO_RC -ne 0 ]; then
+            echo "=== maestro-debug-android tree ==="
+            find maestro-debug-android -type f 2>/dev/null | head -40 || true
+            echo ""
+            echo "=== maestro.log (full) ==="
+            for f in $(find maestro-debug-android -name "maestro.log" 2>/dev/null | sort | tail -1); do
+              cat "$f"
+            done
+            echo ""
+            echo "=== app UI hierarchy now ==="
+            maestro hierarchy 2>&1 | head -200 || true
+            echo ""
+            echo "=== logcat (tail 150) ==="
+            tail -150 maestro-debug-android/logcat.txt 2>/dev/null || true
+          fi
+          exit $MAESTRO_RC
+          SCRIPT_EOF
+          chmod +x /tmp/run-android-e2e.sh
+      - name: Run Maestro on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -camera-back none
+          disable-animations: true
+          script: /tmp/run-android-e2e.sh
+      - name: Frame screenshots
+        if: success()
+        env:
+          CHROME_PATH: /usr/bin/google-chrome-stable
+        run: node scripts/render-screenshots.mjs --store android
+      - name: Upload Android artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: store-assets-android
+          path: |
+            store-assets/screenshots/android/
+            qa/captures/android/
+            maestro-debug-android/
+
+  extension-chrome:
+    needs: detect
+    if: needs.detect.outputs.is-extension == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install dependencies
+        run: |
+          if [ -f package.json ]; then npm ci; fi
+          npm install --no-save playwright @playwright/test
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Install system Chrome (for framer)
+        run: sudo apt-get update && sudo apt-get install -y google-chrome-stable
+      - name: Run Playwright e2e
+        run: |
+          mkdir -p qa/captures/chrome
+          npx playwright test qa/flows/extension.spec.ts --reporter=list
+      - name: Frame screenshots
+        env:
+          CHROME_PATH: /usr/bin/google-chrome-stable
+        run: node scripts/render-screenshots.mjs --store chrome
+      - name: Upload Chrome framed store assets
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: store-assets-chrome
+          path: |
+            store-assets/screenshots/chrome/
+            qa/captures/chrome/

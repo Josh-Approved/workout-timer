@@ -25,8 +25,11 @@ import {
   buildPhaseAnnouncement,
 } from '../utils/workout';
 import { AudioEngine } from '../audio/AudioEngine';
-import { recordWorkoutComplete } from '../storage/reviewStorage';
+import { recordSuccessfulCompletion } from '../storage/reviewPrompt';
 import ReviewModal from '../components/ReviewModal';
+
+const APP_STORE_ID = '6766071864';
+const ANDROID_PACKAGE_NAME = 'com.jtysonwilliams.freeworkouttimer';
 import {
   useTheme,
   fontFamily,
@@ -198,7 +201,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
 
   useEffect(() => {
     if (displayState.mode !== 'complete') return;
-    recordWorkoutComplete().then((shouldPrompt) => {
+    recordSuccessfulCompletion().then((shouldPrompt) => {
       if (shouldPrompt) setShowReview(true);
     });
   }, [displayState.mode]);
@@ -339,7 +342,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
         accessibilityLabel="Restart current interval"
         accessibilityRole="button"
       >
-        <SkipBack size={20} color={c.fg} strokeWidth={1.5} />
+        <SkipBack size={24} color={c.fg} strokeWidth={1.5} />
       </Pressable>
       <Pressable
         style={({ pressed }) => [s.secondaryBtn, pressed && s.pressed]}
@@ -348,7 +351,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
         accessibilityLabel="Stop workout"
         accessibilityRole="button"
       >
-        <Square size={18} color={c.danger} strokeWidth={1.75} fill={c.danger} />
+        <Square size={22} color={c.danger} strokeWidth={1.75} fill={c.danger} />
       </Pressable>
       <Pressable
         style={({ pressed }) => [s.playPauseBtn, pressed && s.pressed]}
@@ -357,9 +360,9 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
         accessibilityRole="button"
       >
         {isRunning ? (
-          <Pause size={28} color={c.inkButtonText} strokeWidth={1.75} fill={c.inkButtonText} />
+          <Pause size={36} color={c.inkButtonText} strokeWidth={1.75} fill={c.inkButtonText} />
         ) : (
-          <Play size={28} color={c.inkButtonText} strokeWidth={1.75} fill={c.inkButtonText} />
+          <Play size={36} color={c.inkButtonText} strokeWidth={1.75} fill={c.inkButtonText} />
         )}
       </Pressable>
       <Pressable
@@ -369,7 +372,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
         accessibilityLabel="Skip to next interval"
         accessibilityRole="button"
       >
-        <SkipForward size={20} color={c.fg} strokeWidth={1.5} />
+        <SkipForward size={24} color={c.fg} strokeWidth={1.5} />
       </Pressable>
     </View>
   ) : (
@@ -478,7 +481,13 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
         </View>
 
         {progressBar}
-        <ReviewModal visible={showReview} onDismiss={() => setShowReview(false)} />
+        <ReviewModal
+          visible={showReview}
+          onDismiss={() => setShowReview(false)}
+          appName="Free workout timer"
+          iosAppStoreId={APP_STORE_ID}
+          androidPackageName={ANDROID_PACKAGE_NAME}
+        />
       </SafeAreaView>
     );
   }
@@ -531,7 +540,13 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       {progressBar}
 
       {controls}
-      <ReviewModal visible={showReview} onDismiss={() => setShowReview(false)} />
+      <ReviewModal
+        visible={showReview}
+        onDismiss={() => setShowReview(false)}
+        appName="Free workout timer"
+        iosAppStoreId={APP_STORE_ID}
+        androidPackageName={ANDROID_PACKAGE_NAME}
+      />
     </SafeAreaView>
   );
 }
@@ -621,6 +636,7 @@ function getMaxCycles(steps: PhaseStep[]): number {
 }
 
 function makeStyles(c: Colors, isLandscape: boolean) {
+  const PROGRESS_HEIGHT = 14;
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -676,11 +692,11 @@ function makeStyles(c: Colors, isLandscape: boolean) {
       borderWidth: 1,
       borderColor: c.hairline,
       marginHorizontal: space.s6,
-      marginBottom: space.s4,
+      marginBottom: space.s7,
       overflow: 'hidden',
       alignSelf: 'stretch',
     },
-    infoPanel: { flex: 1, alignItems: 'center', paddingVertical: space.s4 },
+    infoPanel: { flex: 1, alignItems: 'center', paddingVertical: space.s5 },
     infoPanelBorder: { borderLeftWidth: hairline, borderLeftColor: c.hairline },
     infoLabel: {
       ...ts.xs,
@@ -700,12 +716,15 @@ function makeStyles(c: Colors, isLandscape: boolean) {
     controls: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: space.s4,
-      paddingBottom: isLandscape ? 0 : space.s3,
+      justifyContent: 'center',
+      alignSelf: 'center',
+      gap: space.s5,
+      paddingTop: isLandscape ? 0 : space.s5,
+      paddingBottom: isLandscape ? 0 : space.s4,
     },
     secondaryBtn: {
-      width: 48,
-      height: 48,
+      width: 60,
+      height: 60,
       borderRadius: radius.pill,
       borderWidth: 1,
       borderColor: c.hairlineStrong,
@@ -714,8 +733,8 @@ function makeStyles(c: Colors, isLandscape: boolean) {
       alignItems: 'center',
     },
     playPauseBtn: {
-      width: 72,
-      height: 72,
+      width: 88,
+      height: 88,
       borderRadius: radius.pill,
       backgroundColor: c.inkButton,
       justifyContent: 'center',
@@ -736,18 +755,18 @@ function makeStyles(c: Colors, isLandscape: boolean) {
     progressOuter: {
       alignSelf: 'stretch',
       marginHorizontal: space.s6,
-      marginBottom: space.s4,
-      height: 8,
+      marginBottom: isLandscape ? space.s4 : space.s6,
+      height: PROGRESS_HEIGHT,
       justifyContent: 'center',
     },
     segmentRow: {
       flexDirection: 'row',
-      height: 8,
+      height: PROGRESS_HEIGHT,
       gap: 2,
     },
     segment: {
-      height: 8,
-      borderRadius: 2,
+      height: PROGRESS_HEIGHT,
+      borderRadius: 3,
       overflow: 'hidden',
     },
     segmentFill: {
@@ -761,18 +780,22 @@ function makeStyles(c: Colors, isLandscape: boolean) {
       alignItems: 'stretch',
     },
     leftCol: {
-      flex: 3,
+      flex: 1,
       alignItems: 'center',
-      justifyContent: 'space-around',
-      paddingVertical: space.s4,
-      paddingLeft: space.s3,
+      justifyContent: 'center',
+      paddingVertical: space.s5,
+      paddingLeft: space.s5,
+      paddingRight: space.s4,
+      gap: space.s4,
     },
     rightCol: {
-      flex: 2,
-      alignItems: 'center',
-      justifyContent: 'space-evenly',
-      paddingVertical: space.s4,
-      paddingRight: space.s3,
+      flex: 1,
+      alignItems: 'stretch',
+      justifyContent: 'center',
+      paddingVertical: space.s5,
+      paddingLeft: space.s4,
+      paddingRight: space.s5,
+      gap: space.s5,
     },
     infoStack: {
       width: '100%',
@@ -787,7 +810,7 @@ function makeStyles(c: Colors, isLandscape: boolean) {
       justifyContent: 'space-between',
       alignItems: 'center',
       paddingHorizontal: space.s5,
-      paddingVertical: space.s3,
+      paddingVertical: space.s4,
     },
     infoStackRowBorder: { borderTopWidth: hairline, borderTopColor: c.hairline },
   });
