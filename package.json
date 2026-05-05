@@ -1,6 +1,6 @@
 {
   "name": "free-workout-timer",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
@@ -35,6 +35,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.10",
+    "sharp": "^0.34.5",
     "typescript": "~5.9.2"
   },
   "private": true
