@@ -1,19 +1,24 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TimerConfig, AppSettings } from '../types';
 import { DEFAULT_TIMERS, DEFAULT_SETTINGS } from '../constants/defaultTimers';
+import { QA_MODE } from '../qa/qaMode';
+import { QA_TIMERS } from '../qa/fixtures';
 
 const TIMERS_KEY = '@fwt/timers';
 const SETTINGS_KEY = '@fwt/settings';
 const SETTINGS_VERSION = 2;
 
+const initialTimers = (): TimerConfig[] => (QA_MODE ? QA_TIMERS : DEFAULT_TIMERS);
+
 export async function loadTimers(): Promise<TimerConfig[]> {
   try {
     const json = await AsyncStorage.getItem(TIMERS_KEY);
     if (json) return JSON.parse(json);
-    await saveTimers(DEFAULT_TIMERS);
-    return DEFAULT_TIMERS;
+    const seeds = initialTimers();
+    await saveTimers(seeds);
+    return seeds;
   } catch {
-    return DEFAULT_TIMERS;
+    return initialTimers();
   }
 }
 

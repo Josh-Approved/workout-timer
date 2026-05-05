@@ -11,7 +11,8 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { ChevronLeft, Minus, Plus } from 'lucide-react-native';
+import { ChevronLeft } from 'lucide-react-native';
+import Slider from '@react-native-community/slider';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList, TimerConfig } from '../types';
 import { loadTimers, saveTimer, deleteTimer } from '../storage/storage';
@@ -154,18 +155,26 @@ export default function TimerEditorScreen({ route, navigation }: Props) {
           <View style={s.section}>
             <Text style={s.sectionTitle} accessibilityRole="header">Preparation</Text>
             <View style={s.sectionBody}>
-              <Field
+              <SliderField
                 label="Initial countdown"
                 hint="Get-ready period before the workout starts (0 = skip)"
                 value={form.initialCountdown}
                 onChange={(v) => set('initialCountdown', v)}
+                min={0}
+                max={600}
+                step={5}
+                isTime
                 colors={c}
               />
-              <Field
+              <SliderField
                 label="Warm up"
                 hint="Warm-up interval before first set (0 = skip)"
                 value={form.warmUp}
                 onChange={(v) => set('warmUp', v)}
+                min={0}
+                max={600}
+                step={5}
+                isTime
                 colors={c}
               />
             </View>
@@ -174,19 +183,26 @@ export default function TimerEditorScreen({ route, navigation }: Props) {
           <View style={s.section}>
             <Text style={s.sectionTitle} accessibilityRole="header">Intervals</Text>
             <View style={s.sectionBody}>
-              <Field
+              <SliderField
                 label="Exercise"
                 hint="Work interval duration (required)"
                 value={form.exercise}
-                onChange={(v) => set('exercise', Math.max(1, v))}
-                min={1}
+                onChange={(v) => set('exercise', Math.max(5, v))}
+                min={5}
+                max={600}
+                step={5}
+                isTime
                 colors={c}
               />
-              <Field
+              <SliderField
                 label="Rest"
                 hint="Rest between exercise sets (0 = no rest)"
                 value={form.rest}
                 onChange={(v) => set('rest', v)}
+                min={0}
+                max={600}
+                step={5}
+                isTime
                 colors={c}
               />
             </View>
@@ -195,29 +211,35 @@ export default function TimerEditorScreen({ route, navigation }: Props) {
           <View style={s.section}>
             <Text style={s.sectionTitle} accessibilityRole="header">Structure</Text>
             <View style={s.sectionBody}>
-              <Field
+              <SliderField
                 label="Sets"
                 hint="Exercise + rest rounds per cycle"
                 value={form.sets}
                 onChange={(v) => set('sets', Math.max(1, v))}
                 min={1}
+                max={30}
                 step={1}
                 colors={c}
               />
-              <Field
+              <SliderField
                 label="Cycles"
                 hint="How many times to repeat all sets"
                 value={form.cycles}
                 onChange={(v) => set('cycles', Math.max(1, v))}
                 min={1}
+                max={20}
                 step={1}
                 colors={c}
               />
-              <Field
+              <SliderField
                 label="Recovery"
                 hint="Rest between cycles (0 = no recovery)"
                 value={form.recovery}
                 onChange={(v) => set('recovery', v)}
+                min={0}
+                max={600}
+                step={5}
+                isTime
                 colors={c}
               />
             </View>
@@ -226,11 +248,15 @@ export default function TimerEditorScreen({ route, navigation }: Props) {
           <View style={s.section}>
             <Text style={s.sectionTitle} accessibilityRole="header">Finish</Text>
             <View style={s.sectionBody}>
-              <Field
+              <SliderField
                 label="Cool down"
                 hint="Cool-down interval after the last set (0 = skip)"
                 value={form.coolDown}
                 onChange={(v) => set('coolDown', v)}
+                min={0}
+                max={600}
+                step={5}
+                isTime
                 colors={c}
               />
             </View>
@@ -253,82 +279,133 @@ export default function TimerEditorScreen({ route, navigation }: Props) {
   );
 }
 
-interface FieldProps {
+interface SliderFieldProps {
   label: string;
   hint: string;
   value: number;
   onChange: (v: number) => void;
   min?: number;
+  max: number;
   step?: number;
+  isTime?: boolean;
   colors: Colors;
 }
 
-function Field({ label, hint, value, onChange, min = 0, step = 5, colors: c }: FieldProps) {
-  const fs = fieldStyles(c);
+function formatSliderValue(value: number, isTime: boolean): { display: string; unit: string } {
+  if (!isTime) return { display: String(value), unit: '' };
+  if (value < 60) return { display: String(value), unit: 's' };
+  const mins = Math.floor(value / 60);
+  const secs = value % 60;
+  return { display: `${mins}:${String(secs).padStart(2, '0')}`, unit: '' };
+}
 
-  const decrement = () => onChange(Math.max(min, value - step));
-  const increment = () => onChange(value + step);
+function spokenSliderValue(value: number, isTime: boolean): string {
+  if (!isTime) return String(value);
+  if (value < 60) return `${value} second${value !== 1 ? 's' : ''}`;
+  const mins = Math.floor(value / 60);
+  const secs = value % 60;
+  const minPart = `${mins} minute${mins !== 1 ? 's' : ''}`;
+  return secs > 0 ? `${minPart} ${secs} seconds` : minPart;
+}
 
-  const handleText = (text: string) => {
-    const n = parseInt(text.replace(/[^0-9]/g, ''), 10);
-    if (!isNaN(n)) onChange(Math.max(min, n));
-    else if (text === '') onChange(min);
-  };
-
-  const isTime = step !== 1;
-  const spokenValue = isTime
-    ? value < 60
-      ? `${value} second${value !== 1 ? 's' : ''}`
-      : `${Math.floor(value / 60)} minute${Math.floor(value / 60) !== 1 ? 's' : ''}${value % 60 > 0 ? ` ${value % 60} seconds` : ''}`
-    : String(value);
+function SliderField({
+  label,
+  hint,
+  value,
+  onChange,
+  min = 0,
+  max,
+  step = 5,
+  isTime = false,
+  colors: c,
+}: SliderFieldProps) {
+  const sf = sliderFieldStyles(c);
+  const { display, unit } = formatSliderValue(value, isTime);
+  const spokenValue = spokenSliderValue(value, isTime);
 
   return (
-    <View style={fs.row} accessible={false}>
-      <View style={fs.labelCol} importantForAccessibility="no-hide-descendants">
-        <Text style={fs.label}>{label}</Text>
-        <Text style={fs.hint}>{hint}</Text>
+    <View
+      style={sf.row}
+      accessible
+      accessibilityRole="adjustable"
+      accessibilityLabel={`${label}, ${spokenValue}`}
+      accessibilityHint={hint}
+      accessibilityActions={[
+        { name: 'increment', label: 'increase' },
+        { name: 'decrement', label: 'decrease' },
+      ]}
+      onAccessibilityAction={(event) => {
+        if (event.nativeEvent.actionName === 'increment') {
+          onChange(Math.min(max, value + step));
+        }
+        if (event.nativeEvent.actionName === 'decrement') {
+          onChange(Math.max(min, value - step));
+        }
+      }}
+    >
+      <View style={sf.headerRow} importantForAccessibility="no-hide-descendants">
+        <Text style={sf.label}>{label}</Text>
+        <View style={sf.valueCell}>
+          <Text style={sf.valueText}>{display}</Text>
+          {unit ? <Text style={sf.unit}>{unit}</Text> : null}
+        </View>
       </View>
-      <View style={fs.stepper} accessible={false}>
-        <Pressable
-          style={({ pressed }) => [fs.stepBtn, pressed && { opacity: 0.7 }]}
-          onPress={decrement}
-          accessible={false}
-          importantForAccessibility="no"
-        >
-          <Minus size={16} color={c.fg} strokeWidth={1.75} />
-        </Pressable>
-
-        <TextInput
-          style={fs.stepInput}
-          value={String(value)}
-          keyboardType="number-pad"
-          onChangeText={handleText}
-          selectTextOnFocus
-          accessibilityRole="adjustable"
-          accessibilityLabel={`${label}, ${spokenValue}`}
-          accessibilityHint={`${hint}. Swipe up to increase, swipe down to decrease`}
-          accessibilityActions={[
-            { name: 'increment', label: 'increase' },
-            { name: 'decrement', label: 'decrease' },
-          ]}
-          onAccessibilityAction={(event) => {
-            if (event.nativeEvent.actionName === 'increment') increment();
-            if (event.nativeEvent.actionName === 'decrement') decrement();
-          }}
-        />
-        {isTime ? <Text style={fs.unit} importantForAccessibility="no">s</Text> : null}
-
-        <Pressable
-          style={({ pressed }) => [fs.stepBtn, pressed && { opacity: 0.7 }]}
-          onPress={increment}
-          accessible={false}
-          importantForAccessibility="no"
-        >
-          <Plus size={16} color={c.fg} strokeWidth={1.75} />
-        </Pressable>
-      </View>
+      <Slider
+        style={sf.slider}
+        minimumValue={min}
+        maximumValue={max}
+        step={step}
+        value={value}
+        onValueChange={(v) => onChange(Math.round(v))}
+        minimumTrackTintColor={c.fg}
+        maximumTrackTintColor={c.hairlineStrong}
+        thumbTintColor={c.fg}
+        accessible={false}
+      />
+      <Text style={sf.hint} importantForAccessibility="no">{hint}</Text>
     </View>
   );
+}
+
+function sliderFieldStyles(c: Colors) {
+  return StyleSheet.create({
+    row: {
+      paddingHorizontal: space.s5,
+      paddingVertical: space.s4,
+      borderTopWidth: hairline,
+      borderTopColor: c.hairline,
+    },
+    headerRow: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      justifyContent: 'space-between',
+    },
+    label: { ...t.sm, color: c.fg, fontFamily: fontFamily.sansMedium },
+    valueCell: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+    },
+    valueText: {
+      ...t.base,
+      fontFamily: fontFamily.monoMedium,
+      color: c.fg,
+      textAlign: 'right',
+      paddingVertical: 0,
+      minWidth: 24,
+    },
+    unit: {
+      ...t.xs,
+      color: c.fgMuted,
+      fontFamily: fontFamily.mono,
+      marginLeft: 1,
+    },
+    slider: {
+      width: '100%',
+      height: 32,
+      marginTop: space.s1,
+    },
+    hint: { ...t.xs, color: c.fgMuted, fontFamily: fontFamily.sans, marginTop: 2 },
+  });
 }
 
 function makeStyles(c: Colors) {
@@ -402,37 +479,3 @@ function makeStyles(c: Colors) {
   });
 }
 
-function fieldStyles(c: Colors) {
-  return StyleSheet.create({
-    row: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: space.s5,
-      paddingVertical: space.s4,
-      borderTopWidth: hairline,
-      borderTopColor: c.hairline,
-    },
-    labelCol: { flex: 1, marginRight: space.s4 },
-    label: { ...t.sm, color: c.fg, fontFamily: fontFamily.sansMedium },
-    hint: { ...t.xs, color: c.fgMuted, fontFamily: fontFamily.sans, marginTop: 2 },
-    stepper: { flexDirection: 'row', alignItems: 'center', gap: space.s2 },
-    stepBtn: {
-      width: 32,
-      height: 32,
-      borderRadius: radius.sm,
-      borderWidth: 1,
-      borderColor: c.hairlineStrong,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: c.bg,
-    },
-    stepInput: {
-      ...t.base,
-      fontFamily: fontFamily.monoMedium,
-      color: c.fg,
-      minWidth: 44,
-      textAlign: 'center',
-    },
-    unit: { ...t.xs, color: c.fgMuted, fontFamily: fontFamily.mono, marginLeft: 2 },
-  });
-}
