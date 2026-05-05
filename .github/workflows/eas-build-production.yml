@@ -1,0 +1,62 @@
+name: EAS production build
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Platform to build
+        required: true
+        default: ios
+        type: choice
+        options:
+          - ios
+          - android
+          - all
+      submit:
+        description: Auto-submit to App Store / Play after build
+        required: true
+        default: true
+        type: boolean
+
+concurrency:
+  group: eas-build-production-${{ github.event.inputs.platform }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build ${{ github.event.inputs.platform }} (production)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build (and submit if requested)
+        run: |
+          if [ "${{ github.event.inputs.submit }}" = "true" ]; then
+            eas build \
+              --profile production \
+              --platform ${{ github.event.inputs.platform }} \
+              --non-interactive \
+              --auto-submit
+          else
+            eas build \
+              --profile production \
+              --platform ${{ github.event.inputs.platform }} \
+              --non-interactive
+          fi
