@@ -11,6 +11,7 @@ import TimerListScreen from './src/screens/TimerListScreen';
 import TimerEditorScreen from './src/screens/TimerEditorScreen';
 import ActiveWorkoutScreen from './src/screens/ActiveWorkoutScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import Credits from './src/components/Credits';
 import { QA_MODE } from './src/qa/qaMode';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -60,6 +61,9 @@ export default function App() {
           options={{ gestureEnabled: false }}
         />
         <Stack.Screen name="Settings" component={SettingsScreen} />
+        <Stack.Screen name="Acknowledgements">
+          {(props) => <Credits onBack={() => props.navigation.goBack()} />}
+        </Stack.Screen>
       </Stack.Navigator>
     </NavigationContainer>
   );

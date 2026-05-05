@@ -88,4 +88,5 @@ export type RootStackParamList = {
   TimerEditor: { timerId?: string };
   ActiveWorkout: { timerId: string };
   Settings: undefined;
+  Acknowledgements: undefined;
 };
