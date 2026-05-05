@@ -17,16 +17,22 @@ on:
         required: true
         default: true
         type: boolean
+  push:
+    tags:
+      - 'v*'
 
 concurrency:
-  group: eas-build-production-${{ github.event.inputs.platform }}
+  group: eas-build-production-${{ github.event.inputs.platform || 'ios' }}
   cancel-in-progress: false
 
 jobs:
   build:
-    name: Build ${{ github.event.inputs.platform }} (production)
+    name: Build production
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    env:
+      PLATFORM: ${{ github.event.inputs.platform || 'ios' }}
+      SUBMIT: ${{ github.event.inputs.submit || 'true' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -48,15 +54,15 @@ jobs:
 
       - name: Build (and submit if requested)
         run: |
-          if [ "${{ github.event.inputs.submit }}" = "true" ]; then
+          if [ "$SUBMIT" = "true" ]; then
             eas build \
               --profile production \
-              --platform ${{ github.event.inputs.platform }} \
+              --platform "$PLATFORM" \
               --non-interactive \
               --auto-submit
           else
             eas build \
               --profile production \
-              --platform ${{ github.event.inputs.platform }} \
+              --platform "$PLATFORM" \
               --non-interactive
           fi
