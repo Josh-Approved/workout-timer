@@ -9,16 +9,23 @@ import {
   Linking,
   Alert,
   Switch,
+  Platform,
 } from 'react-native';
 import * as Speech from 'expo-speech';
+import * as Application from 'expo-application';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
   ChevronLeft,
+  ChevronRight,
   Coffee,
+  Code,
+  Library,
   Mail,
   Minus,
   Plus,
+  Shield,
+  Star,
 } from 'lucide-react-native';
 import {
   RootStackParamList,
@@ -52,6 +59,23 @@ const VOICE_PREVIEW_PHRASES: Partial<Record<keyof Omit<SoundSettings, 'countdown
   workoutComplete: 'Workout Complete',
   halfwaySound: 'Halfway',
 };
+
+const APP_STORE_ID = '6766071864';
+const ANDROID_PACKAGE_NAME = 'com.jtysonwilliams.freeworkouttimer';
+const GITHUB_REPO_URL = 'https://github.com/jtysonwilliams/Free-Workout-Timer';
+const PRIVACY_URL = `${GITHUB_REPO_URL}/blob/main/PRIVACY.md`;
+const BMAC_URL = 'https://buymeacoffee.com/jtysonwilliams';
+
+const reviewUrl =
+  Platform.OS === 'ios'
+    ? `itms-apps://itunes.apple.com/app/id${APP_STORE_ID}?action=write-review`
+    : `https://play.google.com/store/apps/details?id=${ANDROID_PACKAGE_NAME}&showAllReviews=true`;
+
+function formatVersion(): string {
+  const version = Application.nativeApplicationVersion ?? '—';
+  const build = Application.nativeBuildVersion;
+  return build ? `${version} (${build})` : version;
+}
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
 
@@ -269,40 +293,99 @@ export default function SettingsScreen({ navigation }: Props) {
 
         <Text style={s.sectionHeader} accessibilityRole="header">About</Text>
         <View style={s.card}>
-          <View style={s.row}>
-            <Text style={s.rowTitle}>Version</Text>
-            <Text style={s.rowValue}>1.0.0</Text>
-          </View>
-        </View>
-
-        <View style={s.aboutButtons}>
           <Pressable
-            style={({ pressed }) => [s.secondaryButton, pressed && s.pressed]}
-            onPress={() => Linking.openURL('https://buymeacoffee.com/jtysonwilliams')}
+            style={({ pressed }) => [s.aboutRow, pressed && s.pressed]}
+            onPress={() => Linking.openURL(BMAC_URL).catch(() => {})}
             accessibilityLabel="Buy me a coffee"
             accessibilityRole="link"
             accessibilityHint="Opens buymeacoffee.com in your browser"
           >
-            <Coffee size={18} color={c.fg} strokeWidth={1.5} />
-            <Text style={s.secondaryButtonText}>Buy me a coffee</Text>
+            <Coffee size={20} color={c.fg} strokeWidth={1.5} />
+            <Text style={s.aboutRowLabel}>Buy me a coffee?</Text>
+            <ChevronRight size={18} color={c.fgMuted} strokeWidth={1.5} />
           </Pressable>
           <Pressable
-            style={({ pressed }) => [s.secondaryButton, pressed && s.pressed]}
+            style={({ pressed }) => [s.aboutRow, s.aboutRowBorder, pressed && s.pressed]}
             onPress={() => Linking.openURL(buildFeedbackEmailUrl())}
             accessibilityLabel="Send feedback"
             accessibilityRole="link"
             accessibilityHint="Opens your email app to send feedback or report a bug"
           >
-            <Mail size={18} color={c.fg} strokeWidth={1.5} />
-            <Text style={s.secondaryButtonText}>Send feedback</Text>
+            <Mail size={20} color={c.fg} strokeWidth={1.5} />
+            <Text style={s.aboutRowLabel}>Send feedback</Text>
+            <ChevronRight size={18} color={c.fgMuted} strokeWidth={1.5} />
           </Pressable>
+          <Pressable
+            style={({ pressed }) => [s.aboutRow, s.aboutRowBorder, pressed && s.pressed]}
+            onPress={() => Linking.openURL(reviewUrl).catch(() => {})}
+            accessibilityLabel="Leave a review"
+            accessibilityRole="link"
+            accessibilityHint="Opens the app store to leave a review"
+          >
+            <Star size={20} color={c.fg} strokeWidth={1.5} />
+            <Text style={s.aboutRowLabel}>Leave a review</Text>
+            <ChevronRight size={18} color={c.fgMuted} strokeWidth={1.5} />
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [s.aboutRow, s.aboutRowBorder, pressed && s.pressed]}
+            onPress={() => Linking.openURL(PRIVACY_URL).catch(() => {})}
+            accessibilityLabel="Privacy"
+            accessibilityRole="link"
+            accessibilityHint="Opens this app's privacy statement on GitHub"
+          >
+            <Shield size={20} color={c.fg} strokeWidth={1.5} />
+            <Text style={s.aboutRowLabel}>Privacy</Text>
+            <ChevronRight size={18} color={c.fgMuted} strokeWidth={1.5} />
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [s.aboutRow, s.aboutRowBorder, pressed && s.pressed]}
+            onPress={() => Linking.openURL(GITHUB_REPO_URL).catch(() => {})}
+            accessibilityLabel="Source code"
+            accessibilityRole="link"
+            accessibilityHint="Opens this app's public source code on GitHub"
+          >
+            <Code size={20} color={c.fg} strokeWidth={1.5} />
+            <Text style={s.aboutRowLabel}>Source code</Text>
+            <ChevronRight size={18} color={c.fgMuted} strokeWidth={1.5} />
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [s.aboutRow, s.aboutRowBorder, pressed && s.pressed]}
+            onPress={() => navigation.navigate('Acknowledgements')}
+            accessibilityLabel="Acknowledgements"
+            accessibilityRole="button"
+            accessibilityHint="Opens credits for the open-source projects this app is built on"
+          >
+            <Library size={20} color={c.fg} strokeWidth={1.5} />
+            <Text style={s.aboutRowLabel}>Acknowledgements</Text>
+            <ChevronRight size={18} color={c.fgMuted} strokeWidth={1.5} />
+          </Pressable>
+          <View
+            style={[s.aboutRow, s.aboutRowBorder]}
+            accessible
+            accessibilityRole="text"
+            accessibilityLabel={`Version ${formatVersion()}`}
+          >
+            <View style={s.aboutRowIconSpacer} importantForAccessibility="no" />
+            <Text style={s.aboutRowLabel} importantForAccessibility="no">Version</Text>
+            <Text style={s.versionValue} importantForAccessibility="no">{formatVersion()}</Text>
+          </View>
         </View>
 
         <View style={s.stamp}>
           <Wordmark />
           <Text style={s.stampText}>
-            Made by two people. Your data stays on your device. The code is on GitHub.
+            Privacy-first replacements for paywalled utility apps. Open source. Pay what you want.
           </Text>
+          <Pressable
+            onPress={() => Linking.openURL('https://joshapproved.com').catch(() => {})}
+            hitSlop={8}
+            accessibilityLabel="Learn more about Josh Approved"
+            accessibilityRole="link"
+            accessibilityHint="Opens joshapproved.com in your browser"
+            style={({ pressed }) => pressed && s.pressed}
+          >
+            <Text style={s.stampLink}>Learn more</Text>
+          </Pressable>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -376,24 +459,30 @@ function makeStyles(c: Colors) {
     rowHint: { ...t.xs, color: c.fgMuted, fontFamily: fontFamily.sans, marginTop: 2 },
     rowValue: { ...t.sm, color: c.fgMuted, fontFamily: fontFamily.mono },
 
-    aboutButtons: { gap: space.s3, marginBottom: space.s6 },
-    secondaryButton: {
+    aboutRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
-      gap: space.s3,
-      minHeight: 44,
+      gap: space.s4,
+      minHeight: 48,
       paddingHorizontal: space.s5,
-      paddingVertical: space.s3,
-      borderRadius: radius.md,
-      borderWidth: 1,
-      borderColor: c.hairlineStrong,
+      paddingVertical: space.s4,
       backgroundColor: c.bgElevated,
     },
-    secondaryButtonText: {
+    aboutRowBorder: {
+      borderTopWidth: hairline,
+      borderTopColor: c.hairline,
+    },
+    aboutRowLabel: {
       ...t.sm,
       color: c.fg,
       fontFamily: fontFamily.sansMedium,
+      flex: 1,
+    },
+    aboutRowIconSpacer: { width: 20 },
+    versionValue: {
+      ...t.sm,
+      color: c.fgMuted,
+      fontFamily: fontFamily.mono,
     },
 
     stepper: { flexDirection: 'row', alignItems: 'center', gap: space.s2 },
@@ -443,6 +532,13 @@ function makeStyles(c: Colors) {
       fontFamily: fontFamily.sans,
       textAlign: 'center',
       paddingHorizontal: space.s6,
+    },
+    stampLink: {
+      ...t.xs,
+      color: c.fg,
+      fontFamily: fontFamily.sansMedium,
+      textDecorationLine: 'underline',
+      textDecorationColor: c.hairlineStrong,
     },
   });
 }

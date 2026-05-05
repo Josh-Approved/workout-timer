@@ -1,3 +1,11 @@
+// Canonical Josh Approved review modal.
+// Source: josh-approved-factory/templates/review-prompt/ReviewModal.tsx
+// Pairs with reviewPrompt.ts. See README.md for rules and wiring.
+//
+// Imports from '../theme' — every Josh Approved app has the design-system
+// tokens synced into src/theme/. Don't reimplement styling here; the modal
+// inherits from the design system so all apps look like siblings.
+
 import React from 'react';
 import {
   Modal,
@@ -8,7 +16,7 @@ import {
   Linking,
   Platform,
 } from 'react-native';
-import { markReviewOpened, dismissReviewPrompt } from '../storage/reviewStorage';
+import { markReviewOpened, dismissReviewPrompt } from '../storage/reviewPrompt';
 import {
   useTheme,
   fontFamily,
@@ -19,28 +27,48 @@ import {
   Colors,
 } from '../theme';
 
-const IOS_STORE_URL = 'itms-apps://itunes.apple.com/app/id[APP_STORE_ID]?action=write-review';
-const ANDROID_STORE_URL =
-  'https://play.google.com/store/apps/details?id=com.jtysonwilliams.freeworkouttimer&showAllReviews=true';
-
 interface Props {
   visible: boolean;
   onDismiss: () => void;
+  /** App name as shown in the title — sentence case, no trademark. */
+  appName: string;
+  /** Numeric App Store ID (e.g. "6766071864"). */
+  iosAppStoreId: string;
+  /** Android applicationId (e.g. "com.jtysonwilliams.freeworkouttimer"). */
+  androidPackageName: string;
+  /** Optional override for the body line. Defaults to the canonical copy. */
+  bodyText?: string;
+  /** Optional override for the AsyncStorage key (rare — only for multi-surface apps). */
+  storageKey?: string;
 }
 
-export default function ReviewModal({ visible, onDismiss }: Props) {
+const DEFAULT_BODY =
+  'A quick rating helps more people find this free, ad-free app.';
+
+export default function ReviewModal({
+  visible,
+  onDismiss,
+  appName,
+  iosAppStoreId,
+  androidPackageName,
+  bodyText,
+  storageKey,
+}: Props) {
   const { c } = useTheme();
   const s = makeStyles(c);
 
   const handleReview = async () => {
-    await markReviewOpened();
-    const url = Platform.OS === 'ios' ? IOS_STORE_URL : ANDROID_STORE_URL;
+    await markReviewOpened(storageKey);
+    const url =
+      Platform.OS === 'ios'
+        ? `itms-apps://itunes.apple.com/app/id${iosAppStoreId}?action=write-review`
+        : `https://play.google.com/store/apps/details?id=${androidPackageName}&showAllReviews=true`;
     await Linking.openURL(url).catch(() => {});
     onDismiss();
   };
 
   const handleDismiss = async () => {
-    await dismissReviewPrompt();
+    await dismissReviewPrompt(storageKey);
     onDismiss();
   };
 
@@ -48,10 +76,8 @@ export default function ReviewModal({ visible, onDismiss }: Props) {
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
       <View style={s.overlay}>
         <View style={s.card}>
-          <Text style={s.title}>Enjoying Free workout timer?</Text>
-          <Text style={s.body}>
-            A quick rating helps more people find this free, ad-free app.
-          </Text>
+          <Text style={s.title}>{`Enjoying ${appName}?`}</Text>
+          <Text style={s.body}>{bodyText ?? DEFAULT_BODY}</Text>
           <Pressable
             style={({ pressed }) => [s.primaryBtn, pressed && s.pressed]}
             onPress={handleReview}
