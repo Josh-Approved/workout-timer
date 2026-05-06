@@ -11,7 +11,16 @@
 // ticks. The glyph reads as "timer" on its own. No corner badges; iOS's
 // squircle mask clips them and small render sizes turn extras into noise.
 //
-// Run from FWT repo root:  node scripts/build-icon.mjs
+// Run from FWT repo root:
+//   npm install --no-save sharp
+//   node scripts/build-icon.mjs
+//
+// `sharp` is intentionally NOT a devDependency of this project — it's a
+// native-module SVG renderer that has no place in the React Native app's
+// install graph. Adding it pulled prebuilt libvips binaries into every EAS
+// Build install, which broke iOS production builds. Install it ad-hoc here
+// when regenerating icons; uninstall after if you want to keep node_modules
+// clean.
 
 import fs from 'node:fs';
 import path from 'node:path';
