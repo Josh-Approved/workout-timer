@@ -28,8 +28,8 @@ import { AudioEngine } from '../audio/AudioEngine';
 import { recordSuccessfulCompletion } from '../storage/reviewPrompt';
 import ReviewModal from '../components/ReviewModal';
 
-const APP_STORE_ID = '6766071864';
-const ANDROID_PACKAGE_NAME = 'com.jtysonwilliams.freeworkouttimer';
+const APP_STORE_ID = '6767314178';
+const ANDROID_PACKAGE_NAME = 'com.joshapproved.freeworkouttimer';
 import {
   useTheme,
   fontFamily,
