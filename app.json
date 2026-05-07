@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.jtysonwilliams.freeworkouttimer",
+      "bundleIdentifier": "com.joshapproved.freeworkouttimer",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -35,7 +35,7 @@
         "projectId": "b7035cd5-9963-4268-b22f-2c77ef1045e3"
       }
     },
-    "owner": "jtysonwilliams",
+    "owner": "josh-approved",
     "runtimeVersion": {
       "policy": "appVersion"
     },
