@@ -5,12 +5,12 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  SafeAreaView,
   Linking,
   Alert,
   Switch,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Speech from 'expo-speech';
 import * as Application from 'expo-application';
 import { useFocusEffect } from '@react-navigation/native';

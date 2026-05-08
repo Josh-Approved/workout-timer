@@ -14,9 +14,9 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  SafeAreaView,
   Linking,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, ExternalLink } from 'lucide-react-native';
 import { CREDITS, CREDITS_INTRO } from '../data/credits';
 import {
