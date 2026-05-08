@@ -25,7 +25,16 @@
         "backgroundColor": "#FAFAF7"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+      ],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.joshapproved.freeworkouttimer"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -43,7 +52,12 @@
       "url": "https://u.expo.dev/b7035cd5-9963-4268-b22f-2c77ef1045e3"
     },
     "plugins": [
-      "expo-audio",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false
+        }
+      ],
       "expo-font"
     ]
   }

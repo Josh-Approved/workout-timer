@@ -4,6 +4,7 @@ import { NavigationContainer, DefaultTheme, DarkTheme, Theme } from '@react-navi
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import * as ScreenOrientation from 'expo-screen-orientation';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RootStackParamList } from './src/types';
 import { AudioEngine } from './src/audio/AudioEngine';
 import { useAppFonts, lightColors, darkColors, fontFamily } from './src/theme';
@@ -50,21 +51,23 @@ export default function App() {
   if (!fontsLoaded) return null;
 
   return (
-    <NavigationContainer theme={buildNavTheme(isDark)}>
-      <StatusBar style={isDark ? 'light' : 'dark'} />
-      <Stack.Navigator screenOptions={{ headerShown: false, animation: QA_MODE ? 'none' : undefined }}>
-        <Stack.Screen name="TimerList" component={TimerListScreen} />
-        <Stack.Screen name="TimerEditor" component={TimerEditorScreen} />
-        <Stack.Screen
-          name="ActiveWorkout"
-          component={ActiveWorkoutScreen}
-          options={{ gestureEnabled: false }}
-        />
-        <Stack.Screen name="Settings" component={SettingsScreen} />
-        <Stack.Screen name="Acknowledgements">
-          {(props) => <Credits onBack={() => props.navigation.goBack()} />}
-        </Stack.Screen>
-      </Stack.Navigator>
-    </NavigationContainer>
+    <SafeAreaProvider>
+      <NavigationContainer theme={buildNavTheme(isDark)}>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <Stack.Navigator screenOptions={{ headerShown: false, animation: QA_MODE ? 'none' : undefined }}>
+          <Stack.Screen name="TimerList" component={TimerListScreen} />
+          <Stack.Screen name="TimerEditor" component={TimerEditorScreen} />
+          <Stack.Screen
+            name="ActiveWorkout"
+            component={ActiveWorkoutScreen}
+            options={{ gestureEnabled: false }}
+          />
+          <Stack.Screen name="Settings" component={SettingsScreen} />
+          <Stack.Screen name="Acknowledgements">
+            {(props) => <Credits onBack={() => props.navigation.goBack()} />}
+          </Stack.Screen>
+        </Stack.Navigator>
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 }

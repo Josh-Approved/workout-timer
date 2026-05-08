@@ -5,10 +5,10 @@ import {
   Pressable,
   StyleSheet,
   Alert,
-  SafeAreaView,
   useWindowDimensions,
   AccessibilityInfo,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import * as Speech from 'expo-speech';
 import * as ScreenOrientation from 'expo-screen-orientation';
