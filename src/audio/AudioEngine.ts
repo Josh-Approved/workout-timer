@@ -49,7 +49,7 @@ function uint8ArrayToBase64(bytes: Uint8Array): string {
   return result;
 }
 
-function generateSequenceWav(tones: ToneSpec[], sampleRate = 22050): Uint8Array {
+function generateSequenceWav(tones: ToneSpec[], sampleRate = 44100): Uint8Array {
   const writeStr = (view: DataView, offset: number, str: string) => {
     for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
   };
@@ -78,19 +78,35 @@ function generateSequenceWav(tones: ToneSpec[], sampleRate = 22050): Uint8Array 
   writeStr(view, 36, 'data');
   view.setUint32(40, numBytes, true);
 
+  // Peak amplitude as a fraction of full scale. Headroom of ~3% absorbs the
+  // small overshoot from the harmonic stack below without clipping.
+  const PEAK = 0.97;
+  // Sum of weights for the band-limited square approximation. Used to
+  // normalize the waveform back to ±1 before scaling to PEAK.
+  const HARMONIC_NORM = 1 + 1 / 3 + 1 / 5 + 1 / 7;
+
   let byteOffset = 44;
   for (const tone of tones) {
     const toneSamples = Math.floor(sampleRate * tone.duration);
     const delaySamples = tone.delayAfter > 0 ? Math.floor(sampleRate * tone.delayAfter) : 0;
     const attack = Math.min(Math.floor(sampleRate * 0.005), toneSamples);
     const release = Math.min(Math.floor(sampleRate * 0.015), toneSamples);
+    const nyquist = sampleRate / 2;
 
     for (let i = 0; i < toneSamples; i++) {
       const t = i / sampleRate;
       let env = 1;
       if (i < attack) env = i / attack;
       else if (i > toneSamples - release) env = (toneSamples - i) / release;
-      const sample = Math.round(Math.sin(2 * Math.PI * tone.frequency * t) * 0.7 * env * 32767);
+
+      const w = 2 * Math.PI * tone.frequency * t;
+      let wave = Math.sin(w);
+      if (tone.frequency * 3 < nyquist) wave += Math.sin(3 * w) / 3;
+      if (tone.frequency * 5 < nyquist) wave += Math.sin(5 * w) / 5;
+      if (tone.frequency * 7 < nyquist) wave += Math.sin(7 * w) / 7;
+      wave /= HARMONIC_NORM;
+
+      const sample = Math.round(wave * PEAK * env * 32767);
       view.setInt16(byteOffset, Math.max(-32768, Math.min(32767, sample)), true);
       byteOffset += 2;
     }
@@ -127,7 +143,10 @@ class AudioEngineClass {
   }
 
   private async cache(key: string, tones: ToneSpec[], cacheDir: string): Promise<void> {
-    const uri = `${cacheDir}fwt_${key}.wav`;
+    // Bump the version segment whenever generateSequenceWav changes so that
+    // existing users regenerate their cached tones instead of replaying stale
+    // ones.
+    const uri = `${cacheDir}fwt_v2_${key}.wav`;
     const info = await FileSystem.getInfoAsync(uri);
     if (!info.exists) {
       const wav = generateSequenceWav(tones);
