@@ -52,6 +52,11 @@ jobs:
       # time. eas build --local invokes Metro through the standard Expo
       # pipeline, which honours runner-shell env. No eas.json change needed.
       EXPO_PUBLIC_QA_MODE: '1'
+      # Maestro's XCTest driver occasionally takes >2 min to start on macos-15
+      # (the runner's first XCTest launch warms multiple subsystems). The
+      # default startup timeout fails the run on those cold starts; bump to
+      # 5 min so the driver gets a fair shot before we declare the run dead.
+      MAESTRO_DRIVER_STARTUP_TIMEOUT: '300000'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

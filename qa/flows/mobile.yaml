@@ -9,8 +9,10 @@
 ######################################################################
 
 appId: com.joshapproved.freeworkouttimer
-env:
-  STORE: ios
+
+# STORE is supplied per-platform from the workflow via `--env=STORE=ios|android`.
+# Don't put a default here — Maestro's flow-level env block out-ranks the CLI
+# flag, so a default here silently wins on the wrong platform.
 
 ---
 - launchApp:
