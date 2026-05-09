@@ -24,10 +24,15 @@ env:
 - takeScreenshot: qa/captures/${STORE}/00-launch
 
 # Waypoint 1 — timer list with the three QA fixture timers.
+# NOTE: Maestro's `text:` selector matches accessibilityLabel (iOS) /
+# contentDescription (Android), NOT bare visible text inside an accessible
+# Pressable. Each timer card is a Pressable with label "Edit <name>" — that
+# label swallows the inner title Text from the accessibility tree, so we
+# assert against the label, not the title string.
 - extendedWaitUntil:
     visible: "Free workout timer"
     timeout: 30000
-- assertVisible: "Standard Tabata"
+- assertVisible: "Edit Standard Tabata"
 - takeScreenshot: qa/captures/${STORE}/list
 
 # Waypoint 2 — editor for Standard Tabata.

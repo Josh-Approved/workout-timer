@@ -170,6 +170,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: store-assets-ios
+          # Maestro writes debug to `maestro-debug-ios/.maestro/...`; v4
+          # excludes hidden paths by default, so the debug bundle silently
+          # disappears without this flag.
+          include-hidden-files: true
           path: |
             store-assets/screenshots/ios/
             qa/captures/ios/
@@ -208,6 +212,11 @@ jobs:
       - name: EAS local build (Android APK)
         # Profile: preview, with `android.buildType: "apk"` in eas.json so the
         # output is an emulator-installable APK directly (no .aab, no tarball).
+        # GRADLE_OPTS bumps heap and Metaspace — Expo apps with KSP
+        # (expo-updates) and lint analysis OOM under the default Gradle JVM
+        # config on ubuntu-latest.
+        env:
+          GRADLE_OPTS: '-Xmx4g -XX:MaxMetaspaceSize=1g'
         run: |
           set -o pipefail
           eas build \
@@ -283,6 +292,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: store-assets-android
+          include-hidden-files: true
           path: |
             store-assets/screenshots/android/
             qa/captures/android/
