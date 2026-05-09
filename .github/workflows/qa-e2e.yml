@@ -8,8 +8,22 @@ name: QA e2e
 # Gated to pull_request + workflow_dispatch only. Do NOT add `push: main` here —
 # every push would burn 15+ minutes per platform.
 #
-# Surface gating runs in the `detect` job (not job-level `if:` with hashFiles,
-# which fails because the workspace isn't checked out at job-eligibility time).
+# Build is performed by `eas build --local`, NOT raw xcodebuild / gradlew. The
+# Expo build pipeline runs prebuild + pod install + Metro bundling itself, with
+# the asset registry in place — bypassing it (e.g. via manual `expo
+# export:embed`) breaks `expo-font` at runtime so the app boots blank. See
+# stack/eas-build.md for the canonical reasoning.
+#
+# Surface gating runs in the `detect` job (NOT job-level `if: hashFiles(...)`,
+# which fails because the workspace isn't checked out at job-eligibility time
+# and causes GitHub to reject the entire workflow at registration).
+#
+# Each platform job runs the framer at the end, so framed PNGs are produced
+# inside the job and uploaded as a single per-surface artifact. No cross-job
+# choreography, no cross-repo access required.
+#
+# Required repo secret: EXPO_TOKEN. Used by `expo/expo-github-action@v8` for
+# `eas build --local` project-identity validation.
 
 on:
   pull_request:
@@ -32,8 +46,11 @@ jobs:
     needs: detect
     if: needs.detect.outputs.is-rn == 'true'
     runs-on: macos-15
-    timeout-minutes: 45
+    timeout-minutes: 60
     env:
+      # EXPO_PUBLIC_* env is inlined into the JS bundle by Metro at bundle
+      # time. eas build --local invokes Metro through the standard Expo
+      # pipeline, which honours runner-shell env. No eas.json change needed.
       EXPO_PUBLIC_QA_MODE: '1'
     steps:
       - uses: actions/checkout@v4
@@ -45,112 +62,74 @@ jobs:
         run: |
           curl -Ls "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> $GITHUB_PATH
-      - name: Install xcbeautify
-        run: brew install xcbeautify
       - uses: maxim-lobanov/setup-xcode@v1
         with:
-          # Xcode 26.2 SDK matches the iOS 26.2 simulator runtime pre-installed
-          # on the macos-15 runner. xcodebuild requires an exact SDK ↔ runtime
-          # match (not just SDK <= runtime); pinning to a Xcode whose SDK has
-          # no matching runtime causes "iOS X.Y is not installed" failures.
+          # macos-15 runners are Apple Silicon (arm64). Xcode 26.2 ships SDK
+          # iOS 26.2, matching the iOS 26.2 simulator runtime pre-installed on
+          # the image. Pinning Xcode is on us — eas.json's `image` field is
+          # IGNORED for --local builds. If macos-15's image changes:
+          # - re-check via setup-xcode failure output (lists installed Xcodes)
+          # - cross-check with `xcrun simctl list runtimes` (installed runtimes)
+          # - update both pins together.
           xcode-version: '26.2.0'
-      - uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.2'
-          bundler-cache: false
       - name: npm ci
         run: npm ci
-      - name: Expo prebuild (ios)
-        run: npx expo prebuild --platform ios --clean --no-install
-      - name: Bundle JS (ios)
+      - name: Setup Expo + EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - name: EAS local build (iOS simulator)
+        # Profile: preview, with `ios.simulator: true` in eas.json so the
+        # output is a simulator-installable .app archive. Output is a tarball
+        # containing the .app bundle (per Expo docs + eas-cli #1959).
+        # --output requires a FILE PATH (not directory) with extension.
         run: |
-          mkdir -p ios
-          npx expo export:embed \
+          set -o pipefail
+          eas build \
             --platform ios \
-            --dev false \
-            --entry-file index.ts \
-            --bundle-output ios/main.jsbundle \
-            --assets-dest ios
-      - name: Cache CocoaPods
-        uses: actions/cache@v4
-        with:
-          path: ios/Pods
-          key: pods-${{ hashFiles('ios/Podfile.lock') }}
-          restore-keys: pods-
-      - name: pod install
-        working-directory: ios
-        run: |
-          set -o pipefail
-          gem install cocoapods --no-document
-          pod install --repo-update 2>&1 | tee ../pod-install.log
-      - name: Upload pod install log on failure
+            --profile preview \
+            --local \
+            --non-interactive \
+            --output "$GITHUB_WORKSPACE/ios-build.tar.gz" 2>&1 | tee eas-build-ios.log
+      - name: Upload eas build log on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: ios-pod-log
-          path: pod-install.log
-      - name: Detect Xcode workspace + scheme
-        id: xcode
+          name: ios-eas-build-log
+          path: eas-build-ios.log
+      - name: Extract simulator .app
+        id: extract
         run: |
-          WS=$(ls ios | grep '\.xcworkspace$' | head -1)
-          if [ -z "$WS" ]; then
-            echo "::error::no .xcworkspace found in ios/"
+          mkdir -p extracted-ios
+          tar -xzf "$GITHUB_WORKSPACE/ios-build.tar.gz" -C extracted-ios
+          APP_PATH=$(find extracted-ios -maxdepth 3 -name "*.app" -type d -print -quit)
+          if [ -z "$APP_PATH" ]; then
+            echo "::error::no .app bundle found in ios-build.tar.gz"
+            ls -laR extracted-ios | head -80
             exit 1
           fi
-          # Scheme matches the .xcodeproj name for Expo apps; xcodebuild -list also
-          # surfaces Pod schemes (EASClient etc.) which we must NOT pick.
-          PROJ=$(ls ios | grep '\.xcodeproj$' | head -1)
-          if [ -z "$PROJ" ]; then
-            echo "::error::no .xcodeproj found in ios/"
+          echo "App path: $APP_PATH"
+          echo "app-path=$APP_PATH" >> "$GITHUB_OUTPUT"
+      - name: Verify .app architecture (arm64 sim required)
+        # eas-cli #3281: --local can produce an x86_64-only .app on Apple
+        # Silicon, which fails to install on macos-15 sims. Fail fast with a
+        # clear message instead of silently breaking the install step.
+        run: |
+          BIN_PATH="${{ steps.extract.outputs.app-path }}"
+          BINARY=$(find "$BIN_PATH" -maxdepth 2 -type f -perm +111 ! -name "*.dylib" | head -1)
+          echo "Binary: $BINARY"
+          ARCHS=$(lipo -archs "$BINARY" 2>/dev/null || echo "unknown")
+          echo "Architectures: $ARCHS"
+          if ! echo "$ARCHS" | grep -q "arm64"; then
+            echo "::error::Built .app missing arm64 slice; will not install on Apple Silicon sim. See eas-cli #3281."
             exit 1
           fi
-          SCHEME="${PROJ%.xcodeproj}"
-          echo "Workspace: ios/$WS"
-          echo "Scheme: $SCHEME"
-          echo "workspace=ios/$WS" >> "$GITHUB_OUTPUT"
-          echo "scheme=$SCHEME" >> "$GITHUB_OUTPUT"
-      - name: Inspect simulator runtimes + devices
-        run: |
-          echo "=== xcodebuild -version ==="
-          xcodebuild -version
-          echo "=== runtimes ==="
-          xcrun simctl list runtimes
-          echo "=== devices (iOS) ==="
-          xcrun simctl list devices available iOS
-          echo "=== xcodebuild -showdestinations (the canonical list) ==="
-          xcodebuild -workspace "${{ steps.xcode.outputs.workspace }}" -scheme "${{ steps.xcode.outputs.scheme }}" -showdestinations 2>&1 | head -80 || true
-      - name: Build for iPhone simulator
-        run: |
-          set -o pipefail
-          # Use generic iOS Simulator destination — xcodebuild picks the correct
-          # SDK + a compatible simulator from what's installed. Avoids the trap
-          # of name/OS mismatches where a runtime is installed but xcodebuild
-          # rejects the explicit specifier.
-          xcodebuild \
-            -workspace "${{ steps.xcode.outputs.workspace }}" \
-            -scheme "${{ steps.xcode.outputs.scheme }}" \
-            -configuration Debug \
-            -sdk iphonesimulator \
-            -derivedDataPath build \
-            -destination "generic/platform=iOS Simulator" \
-            CODE_SIGNING_ALLOWED=NO 2>&1 | tee xcodebuild.log | xcbeautify
-      - name: Show xcodebuild log on failure
-        if: failure()
-        run: |
-          echo "=== xcodebuild.log (full, raw) ==="
-          if [ -f xcodebuild.log ]; then cat xcodebuild.log; else echo "(no log file)"; fi
-      - name: Upload xcodebuild log on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ios-xcodebuild-log
-          path: xcodebuild.log
       - name: Boot iPhone 16 Pro Max (iOS 26.2) + normalize status bar
         id: sim
         run: |
-          # Create a fresh iPhone 16 Pro Max on iOS 26.2, matching Xcode 26.2's
-          # bundled SDK. Multiple sims with the same name exist (one per
-          # installed runtime), so we pin via UDID.
+          # Multiple sims with the same name exist (one per installed
+          # runtime), so we pin via UDID created against the iOS 26.2 runtime.
           UDID=$(xcrun simctl create "qa-iphone" "iPhone 16 Pro Max" "com.apple.CoreSimulator.SimRuntime.iOS-26-2")
           echo "udid=$UDID" >> "$GITHUB_OUTPUT"
           xcrun simctl boot "$UDID"
@@ -160,10 +139,7 @@ jobs:
             --batteryState charged --batteryLevel 100 \
             --cellularBars 4 --wifiBars 3
       - name: Install app on simulator
-        run: |
-          APP_PATH=$(find build -name "*.app" -type d -path "*/Debug-iphonesimulator/*" | head -1)
-          echo "App path: $APP_PATH"
-          xcrun simctl install ${{ steps.sim.outputs.udid }} "$APP_PATH"
+        run: xcrun simctl install ${{ steps.sim.outputs.udid }} "${{ steps.extract.outputs.app-path }}"
       - name: Run Maestro flow
         run: |
           mkdir -p qa/captures/ios
@@ -220,36 +196,37 @@ jobs:
         run: |
           curl -Ls "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+      - name: Install Chrome (for framer)
+        run: sudo apt-get update && sudo apt-get install -y google-chrome-stable
       - name: npm ci
         run: npm ci
-      - name: Expo prebuild (android)
-        run: npx expo prebuild --platform android --clean --no-install
-      - name: Bundle JS (android)
-        run: |
-          mkdir -p android/app/src/main/assets android/app/src/main/res
-          npx expo export:embed \
-            --platform android \
-            --dev false \
-            --entry-file index.ts \
-            --bundle-output android/app/src/main/assets/index.android.bundle \
-            --assets-dest android/app/src/main/res
-      - name: Cache Gradle
-        uses: actions/cache@v4
+      - name: Setup Expo + EAS CLI
+        uses: expo/expo-github-action@v8
         with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-${{ hashFiles('android/gradle/wrapper/gradle-wrapper.properties', 'android/build.gradle', 'android/app/build.gradle') }}
-      - name: Build debug APK
-        working-directory: android
-        run: ./gradlew assembleDebug --no-daemon
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - name: EAS local build (Android APK)
+        # Profile: preview, with `android.buildType: "apk"` in eas.json so the
+        # output is an emulator-installable APK directly (no .aab, no tarball).
+        run: |
+          set -o pipefail
+          eas build \
+            --platform android \
+            --profile preview \
+            --local \
+            --non-interactive \
+            --output "$GITHUB_WORKSPACE/build.apk" 2>&1 | tee eas-build-android.log
+      - name: Upload eas build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-eas-build-log
+          path: eas-build-android.log
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Install Chrome (for framer)
-        run: sudo apt-get update && sudo apt-get install -y google-chrome-stable
       - name: Write Android e2e script to file
         run: |
           # android-emulator-runner@v2 runs each line of `script:` in its own
@@ -258,8 +235,8 @@ jobs:
           cat > /tmp/run-android-e2e.sh <<'SCRIPT_EOF'
           #!/usr/bin/env bash
           set -e
-          adb install -r android/app/build/outputs/apk/debug/app-debug.apk
-          adb shell pm list packages | grep freeworkouttimer || true
+          adb install -r "$GITHUB_WORKSPACE/build.apk"
+          adb shell pm list packages | head -5
           mkdir -p qa/captures/android maestro-debug-android
           adb logcat -c
           adb logcat > maestro-debug-android/logcat.txt &
