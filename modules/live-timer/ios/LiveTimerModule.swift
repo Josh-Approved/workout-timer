@@ -13,7 +13,7 @@ public class LiveTimerModule: Module {
         Events("event")
 
         AsyncFunction("getAvailability") { () -> [String: Any?] in
-            if #available(iOS 16.1, *) {
+            if #available(iOS 16.2, *) {
                 let info = ActivityAuthorizationInfo()
                 return [
                     "supported": true,
@@ -24,12 +24,12 @@ public class LiveTimerModule: Module {
             return [
                 "supported": false,
                 "enabled": false,
-                "reason": "ios_version_below_16_1"
+                "reason": "ios_version_below_16_2"
             ]
         }
 
         AsyncFunction("start") { (input: [String: Any]) -> Void in
-            if #available(iOS 16.1, *) {
+            if #available(iOS 16.2, *) {
                 try self.startActivity(input: input)
             } else {
                 throw LiveTimerError.unsupportedOS
@@ -37,19 +37,19 @@ public class LiveTimerModule: Module {
         }
 
         AsyncFunction("update") { (input: [String: Any]) -> Void in
-            if #available(iOS 16.1, *) {
+            if #available(iOS 16.2, *) {
                 try await self.updateActivity(input: input)
             }
         }
 
         AsyncFunction("end") { (sessionId: String) -> Void in
-            if #available(iOS 16.1, *) {
+            if #available(iOS 16.2, *) {
                 await self.endActivity(sessionId: sessionId)
             }
         }
     }
 
-    @available(iOS 16.1, *)
+    @available(iOS 16.2, *)
     private func startActivity(input: [String: Any]) throws {
         guard let sessionId = input["sessionId"] as? String,
               let title = input["title"] as? String,
@@ -94,7 +94,7 @@ public class LiveTimerModule: Module {
         activities[sessionId] = activity
     }
 
-    @available(iOS 16.1, *)
+    @available(iOS 16.2, *)
     private func updateActivity(input: [String: Any]) async throws {
         guard let sessionId = input["sessionId"] as? String,
               let activity = activities[sessionId] as? Activity<LiveTimerAttributes>
@@ -138,7 +138,7 @@ public class LiveTimerModule: Module {
         await activity.update(.init(state: next, staleDate: phaseEnd.addingTimeInterval(60)))
     }
 
-    @available(iOS 16.1, *)
+    @available(iOS 16.2, *)
     private func endActivity(sessionId: String) async {
         guard let activity = activities[sessionId] as? Activity<LiveTimerAttributes> else { return }
         await activity.end(activity.content, dismissalPolicy: .immediate)
