@@ -58,7 +58,8 @@
           "microphonePermission": false
         }
       ],
-      "expo-font"
+      "expo-font",
+      "./plugins/with-gradle-jvm-args"
     ]
   }
 }
