@@ -125,19 +125,27 @@ for (const storeKey of stores) {
     if (onlyShot && shot.id !== onlyShot) return;
     total++;
 
-    const sourcePath = path.isAbsolute(shot.source)
-      ? shot.source
-      : path.join(appDir, 'qa', 'captures', shot.source);
-    if (!fs.existsSync(sourcePath)) {
-      console.warn(`  [skip] ${shot.id}: source not found — ${path.relative(appDir, sourcePath)}`);
-      return;
+    // Two shot kinds: an app screen framed in device chrome (default), or a
+    // generated card with no source file (currently only the Josh Approved
+    // slot-2 card; identical across every app).
+    let url;
+    if (shot.kind === 'card') {
+      url = `${frameUrl}?surface=josh-card`
+        + `&bg=${encodeURIComponent(shot.bg || 'paper')}`;
+    } else {
+      const sourcePath = path.isAbsolute(shot.source)
+        ? shot.source
+        : path.join(appDir, 'qa', 'captures', shot.source);
+      if (!fs.existsSync(sourcePath)) {
+        console.warn(`  [skip] ${shot.id}: source not found — ${path.relative(appDir, sourcePath)}`);
+        return;
+      }
+      const screenUrl = pathToFileURL(sourcePath).href;
+      url = `${frameUrl}?surface=${surface.surface}`
+        + `&screen=${encodeURIComponent(screenUrl)}`
+        + `&caption=${encodeURIComponent(shot.caption || '')}`
+        + `&bg=${encodeURIComponent(shot.bg || 'paper')}`;
     }
-
-    const screenUrl = pathToFileURL(sourcePath).href;
-    const url = `${frameUrl}?surface=${surface.surface}`
-      + `&screen=${encodeURIComponent(screenUrl)}`
-      + `&caption=${encodeURIComponent(shot.caption || '')}`
-      + `&bg=${encodeURIComponent(shot.bg || 'paper')}`;
 
     const seq = String(i + 1).padStart(2, '0');
     const outPath = path.join(outDir, `${seq}-${shot.id}.png`);

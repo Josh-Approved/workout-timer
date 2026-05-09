@@ -160,6 +160,80 @@
   body[data-surface="chrome"] .caption {
     font-size: 36px;
   }
+
+  /* ---------- Josh Approved card (slot 2 of every listing) ----------
+     Generated card, identical across every app. No app screen, no device chrome —
+     a Paper-background card explaining what a Josh Approved app is. Type sizes use
+     vmin so the layout adapts to whichever store dimensions are rendering it
+     (iPhone portrait, Android portrait, iPad portrait, Chrome landscape). */
+  body[data-surface="josh-card"] .stage { display: block; padding: 0; }
+  body[data-surface="josh-card"] .caption { display: none; }
+  .josh-card {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 6vmin 6vmin;
+  }
+  .josh-card__main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 7vmin;
+    width: 100%;
+  }
+  .josh-card__title {
+    font-weight: 600;
+    font-size: 8.5vmin;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    text-align: center;
+    color: var(--fg);
+  }
+  .josh-card__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 4.5vmin;
+    font-weight: 500;
+    font-size: 7vmin;
+    letter-spacing: -0.01em;
+    color: var(--fg);
+  }
+  .josh-card__item {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 3.5vmin;
+  }
+  .josh-card__check {
+    color: var(--green-600);
+    font-weight: 700;
+    font-size: 7.5vmin;
+    line-height: 1;
+  }
+  /* Brand lockup — matches FWT's <Wordmark/> on the settings screen.
+     Lucide-style outline check (stroke 3, rounded), lowercase "josh approved"
+     in IBM Plex Sans SemiBold with tight tracking (mirrors tokens.ts: tracking.mark = -0.6 at base 16). */
+  .josh-card__wordmark {
+    display: flex;
+    align-items: center;
+    gap: 1.4vmin;
+    font-weight: 600;
+    font-size: 3.2vmin;
+    letter-spacing: -0.0375em;
+    color: var(--fg);
+  }
+  .josh-card__wordmark-check {
+    width: 3vmin;
+    height: 3vmin;
+    color: var(--green-600);
+    flex-shrink: 0;
+  }
 </style>
 </head>
 <body>
@@ -188,6 +262,25 @@
           <span class="urlbar"></span>
         </div>
         <div class="body"><img src="${screen}" alt=""></div>
+      </div>`;
+  } else if (surface === 'josh-card') {
+    // Slot 2 of every Josh Approved listing. Identical across every app —
+    // edit the wording here and re-render every app to propagate.
+    frame.innerHTML = `
+      <div class="josh-card">
+        <div class="josh-card__main">
+          <div class="josh-card__title">What's a<br>Josh Approved app?</div>
+          <ul class="josh-card__list">
+            <li class="josh-card__item"><span class="josh-card__check">&#10003;</span><span>No ads, ever</span></li>
+            <li class="josh-card__item"><span class="josh-card__check">&#10003;</span><span>No tracking</span></li>
+            <li class="josh-card__item"><span class="josh-card__check">&#10003;</span><span>Open source</span></li>
+            <li class="josh-card__item"><span class="josh-card__check">&#10003;</span><span>Pay what you want</span></li>
+          </ul>
+        </div>
+        <div class="josh-card__wordmark">
+          <svg class="josh-card__wordmark-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          <span>josh approved</span>
+        </div>
       </div>`;
   } else {
     frame.innerHTML = `
