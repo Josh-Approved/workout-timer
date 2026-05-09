@@ -198,11 +198,11 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     const next: DisplayState = { mode: 'phase', stepIndex: nextIdx, timeRemaining: nextStep.duration };
     stateRef.current = next;
     setDisplayState(next);
-    updateLiveTimer({
-      sessionId: sessionIdRef.current,
-      phases: phasesFrom(steps, nextIdx),
-      phaseStartMs: Date.now(),
-    }).catch(() => {});
+    // Boundary advancement runs natively on both platforms (iOS Live
+    // Activity timer + Android foreground-service Handler), so a JS
+    // tick that lands late won't leave the on-screen timer stuck at
+    // 0:00. JS still drives explicit user actions (skip / restart /
+    // pause / resume) via updateLiveTimer / start / end below.
   }, []);
 
   const startInterval = useCallback(() => {
@@ -698,24 +698,25 @@ function getMaxCycles(steps: PhaseStep[]): number {
   return steps.reduce((max, s) => Math.max(max, s.cycleNumber ?? 0), 0);
 }
 
+// Returns every remaining phase from `idx` onward. The native module on
+// iOS uses the full list to schedule its own boundary timer, so phase
+// transitions don't depend on the JS bridge being awake.
+// `activeOverrideSeconds` shortens the active phase only — used when
+// resuming from pause with partial time remaining.
 function phasesFrom(
   steps: PhaseStep[],
   idx: number,
   activeOverrideSeconds?: number,
 ): LiveTimerPhase[] {
   const out: LiveTimerPhase[] = [];
-  if (steps[idx]) {
+  for (let i = idx; i < steps.length; i++) {
     out.push({
-      id: `step-${idx}`,
-      label: PHASE_LABELS[steps[idx].phase],
-      durationSeconds: activeOverrideSeconds ?? steps[idx].duration,
-    });
-  }
-  if (steps[idx + 1]) {
-    out.push({
-      id: `step-${idx + 1}`,
-      label: PHASE_LABELS[steps[idx + 1].phase],
-      durationSeconds: steps[idx + 1].duration,
+      id: `step-${i}`,
+      label: PHASE_LABELS[steps[i].phase],
+      durationSeconds:
+        i === idx && activeOverrideSeconds != null
+          ? activeOverrideSeconds
+          : steps[i].duration,
     });
   }
   return out;

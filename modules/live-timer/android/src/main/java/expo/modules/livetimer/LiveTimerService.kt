@@ -9,7 +9,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.os.PowerManager
 import android.os.SystemClock
 import androidx.core.app.NotificationCompat
@@ -17,9 +19,17 @@ import androidx.core.app.NotificationCompat
 // Foreground service that hosts the persistent on-screen timer notification.
 // One service for all sessions (Android only ever shows one). Updates the
 // same notification id in place — no notification stream.
+//
+// Phase advancement runs from this service via a main-looper Handler
+// scheduled from the workout schedule passed in at start. Relying on the
+// JS bridge to push boundary updates leaves the chronometer stuck at
+// 0:00 when the bridge gets throttled in deep idle; the service's
+// wakelock keeps the Handler firing reliably.
 
 class LiveTimerService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
+    private val handler = Handler(Looper.getMainLooper())
+    private var boundaryRunnable: Runnable? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -43,8 +53,10 @@ class LiveTimerService : Service() {
                 } else {
                     startForeground(NOTIFICATION_ID, notification)
                 }
+                scheduleNextBoundary()
             }
             ACTION_STOP -> {
+                cancelBoundary()
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }
@@ -53,9 +65,48 @@ class LiveTimerService : Service() {
     }
 
     override fun onDestroy() {
+        cancelBoundary()
         wakeLock?.let { if (it.isHeld) it.release() }
         wakeLock = null
         super.onDestroy()
+    }
+
+    private fun scheduleNextBoundary() {
+        cancelBoundary()
+        val session = LiveTimerStore.current ?: return
+        val delayMs = session.phaseEndMs - System.currentTimeMillis()
+        val safeDelay = if (delayMs < 50L) 50L else delayMs
+        val r = Runnable { onBoundary() }
+        boundaryRunnable = r
+        handler.postDelayed(r, safeDelay)
+    }
+
+    private fun cancelBoundary() {
+        boundaryRunnable?.let { handler.removeCallbacks(it) }
+        boundaryRunnable = null
+    }
+
+    private fun onBoundary() {
+        val current = LiveTimerStore.current ?: return
+        if (current.phases.size <= 1) {
+            // Final phase finished. Leave the notification displaying
+            // 0:00; JS endLiveTimer tears the service down when the
+            // workout completes.
+            return
+        }
+        // Anchor the new phase to the previous phase's scheduled end so
+        // small handler drift doesn't accumulate across phases.
+        val prevPhase = current.phases.first()
+        val nextStartMs = current.phaseStartMs + prevPhase.durationSeconds * 1000L
+        val advanced = current.copy(
+            phases = current.phases.drop(1),
+            phaseStartMs = nextStartMs,
+        )
+        LiveTimerStore.current = advanced
+        val notification = buildNotification(advanced)
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        nm.notify(NOTIFICATION_ID, notification)
+        scheduleNextBoundary()
     }
 
     private fun buildNotification(session: LiveTimerSession): Notification {

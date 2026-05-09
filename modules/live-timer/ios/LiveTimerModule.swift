@@ -4,8 +4,17 @@ import Foundation
 
 // JS → native bridge. Manages a single Live Activity per session id and
 // emits action events back to JS when the user taps a widget button.
+//
+// Phase advancement is driven by a native DispatchSourceTimer scheduled
+// from the workout schedule passed in at start (and replaced on update).
+// The JS bridge is throttled while the host app is backgrounded — even
+// with the audio keep-alive holding the process alive — so relying on a
+// JS-side setInterval to push phase boundary updates leaves the Live
+// Activity stuck at 0:00 between phases. Native scheduling fires at the
+// boundary regardless of JS state.
 public class LiveTimerModule: Module {
-    private var activities: [String: Any] = [:]
+    private var sessions: [String: Any] = [:]   // sessionId -> LiveSession
+    private let lock = NSLock()
 
     public func definition() -> ModuleDefinition {
         Name("LiveTimerModule")
@@ -30,7 +39,7 @@ public class LiveTimerModule: Module {
 
         AsyncFunction("start") { (input: [String: Any]) -> Void in
             if #available(iOS 16.2, *) {
-                try self.startActivity(input: input)
+                try await self.startActivity(input: input)
             } else {
                 throw LiveTimerError.unsupportedOS
             }
@@ -47,16 +56,19 @@ public class LiveTimerModule: Module {
                 await self.endActivity(sessionId: sessionId)
             }
         }
+
+        OnDestroy {
+            self.cancelAllTimers()
+        }
     }
 
     @available(iOS 16.2, *)
-    private func startActivity(input: [String: Any]) throws {
+    private func startActivity(input: [String: Any]) async throws {
         guard let sessionId = input["sessionId"] as? String,
               let title = input["title"] as? String,
-              let phases = input["phases"] as? [[String: Any]],
+              let phasesRaw = input["phases"] as? [[String: Any]],
               let phaseStartMs = input["phaseStartMs"] as? Double,
-              let actions = input["actions"] as? [String],
-              let firstPhase = phases.first
+              let actions = input["actions"] as? [String]
         else {
             throw LiveTimerError.invalidInput
         }
@@ -65,16 +77,24 @@ public class LiveTimerModule: Module {
             throw LiveTimerError.notAuthorized
         }
 
+        let phases = phasesRaw.compactMap(parsePhase)
+        guard let firstPhase = phases.first else {
+            throw LiveTimerError.invalidInput
+        }
+
+        // If a session for this id already exists (e.g. resume-from-pause
+        // path in the host app), tear it down before starting a new one.
+        await endSession(sessionId: sessionId)
+
         let phaseStart = Date(timeIntervalSince1970: phaseStartMs / 1000)
-        let duration = (firstPhase["durationSeconds"] as? Double) ?? 0
-        let phaseEnd = phaseStart.addingTimeInterval(duration)
-        let nextLabel = phases.count > 1 ? (phases[1]["label"] as? String) : nil
+        let phaseEnd = phaseStart.addingTimeInterval(firstPhase.durationSeconds)
+        let nextLabel = phases.count > 1 ? phases[1].label : nil
 
         let state = LiveTimerAttributes.ContentState(
             sessionId: sessionId,
             title: title,
-            phaseId: (firstPhase["id"] as? String) ?? "",
-            phaseLabel: (firstPhase["label"] as? String) ?? "",
+            phaseId: firstPhase.id,
+            phaseLabel: firstPhase.label,
             phaseStart: phaseStart,
             phaseEnd: phaseEnd,
             nextPhaseLabel: nextLabel,
@@ -91,58 +111,169 @@ public class LiveTimerModule: Module {
             pushType: nil
         )
 
-        activities[sessionId] = activity
+        let session = LiveSession(
+            activity: activity,
+            title: title,
+            phases: phases,
+            actions: actions,
+            currentIndex: 0,
+            phaseStart: phaseStart
+        )
+
+        lock.lock()
+        sessions[sessionId] = session
+        lock.unlock()
+
+        scheduleNextBoundary(sessionId: sessionId)
     }
 
     @available(iOS 16.2, *)
     private func updateActivity(input: [String: Any]) async throws {
-        guard let sessionId = input["sessionId"] as? String,
-              let activity = activities[sessionId] as? Activity<LiveTimerAttributes>
-        else {
-            return
+        guard let sessionId = input["sessionId"] as? String else { return }
+
+        lock.lock()
+        let stored = sessions[sessionId] as? LiveSession
+        lock.unlock()
+        guard let session = stored else { return }
+
+        // Cancel the in-flight boundary timer; we're resetting the schedule.
+        session.timer?.cancel()
+        session.timer = nil
+
+        if let title = input["title"] as? String { session.title = title }
+        if let actions = input["actions"] as? [String] { session.actions = actions }
+
+        if let phasesRaw = input["phases"] as? [[String: Any]] {
+            let parsed = phasesRaw.compactMap(parsePhase)
+            if !parsed.isEmpty {
+                // JS sends the schedule starting at the new active phase.
+                session.phases = parsed
+                session.currentIndex = 0
+            }
         }
 
-        let current = activity.content.state
-        let phases = input["phases"] as? [[String: Any]]
-        let firstPhase = phases?.first
+        if let ms = input["phaseStartMs"] as? Double {
+            session.phaseStart = Date(timeIntervalSince1970: ms / 1000)
+        }
 
-        let phaseStart: Date = {
-            if let ms = input["phaseStartMs"] as? Double {
-                return Date(timeIntervalSince1970: ms / 1000)
-            }
-            return current.phaseStart
-        }()
-
-        let duration = (firstPhase?["durationSeconds"] as? Double)
-            ?? current.phaseEnd.timeIntervalSince(current.phaseStart)
-        let phaseEnd = phaseStart.addingTimeInterval(duration)
-
-        let nextLabel: String? = {
-            if let phases, phases.count > 1 {
-                return phases[1]["label"] as? String
-            }
-            return current.nextPhaseLabel
-        }()
+        guard let active = session.phases[safe: session.currentIndex] else { return }
+        let phaseEnd = session.phaseStart.addingTimeInterval(active.durationSeconds)
+        let nextLabel = session.phases[safe: session.currentIndex + 1]?.label
 
         let next = LiveTimerAttributes.ContentState(
             sessionId: sessionId,
-            title: (input["title"] as? String) ?? current.title,
-            phaseId: (firstPhase?["id"] as? String) ?? current.phaseId,
-            phaseLabel: (firstPhase?["label"] as? String) ?? current.phaseLabel,
-            phaseStart: phaseStart,
+            title: session.title,
+            phaseId: active.id,
+            phaseLabel: active.label,
+            phaseStart: session.phaseStart,
             phaseEnd: phaseEnd,
             nextPhaseLabel: nextLabel,
-            actions: (input["actions"] as? [String]) ?? current.actions
+            actions: session.actions
         )
 
-        await activity.update(.init(state: next, staleDate: phaseEnd.addingTimeInterval(60)))
+        await session.activity.update(.init(state: next, staleDate: phaseEnd.addingTimeInterval(60)))
+        scheduleNextBoundary(sessionId: sessionId)
     }
 
     @available(iOS 16.2, *)
     private func endActivity(sessionId: String) async {
-        guard let activity = activities[sessionId] as? Activity<LiveTimerAttributes> else { return }
-        await activity.end(activity.content, dismissalPolicy: .immediate)
-        activities.removeValue(forKey: sessionId)
+        await endSession(sessionId: sessionId)
+    }
+
+    @available(iOS 16.2, *)
+    private func endSession(sessionId: String) async {
+        lock.lock()
+        let stored = sessions[sessionId] as? LiveSession
+        sessions.removeValue(forKey: sessionId)
+        lock.unlock()
+        guard let session = stored else { return }
+        session.timer?.cancel()
+        await session.activity.end(session.activity.content, dismissalPolicy: .immediate)
+    }
+
+    @available(iOS 16.2, *)
+    private func scheduleNextBoundary(sessionId: String) {
+        lock.lock()
+        let stored = sessions[sessionId] as? LiveSession
+        lock.unlock()
+        guard let session = stored,
+              let active = session.phases[safe: session.currentIndex]
+        else { return }
+
+        let phaseEnd = session.phaseStart.addingTimeInterval(active.durationSeconds)
+        let interval = max(0.05, phaseEnd.timeIntervalSinceNow)
+
+        let timer = DispatchSource.makeTimerSource(queue: DispatchQueue.global(qos: .userInitiated))
+        timer.schedule(deadline: .now() + interval)
+        timer.setEventHandler { [weak self] in
+            self?.advancePhase(sessionId: sessionId)
+        }
+        session.timer = timer
+        timer.resume()
+    }
+
+    @available(iOS 16.2, *)
+    private func advancePhase(sessionId: String) {
+        lock.lock()
+        let stored = sessions[sessionId] as? LiveSession
+        lock.unlock()
+        guard let session = stored else { return }
+
+        let nextIndex = session.currentIndex + 1
+        guard let nextPhase = session.phases[safe: nextIndex],
+              let prevPhase = session.phases[safe: session.currentIndex]
+        else {
+            // No more phases. Leave the activity displaying 0:00 on the
+            // final phase; JS endLiveTimer will tear it down when the
+            // workout completes.
+            session.timer = nil
+            return
+        }
+
+        // Anchor to the previous phase's scheduled end so small
+        // native-timer drift doesn't accumulate across phases.
+        let nextStart = session.phaseStart.addingTimeInterval(prevPhase.durationSeconds)
+        let nextEnd = nextStart.addingTimeInterval(nextPhase.durationSeconds)
+        let nextLabel = session.phases[safe: nextIndex + 1]?.label
+
+        session.currentIndex = nextIndex
+        session.phaseStart = nextStart
+
+        let state = LiveTimerAttributes.ContentState(
+            sessionId: sessionId,
+            title: session.title,
+            phaseId: nextPhase.id,
+            phaseLabel: nextPhase.label,
+            phaseStart: nextStart,
+            phaseEnd: nextEnd,
+            nextPhaseLabel: nextLabel,
+            actions: session.actions
+        )
+
+        Task {
+            await session.activity.update(.init(state: state, staleDate: nextEnd.addingTimeInterval(60)))
+        }
+
+        scheduleNextBoundary(sessionId: sessionId)
+    }
+
+    private func cancelAllTimers() {
+        lock.lock()
+        let allSessions = sessions.values.compactMap { $0 as? LiveSession }
+        lock.unlock()
+        for session in allSessions {
+            session.timer?.cancel()
+            session.timer = nil
+        }
+    }
+
+    private func parsePhase(_ raw: [String: Any]) -> PhaseInfo? {
+        guard let id = raw["id"] as? String,
+              let label = raw["label"] as? String
+        else { return nil }
+        let duration = (raw["durationSeconds"] as? Double)
+            ?? Double((raw["durationSeconds"] as? Int) ?? 0)
+        return PhaseInfo(id: id, label: label, durationSeconds: duration)
     }
 
     // Called by the AppIntent in the widget extension when the user taps a
@@ -154,6 +285,45 @@ public class LiveTimerModule: Module {
             "sessionId": sessionId,
             "action": action
         ])
+    }
+}
+
+@available(iOS 16.2, *)
+private final class LiveSession {
+    let activity: Activity<LiveTimerAttributes>
+    var title: String
+    var phases: [PhaseInfo]
+    var actions: [String]
+    var currentIndex: Int
+    var phaseStart: Date
+    var timer: DispatchSourceTimer?
+
+    init(
+        activity: Activity<LiveTimerAttributes>,
+        title: String,
+        phases: [PhaseInfo],
+        actions: [String],
+        currentIndex: Int,
+        phaseStart: Date
+    ) {
+        self.activity = activity
+        self.title = title
+        self.phases = phases
+        self.actions = actions
+        self.currentIndex = currentIndex
+        self.phaseStart = phaseStart
+    }
+}
+
+private struct PhaseInfo {
+    let id: String
+    let label: String
+    let durationSeconds: TimeInterval
+}
+
+private extension Array {
+    subscript(safe index: Int) -> Element? {
+        return indices.contains(index) ? self[index] : nil
     }
 }
 
