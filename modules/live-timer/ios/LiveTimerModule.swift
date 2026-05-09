@@ -58,7 +58,9 @@ public class LiveTimerModule: Module {
         }
 
         OnDestroy {
-            self.cancelAllTimers()
+            if #available(iOS 16.2, *) {
+                self.cancelAllTimers()
+            }
         }
     }
 
@@ -257,6 +259,7 @@ public class LiveTimerModule: Module {
         scheduleNextBoundary(sessionId: sessionId)
     }
 
+    @available(iOS 16.2, *)
     private func cancelAllTimers() {
         lock.lock()
         let allSessions = sessions.values.compactMap { $0 as? LiveSession }
