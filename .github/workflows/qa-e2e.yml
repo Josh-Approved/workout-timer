@@ -22,7 +22,7 @@ jobs:
       is-rn: ${{ steps.check.outputs.is-rn }}
       is-extension: ${{ steps.check.outputs.is-extension }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - id: check
         run: |
           [ -f app.json ] && echo "is-rn=true" >> "$GITHUB_OUTPUT" || echo "is-rn=false" >> "$GITHUB_OUTPUT"
@@ -36,10 +36,10 @@ jobs:
     env:
       EXPO_PUBLIC_QA_MODE: '1'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '22'
           cache: npm
       - name: Install Maestro
         run: |
@@ -72,7 +72,7 @@ jobs:
             --bundle-output ios/main.jsbundle \
             --assets-dest ios
       - name: Cache CocoaPods
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ios/Pods
           key: pods-${{ hashFiles('ios/Podfile.lock') }}
@@ -85,7 +85,7 @@ jobs:
           pod install --repo-update 2>&1 | tee ../pod-install.log
       - name: Upload pod install log on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ios-pod-log
           path: pod-install.log
@@ -141,7 +141,7 @@ jobs:
           if [ -f xcodebuild.log ]; then cat xcodebuild.log; else echo "(no log file)"; fi
       - name: Upload xcodebuild log on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ios-xcodebuild-log
           path: xcodebuild.log
@@ -191,7 +191,7 @@ jobs:
         run: node scripts/render-screenshots.mjs --store ios
       - name: Upload iOS artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: store-assets-ios
           path: |
@@ -207,10 +207,10 @@ jobs:
     env:
       EXPO_PUBLIC_QA_MODE: '1'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '22'
           cache: npm
       - uses: actions/setup-java@v4
         with:
@@ -234,7 +234,7 @@ jobs:
             --bundle-output android/app/src/main/assets/index.android.bundle \
             --assets-dest android/app/src/main/res
       - name: Cache Gradle
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.gradle/caches
@@ -303,7 +303,7 @@ jobs:
         run: node scripts/render-screenshots.mjs --store android
       - name: Upload Android artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: store-assets-android
           path: |
@@ -317,10 +317,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '22'
           cache: npm
       - name: Install dependencies
         run: |
@@ -340,7 +340,7 @@ jobs:
         run: node scripts/render-screenshots.mjs --store chrome
       - name: Upload Chrome framed store assets
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: store-assets-chrome
           path: |
