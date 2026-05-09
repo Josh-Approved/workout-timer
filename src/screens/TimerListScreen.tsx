@@ -2,7 +2,6 @@ import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
-  FlatList,
   Pressable,
   StyleSheet,
   Linking,
@@ -10,11 +9,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { ChevronRight, Coffee, Mail, Play, Plus, Settings as SettingsIcon, Timer } from 'lucide-react-native';
+import { ChevronRight, Coffee, GripVertical, Mail, Play, Plus, Settings as SettingsIcon, Timer } from 'lucide-react-native';
 import { RootStackParamList, TimerConfig } from '../types';
-import { loadTimers } from '../storage/storage';
+import { loadTimers, saveTimers } from '../storage/storage';
 import { getTimerSummary, getTotalDuration, formatTime } from '../utils/workout';
 import { buildFeedbackEmailUrl } from '../utils/feedback';
+import { SortableList } from '../components/SortableList';
 import {
   useTheme,
   fontFamily,
@@ -39,6 +39,11 @@ export default function TimerListScreen({ navigation }: Props) {
     }, [])
   );
 
+  const handleOrderChange = useCallback((next: TimerConfig[]) => {
+    setTimers(next);
+    saveTimers(next).catch(() => {});
+  }, []);
+
   return (
     <SafeAreaView style={s.container}>
       <View style={s.header}>
@@ -56,9 +61,10 @@ export default function TimerListScreen({ navigation }: Props) {
         </Pressable>
       </View>
 
-      <FlatList
-        data={timers}
+      <SortableList
+        items={timers}
         keyExtractor={(item) => item.id}
+        onOrderChange={handleOrderChange}
         contentContainerStyle={s.list}
         ListFooterComponent={
           <View style={s.footer}>
@@ -93,14 +99,27 @@ export default function TimerListScreen({ navigation }: Props) {
             <Text style={s.emptyHint}>Tap + to build your first one.</Text>
           </View>
         }
-        renderItem={({ item }) => (
+        renderItem={({ item, drag, accessibilityProps }) => (
           <View style={s.card} accessible={false}>
+            <Pressable
+              style={s.dragHandle}
+              onLongPress={drag}
+              delayLongPress={150}
+              accessibilityElementsHidden
+              importantForAccessibility="no"
+            >
+              <GripVertical size={18} color={c.fgSubtle} strokeWidth={1.5} />
+            </Pressable>
             <Pressable
               style={({ pressed }) => [s.cardBody, pressed && s.cardBodyPressed]}
               onPress={() => navigation.navigate('TimerEditor', { timerId: item.id })}
+              onLongPress={drag}
+              delayLongPress={250}
               accessibilityLabel={`Edit ${item.name}`}
               accessibilityRole="button"
-              accessibilityHint="Opens the editor"
+              accessibilityHint="Opens the editor. Use the actions rotor to move this timer up or down."
+              accessibilityActions={accessibilityProps.accessibilityActions}
+              onAccessibilityAction={accessibilityProps.onAccessibilityAction}
             >
               <View style={s.cardInfo} importantForAccessibility="no">
                 <Text style={s.cardName}>{item.name}</Text>
@@ -177,11 +196,18 @@ function makeStyles(c: Colors) {
       marginBottom: space.s4,
       overflow: 'hidden',
     },
+    dragHandle: {
+      width: 32,
+      alignSelf: 'stretch',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingLeft: space.s2,
+    },
     cardBody: {
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      paddingLeft: space.s5,
+      paddingLeft: space.s2,
       paddingRight: space.s4,
       paddingVertical: space.s5,
       gap: space.s3,
