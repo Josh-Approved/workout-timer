@@ -59,7 +59,7 @@ private struct LockScreenView: View {
     let state: LiveTimerAttributes.ContentState
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 18) {
             HStack {
                 Text(state.title)
                     .font(.subheadline.weight(.medium))
@@ -69,15 +69,15 @@ private struct LockScreenView: View {
                 Text(state.phaseLabel)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 5)
                     .background(Capsule().fill(surfaceFaint))
             }
 
             HStack(alignment: .firstTextBaseline) {
                 Text(timerInterval: state.phaseStart...state.phaseEnd, countsDown: true)
                     .monospacedDigit()
-                    .font(.system(size: 52, weight: .semibold))
+                    .font(.system(size: 64, weight: .semibold))
                     .foregroundStyle(.white)
                 Spacer()
                 if let next = state.nextPhaseLabel {
@@ -93,22 +93,22 @@ private struct LockScreenView: View {
             }
 
             if !state.actions.isEmpty {
-                HStack(spacing: 10) {
+                HStack(spacing: 12) {
                     ForEach(state.actions, id: \.self) { action in
                         Link(destination: deepLink(for: action, sessionId: state.sessionId)) {
                             Text(label(for: action))
                                 .font(.footnote.weight(.semibold))
                                 .foregroundStyle(.white)
                                 .frame(maxWidth: .infinity)
-                                .padding(.vertical, 11)
+                                .padding(.vertical, 14)
                                 .background(RoundedRectangle(cornerRadius: 10).fill(surfaceFainter))
                         }
                     }
                 }
             }
         }
-        .padding(.horizontal, 22)
-        .padding(.vertical, 18)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 22)
     }
 
     private func label(for action: String) -> String {
