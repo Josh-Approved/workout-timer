@@ -2,12 +2,20 @@ import ActivityKit
 import WidgetKit
 import SwiftUI
 
+// Fixed dark surface so the widget reads consistently regardless of the
+// host phone's light/dark mode. Live Activities sit over the lock-screen
+// blur, where dark + white type is the safe choice.
+private let surface = Color(red: 0.08, green: 0.08, blue: 0.08)
+private let surfaceMuted = Color.white.opacity(0.62)
+private let surfaceFaint = Color.white.opacity(0.10)
+private let surfaceFainter = Color.white.opacity(0.06)
+
 struct LiveTimerWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: LiveTimerAttributes.self) { context in
             LockScreenView(state: context.state)
-                .activityBackgroundTint(Color(.systemBackground))
-                .activitySystemActionForegroundColor(.primary)
+                .activityBackgroundTint(surface)
+                .activitySystemActionForegroundColor(.white)
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
@@ -51,32 +59,35 @@ private struct LockScreenView: View {
     let state: LiveTimerAttributes.ContentState
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Text(state.title)
                     .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.secondary)
-                Spacer()
+                    .foregroundStyle(surfaceMuted)
+                    .lineLimit(1)
+                Spacer(minLength: 12)
                 Text(state.phaseLabel)
                     .font(.caption.weight(.semibold))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Capsule().fill(Color.primary.opacity(0.08)))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(surfaceFaint))
             }
 
             HStack(alignment: .firstTextBaseline) {
                 Text(timerInterval: state.phaseStart...state.phaseEnd, countsDown: true)
                     .monospacedDigit()
-                    .font(.system(size: 56, weight: .semibold))
-                    .foregroundStyle(.primary)
+                    .font(.system(size: 52, weight: .semibold))
+                    .foregroundStyle(.white)
                 Spacer()
                 if let next = state.nextPhaseLabel {
                     VStack(alignment: .trailing, spacing: 2) {
                         Text("Next")
                             .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(surfaceMuted)
                         Text(next)
                             .font(.subheadline)
+                            .foregroundStyle(.white)
                     }
                 }
             }
@@ -87,15 +98,17 @@ private struct LockScreenView: View {
                         Link(destination: deepLink(for: action, sessionId: state.sessionId)) {
                             Text(label(for: action))
                                 .font(.footnote.weight(.semibold))
+                                .foregroundStyle(.white)
                                 .frame(maxWidth: .infinity)
-                                .padding(.vertical, 10)
-                                .background(RoundedRectangle(cornerRadius: 10).fill(Color.primary.opacity(0.06)))
+                                .padding(.vertical, 11)
+                                .background(RoundedRectangle(cornerRadius: 10).fill(surfaceFainter))
                         }
                     }
                 }
             }
         }
-        .padding(16)
+        .padding(.horizontal, 22)
+        .padding(.vertical, 18)
     }
 
     private func label(for action: String) -> String {

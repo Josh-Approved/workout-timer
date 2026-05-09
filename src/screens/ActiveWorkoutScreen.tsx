@@ -130,6 +130,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       setLoaded(true);
 
       await activateKeepAwakeAsync();
+      AudioEngine.startKeepAlive().catch(() => {});
 
       startLiveTimer({
         sessionId: sessionIdRef.current,
@@ -143,6 +144,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     return () => {
       cancelled = true;
       deactivateKeepAwake();
+      AudioEngine.stopKeepAlive();
       endLiveTimer(sessionIdRef.current).catch(() => {});
     };
   }, [timerId]);

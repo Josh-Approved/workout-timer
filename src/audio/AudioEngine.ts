@@ -119,9 +119,41 @@ function generateSequenceWav(tones: ToneSpec[], sampleRate = 44100): Uint8Array 
   return new Uint8Array(buffer);
 }
 
+// Silent ~1s WAV used as a keep-alive loop while a workout is active.
+// iOS suspends a backgrounded app's JS bridge if no audio is playing —
+// even with the audio entitlement granted. Looping silent audio keeps
+// the audio session continuously active, which keeps iOS from
+// suspending the bridge, which lets phase transitions and beep cues
+// fire when the phone is locked. Standard workout-app pattern.
+function generateSilenceWav(durationSeconds = 1, sampleRate = 44100): Uint8Array {
+  const totalSamples = Math.floor(sampleRate * durationSeconds);
+  const numBytes = totalSamples * 2;
+  const buffer = new ArrayBuffer(44 + numBytes);
+  const view = new DataView(buffer);
+  const writeStr = (offset: number, str: string) => {
+    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+  };
+  writeStr(0, 'RIFF');
+  view.setUint32(4, 36 + numBytes, true);
+  writeStr(8, 'WAVE');
+  writeStr(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeStr(36, 'data');
+  view.setUint32(40, numBytes, true);
+  // remaining bytes already zeroed
+  return new Uint8Array(buffer);
+}
+
 class AudioEngineClass {
   private uris: Map<string, string> = new Map();
   private initialized = false;
+  private keepAlivePlayer: ReturnType<typeof createAudioPlayer> | null = null;
 
   async initialize(): Promise<void> {
     if (this.initialized) return;
@@ -136,6 +168,7 @@ class AudioEngineClass {
       for (const [style, tones] of Object.entries(SOUND_DEFINITIONS)) {
         await this.cache(style, tones, cacheDir);
       }
+      await this.cacheSilence(cacheDir);
       this.initialized = true;
     } catch {
       // Audio init failed; app still works silently
@@ -156,6 +189,45 @@ class AudioEngineClass {
       });
     }
     this.uris.set(key, uri);
+  }
+
+  private async cacheSilence(cacheDir: string): Promise<void> {
+    const uri = `${cacheDir}fwt_v2_silence.wav`;
+    const info = await FileSystem.getInfoAsync(uri);
+    if (!info.exists) {
+      const wav = generateSilenceWav(1);
+      const b64 = uint8ArrayToBase64(wav);
+      await FileSystem.writeAsStringAsync(uri, b64, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+    }
+    this.uris.set('silence', uri);
+  }
+
+  async startKeepAlive(): Promise<void> {
+    if (this.keepAlivePlayer) return;
+    const uri = this.uris.get('silence');
+    if (!uri) return;
+    try {
+      const player = createAudioPlayer({ uri });
+      player.loop = true;
+      player.volume = 0;
+      player.play();
+      this.keepAlivePlayer = player;
+    } catch {
+      // best effort
+    }
+  }
+
+  stopKeepAlive(): void {
+    if (!this.keepAlivePlayer) return;
+    try {
+      this.keepAlivePlayer.pause();
+      this.keepAlivePlayer.remove();
+    } catch {
+      // ignore
+    }
+    this.keepAlivePlayer = null;
   }
 
   async reactivate(): Promise<void> {
