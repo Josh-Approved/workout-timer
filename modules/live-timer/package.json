@@ -1,0 +1,13 @@
+{
+  "name": "live-timer",
+  "version": "0.1.0",
+  "description": "Persistent on-screen timer. iOS Live Activity + Android foreground-service notification.",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "private": true,
+  "peerDependencies": {
+    "expo": ">=54",
+    "react": "*",
+    "react-native": "*"
+  }
+}

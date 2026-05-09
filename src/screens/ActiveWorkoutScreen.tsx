@@ -27,6 +27,13 @@ import {
 import { AudioEngine } from '../audio/AudioEngine';
 import { recordSuccessfulCompletion } from '../storage/reviewPrompt';
 import ReviewModal from '../components/ReviewModal';
+import {
+  startLiveTimer,
+  updateLiveTimer,
+  endLiveTimer,
+  useLiveTimerEvents,
+  type LiveTimerPhase,
+} from 'live-timer';
 
 const APP_STORE_ID = '6767314178';
 const ANDROID_PACKAGE_NAME = 'com.joshapproved.freeworkouttimer';
@@ -75,6 +82,8 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
   const isRunningRef = useRef(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const halfwayFiredRef = useRef(false);
+  const sessionIdRef = useRef<string>(`fwt-${Date.now()}`);
+  const timerNameRef = useRef<string>('Workout');
 
   const stateRef = useRef<DisplayState>({ mode: 'phase', stepIndex: 0, timeRemaining: 0 });
   const [displayState, setDisplayState] = useState<DisplayState>(stateRef.current);
@@ -109,6 +118,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       totalDurationRef.current = getTotalDuration(timer);
       maxCyclesRef.current = getMaxCycles(steps);
       speechModeRef.current = settings.audioAccessibilityMode;
+      timerNameRef.current = timer.name || 'Workout';
 
       if (steps.length === 0) return;
 
@@ -120,11 +130,20 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       setLoaded(true);
 
       await activateKeepAwakeAsync();
+
+      startLiveTimer({
+        sessionId: sessionIdRef.current,
+        title: timerNameRef.current,
+        phases: phasesFrom(steps, 0),
+        phaseStartMs: Date.now(),
+        actions: ['pause', 'skip'],
+      }).catch(() => {});
     })();
 
     return () => {
       cancelled = true;
       deactivateKeepAwake();
+      endLiveTimer(sessionIdRef.current).catch(() => {});
     };
   }, [timerId]);
 
@@ -167,6 +186,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       stopInterval();
       isRunningRef.current = false;
       setIsRunning(false);
+      endLiveTimer(sessionIdRef.current).catch(() => {});
       return;
     }
 
@@ -176,6 +196,11 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     const next: DisplayState = { mode: 'phase', stepIndex: nextIdx, timeRemaining: nextStep.duration };
     stateRef.current = next;
     setDisplayState(next);
+    updateLiveTimer({
+      sessionId: sessionIdRef.current,
+      phases: phasesFrom(steps, nextIdx),
+      phaseStartMs: Date.now(),
+    }).catch(() => {});
   }, []);
 
   const startInterval = useCallback(() => {
@@ -212,10 +237,23 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       stopInterval();
       isRunningRef.current = false;
       setIsRunning(false);
+      endLiveTimer(sessionIdRef.current).catch(() => {});
     } else {
       isRunningRef.current = true;
       setIsRunning(true);
       startInterval();
+      const s = stateRef.current;
+      const steps = stepsRef.current;
+      const remaining = s.timeRemaining;
+      if (steps[s.stepIndex] && remaining > 0) {
+        startLiveTimer({
+          sessionId: sessionIdRef.current,
+          title: timerNameRef.current,
+          phases: phasesFrom(steps, s.stepIndex, remaining),
+          phaseStartMs: Date.now(),
+          actions: ['pause', 'skip'],
+        }).catch(() => {});
+      }
     }
   };
 
@@ -228,6 +266,11 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     const next: DisplayState = { mode: 'phase', stepIndex: s.stepIndex, timeRemaining: currentStep.duration };
     stateRef.current = next;
     setDisplayState(next);
+    updateLiveTimer({
+      sessionId: sessionIdRef.current,
+      phases: phasesFrom(stepsRef.current, s.stepIndex),
+      phaseStartMs: Date.now(),
+    }).catch(() => {});
   };
 
   const handleSkip = () => {
@@ -245,6 +288,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       stopInterval();
       isRunningRef.current = false;
       setIsRunning(false);
+      endLiveTimer(sessionIdRef.current).catch(() => {});
       return;
     }
 
@@ -254,6 +298,11 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     const next: DisplayState = { mode: 'phase', stepIndex: nextIdx, timeRemaining: nextStep.duration };
     stateRef.current = next;
     setDisplayState(next);
+    updateLiveTimer({
+      sessionId: sessionIdRef.current,
+      phases: phasesFrom(steps, nextIdx),
+      phaseStartMs: Date.now(),
+    }).catch(() => {});
   };
 
   const handleStop = () => {
@@ -262,10 +311,22 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       {
         text: 'Stop',
         style: 'destructive',
-        onPress: () => { stopInterval(); navigation.goBack(); },
+        onPress: () => {
+          stopInterval();
+          endLiveTimer(sessionIdRef.current).catch(() => {});
+          navigation.goBack();
+        },
       },
     ]);
   };
+
+  useLiveTimerEvents((e) => {
+    if (e.type !== 'action') return;
+    if (e.sessionId !== sessionIdRef.current) return;
+    if (e.action === 'pause' || e.action === 'resume') togglePause();
+    else if (e.action === 'skip') handleSkip();
+    else if (e.action === 'stop') handleStop();
+  });
 
   const currentStep = stepsRef.current[displayState.stepIndex] ?? null;
   const phase: WorkoutPhase =
@@ -633,6 +694,29 @@ function getTotalSets(steps: PhaseStep[], current: PhaseStep): number {
 
 function getMaxCycles(steps: PhaseStep[]): number {
   return steps.reduce((max, s) => Math.max(max, s.cycleNumber ?? 0), 0);
+}
+
+function phasesFrom(
+  steps: PhaseStep[],
+  idx: number,
+  activeOverrideSeconds?: number,
+): LiveTimerPhase[] {
+  const out: LiveTimerPhase[] = [];
+  if (steps[idx]) {
+    out.push({
+      id: `step-${idx}`,
+      label: PHASE_LABELS[steps[idx].phase],
+      durationSeconds: activeOverrideSeconds ?? steps[idx].duration,
+    });
+  }
+  if (steps[idx + 1]) {
+    out.push({
+      id: `step-${idx + 1}`,
+      label: PHASE_LABELS[steps[idx + 1].phase],
+      durationSeconds: steps[idx + 1].duration,
+    });
+  }
+  return out;
 }
 
 function makeStyles(c: Colors, isLandscape: boolean) {

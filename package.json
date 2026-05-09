@@ -1,6 +1,6 @@
 {
   "name": "free-workout-timer",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
@@ -22,10 +22,12 @@
     "expo-font": "~55.0.6",
     "expo-haptics": "~55.0.14",
     "expo-keep-awake": "~55.0.6",
+    "expo-linking": "~8.0.7",
     "expo-screen-orientation": "~55.0.13",
     "expo-speech": "~55.0.13",
     "expo-status-bar": "~55.0.5",
     "expo-updates": "~55.0.21",
+    "live-timer": "file:./modules/live-timer",
     "lucide-react-native": "^1.14.0",
     "react": "19.2.0",
     "react-native": "0.83.6",
@@ -38,6 +40,8 @@
     "react-native-worklets": "0.7.4"
   },
   "devDependencies": {
+    "@bacons/apple-targets": "^4.0.6",
+    "@expo/prebuild-config": "^55.0.17",
     "@types/react": "~19.2.10",
     "typescript": "~5.9.2"
   },

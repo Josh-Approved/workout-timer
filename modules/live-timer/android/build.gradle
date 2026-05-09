@@ -1,0 +1,19 @@
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+
+group = 'expo.modules.livetimer'
+version = '0.1.0'
+
+def expoModulesCorePlugin = new File(project(":expo-modules-core").projectDir.absolutePath, "ExpoModulesCorePlugin.gradle")
+apply from: expoModulesCorePlugin
+applyKotlinExpoModulesCorePlugin()
+useCoreDependencies()
+useExpoPublishing()
+
+android {
+    namespace = "expo.modules.livetimer"
+    defaultConfig {
+        compileSdk safeExtGet("compileSdkVersion", 35)
+        minSdk safeExtGet("minSdkVersion", 24)
+    }
+}

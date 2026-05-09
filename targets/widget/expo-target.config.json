@@ -1,0 +1,6 @@
+{
+  "type": "widget",
+  "name": "FreeWorkoutTimerWidget",
+  "deploymentTarget": "16.2",
+  "frameworks": ["WidgetKit", "SwiftUI", "ActivityKit"]
+}
