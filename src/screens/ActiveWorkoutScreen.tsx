@@ -198,11 +198,16 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     const next: DisplayState = { mode: 'phase', stepIndex: nextIdx, timeRemaining: nextStep.duration };
     stateRef.current = next;
     setDisplayState(next);
-    // Boundary advancement runs natively on both platforms (iOS Live
-    // Activity timer + Android foreground-service Handler), so a JS
-    // tick that lands late won't leave the on-screen timer stuck at
-    // 0:00. JS still drives explicit user actions (skip / restart /
-    // pause / resume) via updateLiveTimer / start / end below.
+    // Belt-and-suspenders: the native module schedules its own boundary
+    // updates from the workout schedule, but we also push from JS here.
+    // Both end up calling activity.update() with the same active phase
+    // — whichever lands first wins. If JS is alive enough to fire the
+    // audio cue above, it's alive enough to fire this update too.
+    updateLiveTimer({
+      sessionId: sessionIdRef.current,
+      phases: phasesFrom(steps, nextIdx),
+      phaseStartMs: Date.now(),
+    }).catch(() => {});
   }, []);
 
   const startInterval = useCallback(() => {

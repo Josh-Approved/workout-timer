@@ -28,6 +28,7 @@ struct LiveTimerWidget: Widget {
                         .monospacedDigit()
                         .font(.title2.weight(.semibold))
                         .multilineTextAlignment(.trailing)
+                        .id(context.state.phaseStart)
                 }
                 DynamicIslandExpandedRegion(.center) {
                     Text(context.state.title)
@@ -48,6 +49,7 @@ struct LiveTimerWidget: Widget {
                 Text(timerInterval: context.state.phaseStart...context.state.phaseEnd, countsDown: true)
                     .monospacedDigit()
                     .frame(maxWidth: 56)
+                    .id(context.state.phaseStart)
             } minimal: {
                 Image(systemName: "timer")
             }
@@ -75,10 +77,15 @@ private struct LockScreenView: View {
             }
 
             HStack(alignment: .firstTextBaseline) {
+                // .id(phaseStart) forces SwiftUI to recreate the view when the
+                // phase changes. Without it, WidgetKit can keep showing the
+                // previous interval (the parameters change but the view
+                // identity is unchanged) — the timer freezes at 0:00.
                 Text(timerInterval: state.phaseStart...state.phaseEnd, countsDown: true)
                     .monospacedDigit()
                     .font(.system(size: 64, weight: .semibold))
                     .foregroundStyle(.white)
+                    .id(state.phaseStart)
                 Spacer()
                 if let next = state.nextPhaseLabel {
                     VStack(alignment: .trailing, spacing: 2) {
