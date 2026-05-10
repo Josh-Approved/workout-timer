@@ -5,13 +5,18 @@ import Foundation
 // JS → native bridge. Manages a single Live Activity per session id and
 // emits action events back to JS when the user taps a widget button.
 //
-// Phase advancement is driven by a native DispatchSourceTimer scheduled
-// from the workout schedule passed in at start (and replaced on update).
-// The JS bridge is throttled while the host app is backgrounded — even
-// with the audio keep-alive holding the process alive — so relying on a
-// JS-side setInterval to push phase boundary updates leaves the Live
-// Activity stuck at 0:00 between phases. Native scheduling fires at the
-// boundary regardless of JS state.
+// Architecture: schedule-in-state. The full workout schedule (absolute
+// start/end Date for every phase) is encoded into the activity's
+// ContentState at start. The widget body computes which phase is active
+// from `Date()` on every render, so the on-screen content is always
+// derivable from the schedule — no dependency on activity.update()
+// landing at every phase boundary.
+//
+// A native DispatchSourceTimer still fires at each boundary to nudge
+// activity.update() (re-pushes the same ContentState to encourage iOS
+// to re-snapshot the widget). If the nudge gets throttled, the next
+// lock-screen interaction or system render will recompute the active
+// phase from the schedule and display correctly anyway.
 public class LiveTimerModule: Module {
     private var sessions: [String: Any] = [:]   // sessionId -> LiveSession
     private let lock = NSLock()
@@ -79,8 +84,8 @@ public class LiveTimerModule: Module {
             throw LiveTimerError.notAuthorized
         }
 
-        let phases = phasesRaw.compactMap(parsePhase)
-        guard let firstPhase = phases.first else {
+        let scheduled = buildSchedule(phasesRaw: phasesRaw, firstPhaseStart: Date(timeIntervalSince1970: phaseStartMs / 1000))
+        guard !scheduled.isEmpty else {
             throw LiveTimerError.invalidInput
         }
 
@@ -88,18 +93,10 @@ public class LiveTimerModule: Module {
         // path in the host app), tear it down before starting a new one.
         await endSession(sessionId: sessionId)
 
-        let phaseStart = Date(timeIntervalSince1970: phaseStartMs / 1000)
-        let phaseEnd = phaseStart.addingTimeInterval(firstPhase.durationSeconds)
-        let nextLabel = phases.count > 1 ? phases[1].label : nil
-
         let state = LiveTimerAttributes.ContentState(
             sessionId: sessionId,
             title: title,
-            phaseId: firstPhase.id,
-            phaseLabel: firstPhase.label,
-            phaseStart: phaseStart,
-            phaseEnd: phaseEnd,
-            nextPhaseLabel: nextLabel,
+            phases: scheduled,
             actions: actions
         )
 
@@ -107,26 +104,20 @@ public class LiveTimerModule: Module {
             appName: Bundle.main.infoDictionary?["CFBundleName"] as? String ?? "App"
         )
 
+        let staleDate = (scheduled.last?.end ?? Date()).addingTimeInterval(60)
         let activity = try Activity<LiveTimerAttributes>.request(
             attributes: attributes,
-            content: .init(state: state, staleDate: phaseEnd.addingTimeInterval(60)),
+            content: .init(state: state, staleDate: staleDate),
             pushType: nil
         )
 
-        let session = LiveSession(
-            activity: activity,
-            title: title,
-            phases: phases,
-            actions: actions,
-            currentIndex: 0,
-            phaseStart: phaseStart
-        )
+        let session = LiveSession(activity: activity)
 
         lock.lock()
         sessions[sessionId] = session
         lock.unlock()
 
-        scheduleNextBoundary(sessionId: sessionId)
+        scheduleNextNudge(sessionId: sessionId)
     }
 
     @available(iOS 16.2, *)
@@ -138,43 +129,37 @@ public class LiveTimerModule: Module {
         lock.unlock()
         guard let session = stored else { return }
 
-        // Cancel the in-flight boundary timer; we're resetting the schedule.
-        session.timer?.cancel()
-        session.timer = nil
+        let current = session.activity.content.state
 
-        if let title = input["title"] as? String { session.title = title }
-        if let actions = input["actions"] as? [String] { session.actions = actions }
+        // Title and actions are simple field updates.
+        let title = (input["title"] as? String) ?? current.title
+        let actions = (input["actions"] as? [String]) ?? current.actions
 
-        if let phasesRaw = input["phases"] as? [[String: Any]] {
-            let parsed = phasesRaw.compactMap(parsePhase)
-            if !parsed.isEmpty {
-                // JS sends the schedule starting at the new active phase.
-                session.phases = parsed
-                session.currentIndex = 0
-            }
+        // If the caller supplies a new schedule, rebuild from absolute
+        // times. Used by skip / restart / resume — all foreground actions.
+        let phases: [LiveTimerAttributes.ScheduledPhase]
+        if let phasesRaw = input["phases"] as? [[String: Any]],
+           let phaseStartMs = input["phaseStartMs"] as? Double {
+            let rebuilt = buildSchedule(phasesRaw: phasesRaw, firstPhaseStart: Date(timeIntervalSince1970: phaseStartMs / 1000))
+            phases = rebuilt.isEmpty ? current.phases : rebuilt
+        } else {
+            phases = current.phases
         }
-
-        if let ms = input["phaseStartMs"] as? Double {
-            session.phaseStart = Date(timeIntervalSince1970: ms / 1000)
-        }
-
-        guard let active = session.phases[safe: session.currentIndex] else { return }
-        let phaseEnd = session.phaseStart.addingTimeInterval(active.durationSeconds)
-        let nextLabel = session.phases[safe: session.currentIndex + 1]?.label
 
         let next = LiveTimerAttributes.ContentState(
             sessionId: sessionId,
-            title: session.title,
-            phaseId: active.id,
-            phaseLabel: active.label,
-            phaseStart: session.phaseStart,
-            phaseEnd: phaseEnd,
-            nextPhaseLabel: nextLabel,
-            actions: session.actions
+            title: title,
+            phases: phases,
+            actions: actions
         )
 
-        await session.activity.update(.init(state: next, staleDate: phaseEnd.addingTimeInterval(60)))
-        scheduleNextBoundary(sessionId: sessionId)
+        // Cancel the in-flight nudge; we'll reschedule against the new schedule.
+        session.timer?.cancel()
+        session.timer = nil
+
+        let staleDate = (phases.last?.end ?? Date()).addingTimeInterval(60)
+        await session.activity.update(.init(state: next, staleDate: staleDate))
+        scheduleNextNudge(sessionId: sessionId)
     }
 
     @available(iOS 16.2, *)
@@ -194,69 +179,49 @@ public class LiveTimerModule: Module {
     }
 
     @available(iOS 16.2, *)
-    private func scheduleNextBoundary(sessionId: String) {
+    private func scheduleNextNudge(sessionId: String) {
         lock.lock()
         let stored = sessions[sessionId] as? LiveSession
         lock.unlock()
-        guard let session = stored,
-              let active = session.phases[safe: session.currentIndex]
-        else { return }
+        guard let session = stored else { return }
 
-        let phaseEnd = session.phaseStart.addingTimeInterval(active.durationSeconds)
-        let interval = max(0.05, phaseEnd.timeIntervalSinceNow)
+        let now = Date()
+        let phases = session.activity.content.state.phases
+        // Next boundary is the first phase end strictly after now.
+        guard let nextBoundary = phases.first(where: { $0.end > now })?.end else {
+            session.timer = nil
+            return
+        }
 
+        let interval = max(0.05, nextBoundary.timeIntervalSinceNow)
         let timer = DispatchSource.makeTimerSource(queue: DispatchQueue.global(qos: .userInitiated))
         timer.schedule(deadline: .now() + interval)
         timer.setEventHandler { [weak self] in
-            self?.advancePhase(sessionId: sessionId)
+            self?.fireNudge(sessionId: sessionId)
         }
         session.timer = timer
         timer.resume()
     }
 
     @available(iOS 16.2, *)
-    private func advancePhase(sessionId: String) {
+    private func fireNudge(sessionId: String) {
         lock.lock()
         let stored = sessions[sessionId] as? LiveSession
         lock.unlock()
         guard let session = stored else { return }
 
-        let nextIndex = session.currentIndex + 1
-        guard let nextPhase = session.phases[safe: nextIndex],
-              let prevPhase = session.phases[safe: session.currentIndex]
-        else {
-            // No more phases. Leave the activity displaying 0:00 on the
-            // final phase; JS endLiveTimer will tear it down when the
-            // workout completes.
-            session.timer = nil
-            return
-        }
-
-        // Anchor to the previous phase's scheduled end so small
-        // native-timer drift doesn't accumulate across phases.
-        let nextStart = session.phaseStart.addingTimeInterval(prevPhase.durationSeconds)
-        let nextEnd = nextStart.addingTimeInterval(nextPhase.durationSeconds)
-        let nextLabel = session.phases[safe: nextIndex + 1]?.label
-
-        session.currentIndex = nextIndex
-        session.phaseStart = nextStart
-
-        let state = LiveTimerAttributes.ContentState(
-            sessionId: sessionId,
-            title: session.title,
-            phaseId: nextPhase.id,
-            phaseLabel: nextPhase.label,
-            phaseStart: nextStart,
-            phaseEnd: nextEnd,
-            nextPhaseLabel: nextLabel,
-            actions: session.actions
-        )
+        // Re-push the existing ContentState. The schedule itself doesn't
+        // change — this is just a hint to iOS to re-snapshot the widget,
+        // which causes the widget body to recompute the active phase from
+        // Date() and render the new countdown.
+        let state = session.activity.content.state
+        let staleDate = (state.phases.last?.end ?? Date()).addingTimeInterval(60)
 
         Task {
-            await session.activity.update(.init(state: state, staleDate: nextEnd.addingTimeInterval(60)))
+            await session.activity.update(.init(state: state, staleDate: staleDate))
         }
 
-        scheduleNextBoundary(sessionId: sessionId)
+        scheduleNextNudge(sessionId: sessionId)
     }
 
     @available(iOS 16.2, *)
@@ -270,13 +235,26 @@ public class LiveTimerModule: Module {
         }
     }
 
-    private func parsePhase(_ raw: [String: Any]) -> PhaseInfo? {
-        guard let id = raw["id"] as? String,
-              let label = raw["label"] as? String
-        else { return nil }
-        let duration = (raw["durationSeconds"] as? Double)
-            ?? Double((raw["durationSeconds"] as? Int) ?? 0)
-        return PhaseInfo(id: id, label: label, durationSeconds: duration)
+    @available(iOS 16.2, *)
+    private func buildSchedule(phasesRaw: [[String: Any]], firstPhaseStart: Date) -> [LiveTimerAttributes.ScheduledPhase] {
+        var out: [LiveTimerAttributes.ScheduledPhase] = []
+        var cursor = firstPhaseStart
+        for raw in phasesRaw {
+            guard let id = raw["id"] as? String,
+                  let label = raw["label"] as? String
+            else { continue }
+            let duration = (raw["durationSeconds"] as? Double)
+                ?? Double((raw["durationSeconds"] as? Int) ?? 0)
+            let end = cursor.addingTimeInterval(duration)
+            out.append(LiveTimerAttributes.ScheduledPhase(
+                id: id,
+                label: label,
+                start: cursor,
+                end: end
+            ))
+            cursor = end
+        }
+        return out
     }
 
     // Called by the AppIntent in the widget extension when the user taps a
@@ -294,39 +272,10 @@ public class LiveTimerModule: Module {
 @available(iOS 16.2, *)
 private final class LiveSession {
     let activity: Activity<LiveTimerAttributes>
-    var title: String
-    var phases: [PhaseInfo]
-    var actions: [String]
-    var currentIndex: Int
-    var phaseStart: Date
     var timer: DispatchSourceTimer?
 
-    init(
-        activity: Activity<LiveTimerAttributes>,
-        title: String,
-        phases: [PhaseInfo],
-        actions: [String],
-        currentIndex: Int,
-        phaseStart: Date
-    ) {
+    init(activity: Activity<LiveTimerAttributes>) {
         self.activity = activity
-        self.title = title
-        self.phases = phases
-        self.actions = actions
-        self.currentIndex = currentIndex
-        self.phaseStart = phaseStart
-    }
-}
-
-private struct PhaseInfo {
-    let id: String
-    let label: String
-    let durationSeconds: TimeInterval
-}
-
-private extension Array {
-    subscript(safe index: Int) -> Element? {
-        return indices.contains(index) ? self[index] : nil
     }
 }
 

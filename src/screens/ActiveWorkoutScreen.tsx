@@ -198,16 +198,14 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     const next: DisplayState = { mode: 'phase', stepIndex: nextIdx, timeRemaining: nextStep.duration };
     stateRef.current = next;
     setDisplayState(next);
-    // Belt-and-suspenders: the native module schedules its own boundary
-    // updates from the workout schedule, but we also push from JS here.
-    // Both end up calling activity.update() with the same active phase
-    // — whichever lands first wins. If JS is alive enough to fire the
-    // audio cue above, it's alive enough to fire this update too.
-    updateLiveTimer({
-      sessionId: sessionIdRef.current,
-      phases: phasesFrom(steps, nextIdx),
-      phaseStartMs: Date.now(),
-    }).catch(() => {});
+    // No live-timer call here. iOS encodes the full schedule into the
+    // activity's ContentState at start and the widget computes the
+    // active phase from Date() on each render — boundary advancement
+    // is handled by the schedule itself, not by per-tick updates.
+    // Android's foreground service has its own native Handler that
+    // advances the notification at boundaries. JS only calls
+    // updateLiveTimer for explicit user actions (skip / restart /
+    // pause / resume).
   }, []);
 
   const startInterval = useCallback(() => {
