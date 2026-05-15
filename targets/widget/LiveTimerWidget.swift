@@ -2,13 +2,13 @@ import ActivityKit
 import WidgetKit
 import SwiftUI
 
-// Fixed dark surface so the widget reads consistently regardless of the
-// host phone's light/dark mode. Live Activities sit over the lock-screen
-// blur, where dark + white type is the safe choice.
-private let surface = Color(red: 0.08, green: 0.08, blue: 0.08)
-private let surfaceMuted = Color.white.opacity(0.62)
-private let surfaceFaint = Color.white.opacity(0.10)
-private let surfaceFainter = Color.white.opacity(0.06)
+// Josh Approved design tokens (dark-mode values). Live Activities sit over
+// the lock-screen blur regardless of the host phone's appearance, so the
+// surface is pinned to the system's dark elevated background with white type.
+private let surface = Color(red: 19 / 255, green: 19 / 255, blue: 21 / 255)        // bg-elevated (dark) #131315
+private let textPrimary = Color(red: 245 / 255, green: 245 / 255, blue: 242 / 255) // fg (dark) #F5F5F2
+private let textMuted = Color(red: 160 / 255, green: 160 / 255, blue: 166 / 255)   // fg-muted (dark) #A0A0A6
+private let fillFaint = Color(red: 38 / 255, green: 38 / 255, blue: 42 / 255)      // hairline (dark) #26262A
 
 // Computes which phase is active right now from the schedule. The widget
 // re-derives this on every render, so a lock-screen peek shows the
@@ -74,6 +74,9 @@ struct LiveTimerWidget: Widget {
                 Image(systemName: "timer")
             }
         }
+        // Suppress WidgetKit's implicit content margins so the padding
+        // below is the single source of truth for the card's insets.
+        .contentMarginsDisabled()
     }
 }
 
@@ -86,17 +89,17 @@ private struct LockScreenView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text(state.title)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(surfaceMuted)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(textMuted)
                     .lineLimit(1)
                 Spacer(minLength: 12)
                 if let active {
                     Text(active.label)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 10)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(textPrimary)
+                        .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(Capsule().fill(surfaceFaint))
+                        .background(Capsule().fill(fillFaint))
                 }
             }
 
@@ -107,40 +110,39 @@ private struct LockScreenView: View {
                     // showing the previous interval.
                     Text(timerInterval: active.start...active.end, countsDown: true)
                         .monospacedDigit()
-                        .font(.system(size: 56, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .font(.system(size: 40, weight: .semibold))
+                        .foregroundStyle(textPrimary)
                         .id(active.id)
                 }
                 Spacer()
                 if let next {
                     VStack(alignment: .trailing, spacing: 2) {
                         Text("Next")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(surfaceMuted)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(textMuted)
                         Text(next.label)
-                            .font(.subheadline)
-                            .foregroundStyle(.white)
+                            .font(.system(size: 14, weight: .regular))
+                            .foregroundStyle(textPrimary)
                     }
                 }
             }
 
             if !state.actions.isEmpty {
-                HStack(spacing: 10) {
+                HStack(spacing: 8) {
                     ForEach(state.actions, id: \.self) { action in
                         Link(destination: deepLink(for: action, sessionId: state.sessionId)) {
                             Text(label(for: action))
-                                .font(.footnote.weight(.semibold))
-                                .foregroundStyle(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 10)
-                                .background(RoundedRectangle(cornerRadius: 10).fill(surfaceFainter))
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(textPrimary)
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                                .background(RoundedRectangle(cornerRadius: 10).fill(fillFaint))
                         }
                     }
                 }
             }
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 14)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 
     private func label(for action: String) -> String {
