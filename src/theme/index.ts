@@ -1,28 +1,25 @@
-import { useColorScheme } from 'react-native';
-import { Colors, colorsFor, Mode } from './tokens';
+// Canonical Josh Approved theme — native public surface.
+// Synced verbatim into each app at src/theme/index.ts by
+// `sync.mjs design-system-native`. Edit the canonical files here, not per app.
 
-export { typography, fontFamilies } from './typography';
-export type { TypographyRole, FontFamily } from './typography';
+export {
+  typography,
+  fontFamilies,
+  fontFamily,
+  type,
+  tracking,
+} from './typography';
+export type { TypographyRole, FontFamily, TypeStep, Tracking } from './typography';
+
 export { useAppFonts } from './useAppFonts';
 
 export {
-  palette,
+  appAccent,
+  appAccentBg,
   lightColors,
   darkColors,
-  colorsFor,
-  space,
-  radius,
-  fontFamily,
-  type,
-  weight,
-  tracking,
-  target,
-  hairline,
-} from './tokens';
-export type { Mode, Colors } from './tokens';
+  useTheme,
+} from './colors';
+export type { Colors } from './colors';
 
-export function useTheme(): { mode: Mode; c: Colors } {
-  const scheme = useColorScheme();
-  const mode: Mode = scheme === 'dark' ? 'dark' : 'light';
-  return { mode, c: colorsFor(mode) };
-}
+export { space, radius, target, motion, hairline } from './tokens';
