@@ -257,9 +257,14 @@ export default function SettingsScreen({ navigation }: Props) {
           {SOUND_EVENTS.map((event, idx) => (
             <View key={event.key} style={[s.soundRow, idx > 0 && s.soundRowBorder]}>
               <Text style={s.soundEventLabel}>{event.label}</Text>
+              {/* There are 9+ sound styles — more than fit a phone width, so
+                  this row scrolls horizontally. Keep the scroll indicator on
+                  so the affordance is visible: without it the last chip is
+                  clipped flush at the screen edge and reads as an unreachable,
+                  broken option rather than a scrollable list. */}
               <ScrollView
                 horizontal
-                showsHorizontalScrollIndicator={false}
+                showsHorizontalScrollIndicator
                 contentContainerStyle={s.pillRow}
                 accessibilityRole="radiogroup"
                 accessibilityLabel={`${event.label} sound`}
@@ -512,7 +517,11 @@ function makeStyles(c: Colors) {
       color: c.fg,
       marginBottom: space.s3,
     },
-    pillRow: { flexDirection: 'row', gap: space.s2 },
+    // paddingRight gives the row trailing breathing room so the last chip
+    // never ends flush against the screen edge (which read as a clipped,
+    // broken option); combined with the visible scroll indicator it reads
+    // as an intentionally scrollable list.
+    pillRow: { flexDirection: 'row', gap: space.s2, paddingRight: space.s5 },
     pill: {
       paddingHorizontal: space.s4,
       paddingVertical: space.s2,

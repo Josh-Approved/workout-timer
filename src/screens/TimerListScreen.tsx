@@ -184,7 +184,12 @@ function makeStyles(c: Colors) {
       justifyContent: 'center',
     },
     pressed: { opacity: 0.7 },
-    list: { padding: space.s5, paddingBottom: 120 },
+    // paddingBottom must clear the absolutely-positioned FAB (bottom:
+    // space.s8, 56pt tall → top edge at space.s8 + 56) plus a margin, so the
+    // last timer card can always scroll clear of the FAB and its play button
+    // is never occluded (was a flat 120 ≈ the FAB's top edge, leaving the
+    // last card under the FAB at the just-saved scroll position).
+    list: { padding: space.s5, paddingBottom: space.s8 + 56 + space.s8 },
 
     card: {
       flexDirection: 'row',
