@@ -35,10 +35,16 @@ const PAPER = '#FAFAF7';
 const PERSIMMON = '#B85040';
 const SIZE = 1024;
 
-// Stopwatch geometry (centered in the 1024 canvas, biased slightly down so
-// the crown gets breathing room at the top).
+// Stopwatch geometry. cy is chosen so the glyph's full ink bounding box —
+// from the crown button's top edge down to the outer edge of the circle's
+// stroke — is vertically centered in the 1024 canvas with equal top and
+// bottom padding. Top of glyph = cy - r - stemH - btnH; bottom = cy + r +
+// stroke/2; setting those equidistant from the canvas edges gives cy = 551
+// (125px clear above and below). Do not re-bias this down — uneven padding
+// reads as a mistake at small home-screen sizes (canonical: app icons are
+// centered with equal top/bottom padding).
 const cx = 512;
-const cy = 580;
+const cy = 551;
 const r = 320;
 const stroke = 56;
 
