@@ -1,6 +1,6 @@
 # Free Workout Timer
 
-A free, no-ads interval timer for Tabata, HIIT, and any work/rest workout you want to run on a phone.
+An interval timer for Tabata, HIIT, and any work/rest workout you want to run on a phone. No paywall, no ads, no tracking, no accounts.
 
 ## What it does
 
@@ -31,7 +31,7 @@ Then scan the QR code with Expo Go (or press `i` for iOS simulator, `a` for Andr
 
 ## Privacy
 
-Your timers stay on your device. There are no accounts, no analytics, no servers. Nothing leaves the phone.
+Your data stays with you. We don't collect any of it — no accounts, no tracking, no analytics.
 
 ## License
 
