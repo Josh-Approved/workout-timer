@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useColorScheme } from 'react-native';
+import * as SplashScreen from 'expo-splash-screen';
 import { NavigationContainer, DefaultTheme, DarkTheme, Theme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
@@ -14,7 +15,14 @@ import TimerEditorScreen from './src/screens/TimerEditorScreen';
 import ActiveWorkoutScreen from './src/screens/ActiveWorkoutScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import Credits from './src/components/Credits';
+import AnimatedSplash from './src/components/AnimatedSplash';
 import { QA_MODE } from './src/qa/qaMode';
+
+// Hold the native launch screen until the JS splash takes over (no icon blink).
+// Skipped under QA_MODE so the e2e screenshot harness sees deterministic frames.
+if (!QA_MODE) {
+  SplashScreen.preventAutoHideAsync().catch(() => {});
+}
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -43,33 +51,42 @@ function buildNavTheme(isDark: boolean): Theme {
 export default function App() {
   const isDark = useColorScheme() === 'dark';
   const [fontsLoaded] = useAppFonts();
+  const [splashDone, setSplashDone] = useState(false);
 
   useEffect(() => {
     AudioEngine.initialize().catch(() => {});
     ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
   }, []);
 
-  if (!fontsLoaded) return null;
+  // Fonts are the only readiness gate. The animated splash overlays until its
+  // intro has played AND fonts are in, then crossfades out. Skipped under
+  // QA_MODE (the native splash auto-hides there, as before).
+  const ready = fontsLoaded;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <NavigationContainer theme={buildNavTheme(isDark)}>
-          <StatusBar style={isDark ? 'light' : 'dark'} />
-          <Stack.Navigator screenOptions={{ headerShown: false, animation: QA_MODE ? 'none' : undefined }}>
-            <Stack.Screen name="TimerList" component={TimerListScreen} />
-            <Stack.Screen name="TimerEditor" component={TimerEditorScreen} />
-            <Stack.Screen
-              name="ActiveWorkout"
-              component={ActiveWorkoutScreen}
-              options={{ gestureEnabled: false }}
-            />
-            <Stack.Screen name="Settings" component={SettingsScreen} />
-            <Stack.Screen name="Acknowledgements">
-              {(props) => <Credits onBack={() => props.navigation.goBack()} />}
-            </Stack.Screen>
-          </Stack.Navigator>
-        </NavigationContainer>
+        {ready && (
+          <NavigationContainer theme={buildNavTheme(isDark)}>
+            <StatusBar style={isDark ? 'light' : 'dark'} />
+            <Stack.Navigator screenOptions={{ headerShown: false, animation: QA_MODE ? 'none' : undefined }}>
+              <Stack.Screen name="TimerList" component={TimerListScreen} />
+              <Stack.Screen name="TimerEditor" component={TimerEditorScreen} />
+              <Stack.Screen
+                name="ActiveWorkout"
+                component={ActiveWorkoutScreen}
+                options={{ gestureEnabled: false }}
+              />
+              <Stack.Screen name="Settings" component={SettingsScreen} />
+              <Stack.Screen name="Acknowledgements">
+                {(props) => <Credits onBack={() => props.navigation.goBack()} />}
+              </Stack.Screen>
+            </Stack.Navigator>
+          </NavigationContainer>
+        )}
+        {!QA_MODE && !splashDone && (
+          <AnimatedSplash ready={ready} onFinish={() => setSplashDone(true)} />
+        )}
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
