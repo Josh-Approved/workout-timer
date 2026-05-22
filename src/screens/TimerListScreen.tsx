@@ -9,7 +9,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { ChevronRight, Coffee, GripVertical, Mail, Play, Plus, Settings as SettingsIcon, Timer } from 'lucide-react-native';
+import { ChevronRight, GripVertical, HandHeart, Mail, Play, Plus, Settings as SettingsIcon, Timer } from 'lucide-react-native';
 import { RootStackParamList, TimerConfig } from '../types';
 import { loadTimers, saveTimers } from '../storage/storage';
 import { getTimerSummary, getTotalDuration, formatTime } from '../utils/workout';
@@ -71,12 +71,12 @@ export default function TimerListScreen({ navigation }: Props) {
             <Pressable
               style={({ pressed }) => [s.linkRow, pressed && s.pressed]}
               onPress={() => Linking.openURL('https://buymeacoffee.com/jtysonwilliams')}
-              accessibilityLabel="Buy me a coffee"
+              accessibilityLabel="Support this app"
               accessibilityRole="link"
-              accessibilityHint="Opens buymeacoffee.com in your browser"
+              accessibilityHint="Opens in your browser"
             >
-              <Coffee size={18} color={c.fgMuted} strokeWidth={1.5} />
-              <Text style={s.linkText}>Buy me a coffee?</Text>
+              <HandHeart size={18} color={c.fgMuted} strokeWidth={1.5} />
+              <Text style={s.linkText}>Support this app</Text>
             </Pressable>
             <Pressable
               style={({ pressed }) => [s.linkRow, pressed && s.pressed]}

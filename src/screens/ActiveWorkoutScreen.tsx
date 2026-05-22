@@ -25,8 +25,10 @@ import {
   buildPhaseAnnouncement,
 } from '../utils/workout';
 import { AudioEngine } from '../audio/AudioEngine';
-import { recordSuccessfulCompletion } from '../storage/reviewPrompt';
+import { recordSuccessfulCompletion as recordReviewCompletion } from '../storage/reviewPrompt';
+import { recordSuccessfulCompletion as recordDonationCompletion } from '../storage/donationPrompt';
 import ReviewModal from '../components/ReviewModal';
+import DonationModal from '../components/DonationModal';
 import {
   startLiveTimer,
   updateLiveTimer,
@@ -90,6 +92,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
   const [isRunning, setIsRunning] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [showReview, setShowReview] = useState(false);
+  const [showDonation, setShowDonation] = useState(false);
 
   useEffect(() => {
     ScreenOrientation.unlockAsync().catch(() => {});
@@ -231,9 +234,19 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
 
   useEffect(() => {
     if (displayState.mode !== 'complete') return;
-    recordSuccessfulCompletion().then((shouldPrompt) => {
-      if (shouldPrompt) setShowReview(true);
-    });
+    // Review takes precedence on the same completion — see donation-prompt
+    // README for the canonical pattern. The donation counter still advances
+    // only when its own threshold is met, so deferring it here doesn't drop
+    // a prompt; it just lets the slower-burning surface go first.
+    (async () => {
+      if (await recordReviewCompletion()) {
+        setShowReview(true);
+        return;
+      }
+      if (await recordDonationCompletion()) {
+        setShowDonation(true);
+      }
+    })();
   }, [displayState.mode]);
 
   const togglePause = () => {
@@ -554,6 +567,11 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
           iosAppStoreId={APP_STORE_ID}
           androidPackageName={ANDROID_PACKAGE_NAME}
         />
+        <DonationModal
+          visible={showDonation}
+          onDismiss={() => setShowDonation(false)}
+          appName="Free workout timer"
+        />
       </SafeAreaView>
     );
   }
@@ -612,6 +630,11 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
         appName="Free workout timer"
         iosAppStoreId={APP_STORE_ID}
         androidPackageName={ANDROID_PACKAGE_NAME}
+      />
+      <DonationModal
+        visible={showDonation}
+        onDismiss={() => setShowDonation(false)}
+        appName="Free workout timer"
       />
     </SafeAreaView>
   );

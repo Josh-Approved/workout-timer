@@ -18,7 +18,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
   ChevronLeft,
   ChevronRight,
-  Coffee,
+  HandHeart,
   Code,
   Library,
   Mail,
@@ -301,12 +301,12 @@ export default function SettingsScreen({ navigation }: Props) {
           <Pressable
             style={({ pressed }) => [s.aboutRow, pressed && s.pressed]}
             onPress={() => Linking.openURL(BMAC_URL).catch(() => {})}
-            accessibilityLabel="Buy me a coffee"
+            accessibilityLabel="Support this app"
             accessibilityRole="link"
-            accessibilityHint="Opens buymeacoffee.com in your browser"
+            accessibilityHint="Opens in your browser"
           >
-            <Coffee size={20} color={c.fg} strokeWidth={1.5} />
-            <Text style={s.aboutRowLabel}>Buy me a coffee?</Text>
+            <HandHeart size={20} color={c.fg} strokeWidth={1.5} />
+            <Text style={s.aboutRowLabel}>Support this app</Text>
             <ChevronRight size={18} color={c.fgMuted} strokeWidth={1.5} />
           </Pressable>
           <Pressable
