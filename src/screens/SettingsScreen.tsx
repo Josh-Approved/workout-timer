@@ -68,7 +68,7 @@ const BMAC_URL = 'https://buymeacoffee.com/jtysonwilliams';
 
 const reviewUrl =
   Platform.OS === 'ios'
-    ? `itms-apps://itunes.apple.com/app/id${APP_STORE_ID}?action=write-review`
+    ? `itms-apps://apps.apple.com/app/id${APP_STORE_ID}?action=write-review`
     : `https://play.google.com/store/apps/details?id=${ANDROID_PACKAGE_NAME}&showAllReviews=true`;
 
 function formatVersion(): string {
