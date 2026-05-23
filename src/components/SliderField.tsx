@@ -1,9 +1,11 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import Slider from '@react-native-community/slider';
+import ValueEditorModal from './ValueEditorModal';
 import {
   fontFamily,
   space,
+  radius,
   type as t,
   hairline,
   Colors,
@@ -55,6 +57,7 @@ export function SliderField({
   const sf = sliderFieldStyles(c);
   const { display, unit } = formatSliderValue(value, isTime);
   const spokenValue = spokenSliderValue(value, isTime);
+  const [editing, setEditing] = useState(false);
 
   return (
     <View
@@ -62,10 +65,11 @@ export function SliderField({
       accessible
       accessibilityRole="adjustable"
       accessibilityLabel={`${label}, ${spokenValue}`}
-      accessibilityHint={hint}
+      accessibilityHint={`${hint}. Double tap to enter an exact value.`}
       accessibilityActions={[
         { name: 'increment', label: 'increase' },
         { name: 'decrement', label: 'decrease' },
+        { name: 'activate', label: 'enter an exact value' },
       ]}
       onAccessibilityAction={(event) => {
         if (event.nativeEvent.actionName === 'increment') {
@@ -74,15 +78,36 @@ export function SliderField({
         if (event.nativeEvent.actionName === 'decrement') {
           onChange(Math.max(min, value - step));
         }
+        if (event.nativeEvent.actionName === 'activate') {
+          setEditing(true);
+        }
       }}
     >
       <View style={sf.headerRow} importantForAccessibility="no-hide-descendants">
         <Text style={sf.label}>{label}</Text>
-        <View style={sf.valueCell}>
+        <Pressable
+          style={({ pressed }) => [sf.valueCell, pressed && sf.valueCellPressed]}
+          onPress={() => setEditing(true)}
+          hitSlop={8}
+        >
           <Text style={sf.valueText}>{display}</Text>
           {unit ? <Text style={sf.unit}>{unit}</Text> : null}
-        </View>
+        </Pressable>
       </View>
+
+      <ValueEditorModal
+        visible={editing}
+        label={label}
+        value={value}
+        isTime={isTime}
+        min={min}
+        max={max}
+        onSave={(v) => {
+          onChange(v);
+          setEditing(false);
+        }}
+        onCancel={() => setEditing(false)}
+      />
       <Slider
         style={sf.slider}
         minimumValue={min}
@@ -117,7 +142,12 @@ function sliderFieldStyles(c: Colors) {
     valueCell: {
       flexDirection: 'row',
       alignItems: 'baseline',
+      backgroundColor: c.bgSubtle,
+      borderRadius: radius.sm,
+      paddingHorizontal: space.s3,
+      paddingVertical: space.s1,
     },
+    valueCellPressed: { opacity: 0.6 },
     valueText: {
       ...t.base,
       fontFamily: fontFamily.monoMedium,
