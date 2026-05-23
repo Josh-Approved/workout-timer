@@ -62,7 +62,7 @@ const VOICE_PREVIEW_PHRASES: Partial<Record<keyof Omit<SoundSettings, 'countdown
 
 const APP_STORE_ID = '6767314178';
 const ANDROID_PACKAGE_NAME = 'com.joshapproved.freeworkouttimer';
-const GITHUB_REPO_URL = 'https://github.com/Josh-Approved/Free-Workout-Timer';
+const GITHUB_REPO_URL = 'https://github.com/Josh-Approved/workout-timer';
 const PRIVACY_URL = `${GITHUB_REPO_URL}/blob/main/PRIVACY.md`;
 const BMAC_URL = 'https://buymeacoffee.com/jtysonwilliams';
 

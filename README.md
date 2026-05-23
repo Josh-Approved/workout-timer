@@ -21,8 +21,8 @@ In the meantime, run it locally — see below.
 You'll need [Node.js](https://nodejs.org/) and the Expo Go app on your phone, or an iOS simulator / Android emulator.
 
 ```bash
-git clone https://github.com/Josh-Approved/Free-Workout-Timer.git
-cd Free-Workout-Timer
+git clone https://github.com/Josh-Approved/workout-timer.git
+cd workout-timer
 npm install
 npm start
 ```
