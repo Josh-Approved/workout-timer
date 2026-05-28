@@ -25,6 +25,7 @@ import {
   target,
   Colors,
 } from '../theme';
+import { boundedContent } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TimerList'>;
 
@@ -164,6 +165,7 @@ function makeStyles(c: Colors) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: c.bg },
     header: {
+      ...boundedContent,
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
@@ -189,7 +191,7 @@ function makeStyles(c: Colors) {
     // last timer card can always scroll clear of the FAB and its play button
     // is never occluded (was a flat 120 ≈ the FAB's top edge, leaving the
     // last card under the FAB at the just-saved scroll position).
-    list: { padding: space.s5, paddingBottom: space.s8 + 56 + space.s8 },
+    list: { ...boundedContent, padding: space.s5, paddingBottom: space.s8 + 56 + space.s8 },
 
     card: {
       flexDirection: 'row',
@@ -245,7 +247,7 @@ function makeStyles(c: Colors) {
       alignItems: 'center',
     },
 
-    empty: { alignItems: 'center', paddingTop: space.s9, gap: space.s3 },
+    empty: { ...boundedContent, alignItems: 'center', paddingTop: space.s9, gap: space.s3 },
     emptyIcon: {
       width: 64,
       height: 64,
@@ -267,7 +269,7 @@ function makeStyles(c: Colors) {
       color: c.fgMuted,
       fontFamily: fontFamily.sans,
     },
-    footer: { alignItems: 'center', gap: space.s5, paddingTop: space.s7 },
+    footer: { ...boundedContent, alignItems: 'center', gap: space.s5, paddingTop: space.s7 },
     linkRow: {
       flexDirection: 'row',
       alignItems: 'center',

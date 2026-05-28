@@ -49,6 +49,7 @@ import {
   tracking,
   Colors,
 } from '../theme';
+import { boundedContent } from '../theme';
 
 const VOICE_PREVIEW_PHRASES: Partial<Record<keyof Omit<SoundSettings, 'countdownDuration'>, string>> = {
   warmUpStart: 'Warm Up',
@@ -401,6 +402,7 @@ function makeStyles(c: Colors) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: c.bg },
     header: {
+      ...boundedContent,
       flexDirection: 'row',
       alignItems: 'center',
       paddingHorizontal: space.s5,
@@ -425,7 +427,7 @@ function makeStyles(c: Colors) {
     },
     headerReset: { ...t.sm, color: c.danger, fontFamily: fontFamily.sansMedium },
 
-    scroll: { padding: space.s5, paddingBottom: space.s8 },
+    scroll: { ...boundedContent, padding: space.s5, paddingBottom: space.s8 },
     sectionHeader: {
       ...t.xs,
       fontFamily: fontFamily.sansMedium,

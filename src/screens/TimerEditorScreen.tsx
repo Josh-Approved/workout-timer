@@ -28,6 +28,7 @@ import {
   tracking,
   Colors,
 } from '../theme';
+import { boundedContent } from '../theme';
 
 // Single source for both create (route param `timerId` undefined) and edit
 // (`timerId` present). Any field/slider change applies to both flows.
@@ -285,6 +286,7 @@ function makeStyles(c: Colors) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: c.bg },
     header: {
+      ...boundedContent,
       flexDirection: 'row',
       alignItems: 'center',
       paddingHorizontal: space.s5,
@@ -309,7 +311,7 @@ function makeStyles(c: Colors) {
       textAlign: 'center',
     },
     headerSave: { ...t.base, color: c.fg, fontFamily: fontFamily.sansSemibold },
-    scroll: { padding: space.s5, paddingBottom: space.s8 },
+    scroll: { ...boundedContent, padding: space.s5, paddingBottom: space.s8 },
     section: { marginBottom: space.s6 },
     sectionTitle: {
       ...t.xs,
