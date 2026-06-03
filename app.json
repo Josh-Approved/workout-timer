@@ -17,7 +17,8 @@
       "bundleIdentifier": "com.joshapproved.freeworkouttimer",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "LiveTimerURLScheme": "fwt"
+        "LiveTimerURLScheme": "fwt",
+        "CFBundleDisplayName": "Workout Timer"
       }
     },
     "scheme": "fwt",
