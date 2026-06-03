@@ -8,7 +8,7 @@ Build a timer once, run it as many times as you want. Set work and rest duration
 
 ## Who it's for
 
-Anyone who's tired of paywalls, ads, and account walls in workout timer apps. If you've used Tabata Pro, Seconds, or Interval Timer and bounced off the price or the upsells, this is the same shape of tool with none of that.
+Anyone who's tired of paywalls, ads, and account walls in workout timer apps. If you've bounced off the price or the upsells elsewhere, this is the same shape of tool with none of that — every feature is free, with no ads, no tracking, and no accounts.
 
 ## How to get it
 

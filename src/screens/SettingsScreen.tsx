@@ -359,7 +359,7 @@ export default function SettingsScreen({ navigation }: Props) {
             onPress={() => navigation.navigate('Acknowledgements')}
             accessibilityLabel="Acknowledgements"
             accessibilityRole="button"
-            accessibilityHint="Opens credits for the open-source projects this app is built on"
+            accessibilityHint="Opens credits for the open source projects this app is built on"
           >
             <Library size={20} color={c.fg} strokeWidth={1.5} />
             <Text style={s.aboutRowLabel}>Acknowledgements</Text>
