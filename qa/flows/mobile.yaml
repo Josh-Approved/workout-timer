@@ -27,7 +27,9 @@ env:
 - extendedWaitUntil:
     visible: "Free workout timer"
     timeout: 30000
-- assertVisible: "Standard Tabata"
+- extendedWaitUntil:
+    visible: "Edit Standard Tabata"
+    timeout: 15000
 - takeScreenshot: qa/captures/${STORE}/list
 
 # Waypoint 2 — editor for Standard Tabata.

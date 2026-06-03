@@ -11,6 +11,18 @@
       { "id": "josh-approved", "kind": "card" },
       { "id": "editor",        "source": "android/editor.png", "caption": "Build any interval set in seconds." },
       { "id": "list",          "source": "android/list.png",   "caption": "Save your timers. Reuse them in one tap." }
+    ],
+    "ipad": [
+      { "id": "core",          "source": "ipad/active.png", "caption": "Free workout timer. Set intervals, hit start." },
+      { "id": "josh-approved", "kind": "card" },
+      { "id": "editor",        "source": "ipad/editor.png", "caption": "Build any interval set in seconds." },
+      { "id": "list",          "source": "ipad/list.png",   "caption": "Save your timers. Reuse them in one tap." }
+    ],
+    "androidTablet": [
+      { "id": "core",          "source": "androidTablet/active.png", "caption": "Free workout timer. Set intervals, hit start." },
+      { "id": "josh-approved", "kind": "card" },
+      { "id": "editor",        "source": "androidTablet/editor.png", "caption": "Build any interval set in seconds." },
+      { "id": "list",          "source": "androidTablet/list.png",   "caption": "Save your timers. Reuse them in one tap." }
     ]
   }
 }
