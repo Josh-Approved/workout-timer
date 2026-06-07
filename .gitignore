@@ -45,3 +45,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Google Play service account key (local only, never commit)
+google-play-key.json

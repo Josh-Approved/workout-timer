@@ -8,6 +8,7 @@
 
 import * as Linking from 'expo-linking';
 import { useEffect, useRef, useState } from 'react';
+import { PermissionsAndroid, Platform } from 'react-native';
 
 type EventSubscription = { remove: () => void };
 
@@ -88,7 +89,28 @@ export function getAvailability(): Promise<LiveTimerAvailability> {
   return LiveTimerModule.getAvailability();
 }
 
-export function startLiveTimer(input: LiveTimerStartInput): Promise<void> {
+// On Android 13+ (API 33), the persistent timer notification — and its
+// pause/skip/stop controls — only appear if the user has granted
+// POST_NOTIFICATIONS. The permission is off by default and must be requested
+// at runtime. Without this, the foreground service still runs (audio cues keep
+// playing in the background) but its notification is silently suppressed.
+// Best-effort: if the user declines, we still start the timer.
+async function ensureAndroidNotificationPermission(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  if (typeof Platform.Version === 'number' && Platform.Version < 33) return;
+  try {
+    const permission = PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS;
+    if (!permission) return;
+    const alreadyGranted = await PermissionsAndroid.check(permission);
+    if (alreadyGranted) return;
+    await PermissionsAndroid.request(permission);
+  } catch {
+    // Permission flow failed; the live timer still runs without its notification.
+  }
+}
+
+export async function startLiveTimer(input: LiveTimerStartInput): Promise<void> {
+  await ensureAndroidNotificationPermission();
   return LiveTimerModule.start(input);
 }
 
