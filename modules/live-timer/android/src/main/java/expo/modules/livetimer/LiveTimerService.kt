@@ -13,7 +13,6 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.PowerManager
-import android.os.SystemClock
 import androidx.core.app.NotificationCompat
 
 // Foreground service that hosts the persistent on-screen timer notification.
@@ -124,7 +123,12 @@ class LiveTimerService : Service() {
             .setShowWhen(true)
             .setUsesChronometer(true)
             .setChronometerCountDown(true)
-            .setWhen(SystemClock.elapsedRealtime() + (session.phaseEndMs - System.currentTimeMillis()))
+            // Chronometer base must be a wall-clock timestamp: the framework
+            // converts `when` (System.currentTimeMillis timebase) into the
+            // Chronometer's elapsedRealtime base itself. phaseEndMs is already
+            // wall-clock, so pass it directly — feeding an elapsedRealtime value
+            // here double-applies the offset and shows a garbage countdown.
+            .setWhen(session.phaseEndMs)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setCategory(NotificationCompat.CATEGORY_STOPWATCH)
