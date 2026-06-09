@@ -1,0 +1,28 @@
+{
+  "$comment": "FWT screenshot traversal, copy-free. Source of truth for qa/flows/mobile.yaml (GENERATED — run scripts/qa/compile-flow.mjs). Screenshot names match qa/screenshots.config.json sources (active→core slot, editor, list). Mirrors the proven hand-written flow.",
+  "appId": "com.joshapproved.freeworkouttimer",
+  "clearState": true,
+  "diagnosticLaunchShot": true,
+  "settleMs": 8000,
+  "steps": [
+    { "waitFor": "@app-title", "timeout": 30000 },
+    { "waitFor": "@edit-tabata", "timeout": 15000 },
+    { "screenshot": "list" },
+
+    { "tap": "@edit-tabata" },
+    { "waitFor": "@save-timer", "timeout": 5000 },
+    { "screenshot": "editor" },
+    { "tap": "@back" },
+
+    { "tap": "@start-tabata" },
+    { "waitFor": "@exercise", "timeout": 15000 },
+    { "screenshot": "active" },
+
+    { "tap": "@stop-workout" },
+    { "tap": "@stop-confirm" },
+    { "waitFor": "@app-title", "timeout": 5000 },
+    { "tap": "@settings" },
+    { "waitFor": "@back", "timeout": 5000 },
+    { "screenshot": "settings" }
+  ]
+}

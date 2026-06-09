@@ -1,0 +1,14 @@
+{
+  "$comment": "Selector registry — the one place FWT's brittle UI strings live. Flows reference @keys, never raw copy. testID preferred (copy-proof); text is a Maestro regex matching visible text OR a11y label. Anchors target the seeded 'Standard Tabata' QA fixture (src/qa/fixtures.ts).",
+  "anchors": {
+    "app-title":    { "text": "Free workout timer" },
+    "edit-tabata":  { "text": "Edit Standard Tabata", "note": "edit affordance on the seeded Standard Tabata timer" },
+    "save-timer":   { "text": "Save timer" },
+    "back":         { "text": "Back" },
+    "start-tabata": { "text": "Start Standard Tabata" },
+    "exercise":     { "text": "Exercise", "note": "mid-workout phase label" },
+    "stop-workout": { "text": "Stop workout" },
+    "stop-confirm": { "text": "Stop", "note": "confirm button in the system stop alert" },
+    "settings":     { "text": "Settings" }
+  }
+}
