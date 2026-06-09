@@ -21,6 +21,7 @@
     { "tap": "@stop-workout" },
     { "tap": "@stop-confirm" },
     { "waitFor": "@app-title", "timeout": 5000 },
+    { "assertNot": "@exercise" },
     { "tap": "@settings" },
     { "waitFor": "@back", "timeout": 5000 },
     { "screenshot": "settings" }
