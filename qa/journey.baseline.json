@@ -1,0 +1,16 @@
+{
+  "anchors": {
+    "back": {
+      "text": "Back",
+      "id": null
+    },
+    "exercise": {
+      "text": "Exercise start",
+      "id": null
+    },
+    "settings": {
+      "text": "Settings",
+      "id": null
+    }
+  }
+}
