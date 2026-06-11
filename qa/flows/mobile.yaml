@@ -37,6 +37,7 @@ appId: com.joshapproved.freeworkouttimer
 - extendedWaitUntil:
     visible: { text: "Free workout timer" }
     timeout: 5000
+- assertNotVisible: { text: "Exercise" }
 - tapOn: { text: "Settings" }
 - extendedWaitUntil:
     visible: { text: "Back" }
