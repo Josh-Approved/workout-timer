@@ -11,6 +11,10 @@
     "settings": {
       "text": "Settings",
       "id": null
+    },
+    "app-title": {
+      "text": "Workout Timer",
+      "id": null
     }
   }
 }
