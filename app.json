@@ -18,7 +18,8 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "LiveTimerURLScheme": "fwt",
-        "CFBundleDisplayName": "Workout Timer"
+        "CFBundleDisplayName": "Workout Timer",
+        "CFBundleName": "Workout Timer"
       }
     },
     "scheme": "fwt",
