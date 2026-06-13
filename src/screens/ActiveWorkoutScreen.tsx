@@ -70,6 +70,11 @@ const PHASE_LABELS: Record<WorkoutPhase, string> = {
   complete: 'Complete',
 };
 
+// Back control follows the music-player convention: pressing it within the
+// first second of an interval jumps to the previous interval; after that it
+// restarts the current one.
+const RESTART_THRESHOLD_SECONDS = 1;
+
 export default function ActiveWorkoutScreen({ route, navigation }: Props) {
   const { timerId } = route.params;
   const { c } = useTheme();
@@ -275,31 +280,46 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     }
   };
 
-  const handleRestart = () => {
-    if (displayState.mode === 'complete') return;
-    const s = stateRef.current;
-    const currentStep = stepsRef.current[s.stepIndex];
-    firePhaseStart(currentStep, soundsRef.current!, stepsRef.current, maxCyclesRef.current, speechModeRef.current);
+  // Move to an arbitrary step and (re)start it from its full duration. Shared
+  // by the back control (restart / previous) and skip — stepping between
+  // intervals is the same operation regardless of direction.
+  const goToStep = (idx: number) => {
+    const steps = stepsRef.current;
+    const step = steps[idx];
+    if (!step) return;
+    firePhaseStart(step, soundsRef.current!, steps, maxCyclesRef.current, speechModeRef.current);
     halfwayFiredRef.current = false;
-    const next: DisplayState = { mode: 'phase', stepIndex: s.stepIndex, timeRemaining: currentStep.duration };
+    const next: DisplayState = { mode: 'phase', stepIndex: idx, timeRemaining: step.duration };
     stateRef.current = next;
     setDisplayState(next);
     updateLiveTimer({
       sessionId: sessionIdRef.current,
-      phases: phasesFrom(stepsRef.current, s.stepIndex),
+      phases: phasesFrom(steps, idx),
       phaseStartMs: Date.now(),
     }).catch(() => {});
+  };
+
+  // Back control, music-player style: restart the current interval, or — if
+  // we're only a beat into it — jump back to the previous interval. On the
+  // first interval there's nowhere to go back to, so it always restarts.
+  const handleBack = () => {
+    if (displayState.mode === 'complete') return;
+    const s = stateRef.current;
+    const currentStep = stepsRef.current[s.stepIndex];
+    if (!currentStep) return;
+    const elapsed = currentStep.duration - s.timeRemaining;
+    const goPrevious = s.stepIndex > 0 && elapsed <= RESTART_THRESHOLD_SECONDS;
+    goToStep(goPrevious ? s.stepIndex - 1 : s.stepIndex);
   };
 
   const handleSkip = () => {
     if (displayState.mode === 'complete') return;
     const s = stateRef.current;
     const steps = stepsRef.current;
-    const sounds = soundsRef.current!;
     const nextIdx = s.stepIndex + 1;
 
     if (nextIdx >= steps.length) {
-      playComplete(sounds, speechModeRef.current);
+      playComplete(soundsRef.current!, speechModeRef.current);
       const next: DisplayState = { mode: 'complete', stepIndex: s.stepIndex, timeRemaining: 0 };
       stateRef.current = next;
       setDisplayState(next);
@@ -310,17 +330,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       return;
     }
 
-    const nextStep = steps[nextIdx];
-    firePhaseStart(nextStep, sounds, steps, maxCyclesRef.current, speechModeRef.current);
-    halfwayFiredRef.current = false;
-    const next: DisplayState = { mode: 'phase', stepIndex: nextIdx, timeRemaining: nextStep.duration };
-    stateRef.current = next;
-    setDisplayState(next);
-    updateLiveTimer({
-      sessionId: sessionIdRef.current,
-      phases: phasesFrom(steps, nextIdx),
-      phaseStartMs: Date.now(),
-    }).catch(() => {});
+    goToStep(nextIdx);
   };
 
   const handleStop = () => {
@@ -384,6 +394,15 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
   const totalRemaining = Math.max(0, totalDurationRef.current - elapsedSeconds);
   const totalA11yLabel = `Total remaining, ${formatDurationSpoken(totalRemaining)}`;
 
+  // Label tracks what the back control will actually do right now, so VoiceOver
+  // announces "Previous interval" only while it would step back.
+  const backWillGoToPrevious =
+    displayState.mode !== 'complete' &&
+    displayState.stepIndex > 0 &&
+    currentStep != null &&
+    currentStep.duration - displayState.timeRemaining <= RESTART_THRESHOLD_SECONDS;
+  const backA11yLabel = backWillGoToPrevious ? 'Previous interval' : 'Restart current interval';
+
   const s = makeStyles(c, isLandscape);
 
   const timerDisplay = (
@@ -416,9 +435,9 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     <View style={s.controls}>
       <Pressable
         style={({ pressed }) => [s.secondaryBtn, pressed && s.pressed]}
-        onPress={handleRestart}
+        onPress={handleBack}
         hitSlop={8}
-        accessibilityLabel="Restart current interval"
+        accessibilityLabel={backA11yLabel}
         accessibilityRole="button"
       >
         <SkipBack size={24} color={c.fg} strokeWidth={1.5} />
