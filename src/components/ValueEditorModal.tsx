@@ -6,6 +6,8 @@ import {
   TextInput,
   Pressable,
   StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import {
   useTheme,
@@ -86,79 +88,78 @@ export default function ValueEditorModal({
       onRequestClose={onCancel}
       onShow={focusFirst}
     >
-      <View style={s.overlay}>
-        <View style={s.card}>
-          <Text style={s.title} accessibilityRole="header">{label}</Text>
+      {/* Lift the card above the on-screen keyboard so the single Done button
+          is always tappable — the old layout let the keyboard cover the lower
+          buttons. */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        {/* Tapping outside the card dismisses without saving — the only
+            non-Done exit now that there's no Cancel button. Standard on both
+            platforms; the Android back / screen-reader escape gesture routes
+            to onRequestClose. accessible={false} keeps the scrim out of the
+            VoiceOver/TalkBack order (they dismiss via the escape gesture). */}
+        <Pressable style={s.overlay} onPress={onCancel} accessible={false}>
+          {/* The card swallows touches so a tap inside never reaches the scrim. */}
+          <Pressable style={s.card} onPress={() => {}} accessible={false}>
+            <Text style={s.title} accessibilityRole="header">{label}</Text>
 
-          {isTime ? (
-            <View style={s.timeRow}>
-              <View style={s.field}>
-                <TextInput
-                  ref={minRef}
-                  style={s.input}
-                  value={minStr}
-                  onChangeText={setMinStr}
-                  keyboardType="number-pad"
-                  maxLength={2}
-                  selectTextOnFocus
-                  returnKeyType="done"
-                  onSubmitEditing={handleSave}
-                  accessibilityLabel={`${label} minutes`}
-                />
-                <Text style={s.caption}>min</Text>
+            {isTime ? (
+              <View style={s.timeRow}>
+                <View style={s.field}>
+                  <TextInput
+                    ref={minRef}
+                    style={s.input}
+                    value={minStr}
+                    onChangeText={setMinStr}
+                    keyboardType="number-pad"
+                    maxLength={2}
+                    selectTextOnFocus
+                    accessibilityLabel={`${label} minutes`}
+                  />
+                  <Text style={s.caption}>min</Text>
+                </View>
+                <View style={s.field}>
+                  <TextInput
+                    ref={secRef}
+                    style={s.input}
+                    value={secStr}
+                    onChangeText={setSecStr}
+                    keyboardType="number-pad"
+                    maxLength={2}
+                    selectTextOnFocus
+                    accessibilityLabel={`${label} seconds`}
+                  />
+                  <Text style={s.caption}>sec</Text>
+                </View>
               </View>
-              <View style={s.field}>
+            ) : (
+              <View style={s.countRow}>
                 <TextInput
-                  ref={secRef}
+                  ref={countRef}
                   style={s.input}
-                  value={secStr}
-                  onChangeText={setSecStr}
+                  value={countStr}
+                  onChangeText={setCountStr}
                   keyboardType="number-pad"
-                  maxLength={2}
+                  maxLength={3}
                   selectTextOnFocus
-                  returnKeyType="done"
-                  onSubmitEditing={handleSave}
-                  accessibilityLabel={`${label} seconds`}
+                  accessibilityLabel={label}
                 />
-                <Text style={s.caption}>sec</Text>
               </View>
-            </View>
-          ) : (
-            <View style={s.countRow}>
-              <TextInput
-                ref={countRef}
-                style={s.input}
-                value={countStr}
-                onChangeText={setCountStr}
-                keyboardType="number-pad"
-                maxLength={3}
-                selectTextOnFocus
-                returnKeyType="done"
-                onSubmitEditing={handleSave}
-                accessibilityLabel={label}
-              />
-            </View>
-          )}
+            )}
 
-          <Pressable
-            style={({ pressed }) => [s.primaryBtn, pressed && s.pressed]}
-            onPress={handleSave}
-            accessibilityRole="button"
-            accessibilityLabel="Done"
-          >
-            <Text style={s.primaryBtnText}>Done</Text>
+            <Pressable
+              style={({ pressed }) => [s.primaryBtn, pressed && s.pressed]}
+              onPress={handleSave}
+              accessibilityRole="button"
+              accessibilityLabel="Done"
+            >
+              <Text style={s.primaryBtnText}>Done</Text>
+            </Pressable>
           </Pressable>
-          <Pressable
-            style={({ pressed }) => [s.secondaryBtn, pressed && s.pressed]}
-            onPress={onCancel}
-            accessibilityRole="button"
-            accessibilityLabel="Cancel"
-            hitSlop={8}
-          >
-            <Text style={s.secondaryBtnText}>Cancel</Text>
-          </Pressable>
-        </View>
-      </View>
+        </Pressable>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -229,18 +230,11 @@ function makeStyles(c: Colors) {
       paddingHorizontal: space.s7,
       width: '100%',
       alignItems: 'center',
-      marginBottom: space.s3,
     },
     primaryBtnText: {
       ...t.base,
       fontFamily: fontFamily.sansSemibold,
       color: c.inkButtonText,
-    },
-    secondaryBtn: { paddingVertical: space.s2 },
-    secondaryBtnText: {
-      ...t.sm,
-      fontFamily: fontFamily.sans,
-      color: c.fgMuted,
     },
     pressed: { opacity: 0.7 },
   });

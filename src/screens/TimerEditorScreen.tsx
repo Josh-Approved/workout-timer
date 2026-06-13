@@ -36,7 +36,9 @@ type Props = NativeStackScreenProps<RootStackParamList, 'TimerEditor'>;
 
 const EMPTY_TIMER: Omit<TimerConfig, 'id' | 'createdAt' | 'updatedAt'> = {
   name: '',
-  initialCountdown: 0,
+  // New timers get a 15s get-ready countdown by default; users can change or
+  // zero it out in the editor.
+  initialCountdown: 15,
   warmUp: 0,
   exercise: 20,
   rest: 10,

@@ -68,7 +68,8 @@ export const DEFAULT_SOUND_SETTINGS: SoundSettings = {
   recoveryStart: 'voice',
   coolDownStart: 'voice',
   workoutComplete: 'voice',
-  halfwaySound: 'none',
+  // Halfway-through-interval cue on by default, using the unobtrusive Click.
+  halfwaySound: 'click',
   countdownDuration: 3,
 };
 
