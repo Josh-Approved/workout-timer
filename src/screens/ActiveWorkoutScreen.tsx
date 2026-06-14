@@ -29,6 +29,7 @@ import { recordSuccessfulCompletion as recordReviewCompletion } from '../storage
 import { recordSuccessfulCompletion as recordDonationCompletion } from '../storage/donationPrompt';
 import ReviewModal from '../components/ReviewModal';
 import DonationModal from '../components/DonationModal';
+import { t } from '../i18n';
 import {
   startLiveTimer,
   updateLiveTimer,
@@ -60,15 +61,9 @@ interface DisplayState {
   timeRemaining: number;
 }
 
-const PHASE_LABELS: Record<WorkoutPhase, string> = {
-  initial_countdown: 'Get ready',
-  warm_up: 'Warm up',
-  exercise: 'Exercise',
-  rest: 'Rest',
-  recovery: 'Recovery',
-  cool_down: 'Cool down',
-  complete: 'Complete',
-};
+// Resolve the visible phase label at call time (never a module-level constant —
+// canon § Translations: copy must follow the active language).
+const phaseLabel = (phase: WorkoutPhase): string => t(`workout.phase.${phase}`);
 
 // Back control follows the music-player convention: pressing it within the
 // first second of an interval jumps to the previous interval; after that it
@@ -114,8 +109,8 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
 
       const timer = timers.find((tt) => tt.id === timerId);
       if (!timer) {
-        Alert.alert('Error', 'Timer not found.', [
-          { text: 'OK', onPress: () => navigation.goBack() },
+        Alert.alert(t('workout.errorTitle'), t('workout.timerNotFound'), [
+          { text: t('common.ok'), onPress: () => navigation.goBack() },
         ]);
         return;
       }
@@ -334,10 +329,10 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
   };
 
   const handleStop = () => {
-    Alert.alert('Stop workout', 'End this workout?', [
-      { text: 'Keep going', style: 'cancel' },
+    Alert.alert(t('workout.stopWorkout'), t('workout.stopBody'), [
+      { text: t('workout.keepGoing'), style: 'cancel' },
       {
-        text: 'Stop',
+        text: t('workout.stop'),
         style: 'destructive',
         onPress: () => {
           stopInterval();
@@ -366,20 +361,20 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     ? `${currentStep.setNumber} / ${totalSetsInCycle}`
     : '—';
   const setA11yLabel = currentStep?.setNumber != null
-    ? `Set, ${currentStep.setNumber} of ${totalSetsInCycle}`
-    : 'Set, not applicable';
+    ? t('workout.setA11y', { current: currentStep.setNumber, total: totalSetsInCycle })
+    : t('workout.setA11yNone');
 
   const maxCycles = maxCyclesRef.current;
   const cycleDisplay = maxCycles > 0
     ? `${currentStep?.cycleNumber ?? '—'} / ${maxCycles}`
     : '1 / 1';
   const cycleA11yLabel = maxCycles > 1 && currentStep?.cycleNumber != null
-    ? `Cycle, ${currentStep.cycleNumber} of ${maxCycles}`
-    : 'Cycle, 1 of 1';
+    ? t('workout.cycleA11y', { current: currentStep.cycleNumber, total: maxCycles })
+    : t('workout.cycleA11yDefault');
 
   const timerA11yLabel = displayState.mode === 'complete'
-    ? 'Workout complete'
-    : `${formatDurationSpoken(displayState.timeRemaining)} remaining`;
+    ? t('workout.complete')
+    : t('workout.remainingA11y', { time: formatDurationSpoken(displayState.timeRemaining) });
 
   const elapsedSeconds = stepsRef.current
     .slice(0, displayState.stepIndex)
@@ -392,7 +387,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     : 0;
 
   const totalRemaining = Math.max(0, totalDurationRef.current - elapsedSeconds);
-  const totalA11yLabel = `Total remaining, ${formatDurationSpoken(totalRemaining)}`;
+  const totalA11yLabel = t('workout.totalRemainingA11y', { time: formatDurationSpoken(totalRemaining) });
 
   // Label tracks what the back control will actually do right now, so VoiceOver
   // announces "Previous interval" only while it would step back.
@@ -401,7 +396,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     displayState.stepIndex > 0 &&
     currentStep != null &&
     currentStep.duration - displayState.timeRemaining <= RESTART_THRESHOLD_SECONDS;
-  const backA11yLabel = backWillGoToPrevious ? 'Previous interval' : 'Restart current interval';
+  const backA11yLabel = backWillGoToPrevious ? t('workout.previousInterval') : t('workout.restartInterval');
 
   const s = makeStyles(c, isLandscape);
 
@@ -416,7 +411,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       {displayState.mode === 'complete' ? (
         <View style={s.completeRow} importantForAccessibility="no">
           <Check size={isLandscape ? 56 : 44} color={c.accent} strokeWidth={2} />
-          <Text style={s.completeText}>Done</Text>
+          <Text style={s.completeText}>{t('common.done')}</Text>
         </View>
       ) : (
         <Text
@@ -446,7 +441,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
         style={({ pressed }) => [s.secondaryBtn, pressed && s.pressed]}
         onPress={handleStop}
         hitSlop={8}
-        accessibilityLabel="Stop workout"
+        accessibilityLabel={t('workout.stopWorkout')}
         accessibilityRole="button"
       >
         <Square size={22} color={c.danger} strokeWidth={1.75} fill={c.danger} />
@@ -454,7 +449,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       <Pressable
         style={({ pressed }) => [s.playPauseBtn, pressed && s.pressed]}
         onPress={togglePause}
-        accessibilityLabel={isRunning ? 'Pause' : 'Resume'}
+        accessibilityLabel={isRunning ? t('workout.pause') : t('workout.resume')}
         accessibilityRole="button"
       >
         {isRunning ? (
@@ -467,7 +462,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
         style={({ pressed }) => [s.secondaryBtn, pressed && s.pressed]}
         onPress={handleSkip}
         hitSlop={8}
-        accessibilityLabel="Skip to next interval"
+        accessibilityLabel={t('workout.skip')}
         accessibilityRole="button"
       >
         <SkipForward size={24} color={c.fg} strokeWidth={1.5} />
@@ -478,10 +473,10 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       <Pressable
         style={({ pressed }) => [s.doneBtn, pressed && s.pressed]}
         onPress={() => navigation.goBack()}
-        accessibilityLabel="Back to timers"
+        accessibilityLabel={t('workout.backToTimers')}
         accessibilityRole="button"
       >
-        <Text style={s.doneBtnText} importantForAccessibility="no">Back to timers</Text>
+        <Text style={s.doneBtnText} importantForAccessibility="no">{t('workout.backToTimers')}</Text>
       </Pressable>
     </View>
   );
@@ -490,7 +485,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     <View
       style={s.progressOuter}
       accessible
-      accessibilityLabel={`Workout progress, ${Math.round(progressFraction * 100)} percent`}
+      accessibilityLabel={t('workout.progressA11y', { percent: Math.round(progressFraction * 100) })}
       accessibilityRole="progressbar"
     >
       <View style={s.segmentRow} importantForAccessibility="no">
@@ -521,7 +516,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
   if (!loaded) {
     return (
       <SafeAreaView style={s.container}>
-        <Text style={s.loading}>Loading…</Text>
+        <Text style={s.loading}>{t('workout.loading')}</Text>
       </SafeAreaView>
     );
   }
@@ -534,11 +529,11 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
             <View
               style={s.phaseRow}
               accessible
-              accessibilityLabel={PHASE_LABELS[phase]}
+              accessibilityLabel={phaseLabel(phase)}
               accessibilityRole="text"
             >
               <Text style={s.phaseLabel} importantForAccessibility="no">
-                {PHASE_LABELS[phase]}
+                {phaseLabel(phase)}
               </Text>
             </View>
             {timerDisplay}
@@ -552,7 +547,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
                 accessibilityLabel={setA11yLabel}
                 accessibilityRole="text"
               >
-                <Text style={s.infoLabel} importantForAccessibility="no">Set</Text>
+                <Text style={s.infoLabel} importantForAccessibility="no">{t('workout.set')}</Text>
                 <Text style={s.infoValue} importantForAccessibility="no">{setDisplay}</Text>
               </View>
               <View
@@ -561,7 +556,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
                 accessibilityLabel={cycleA11yLabel}
                 accessibilityRole="text"
               >
-                <Text style={s.infoLabel} importantForAccessibility="no">Cycle</Text>
+                <Text style={s.infoLabel} importantForAccessibility="no">{t('workout.cycle')}</Text>
                 <Text style={s.infoValue} importantForAccessibility="no">{cycleDisplay}</Text>
               </View>
               <View
@@ -570,7 +565,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
                 accessibilityLabel={totalA11yLabel}
                 accessibilityRole="text"
               >
-                <Text style={s.infoLabel} importantForAccessibility="no">Total</Text>
+                <Text style={s.infoLabel} importantForAccessibility="no">{t('workout.total')}</Text>
                 <Text style={s.infoValue} importantForAccessibility="no">{formatTime(totalRemaining)}</Text>
               </View>
             </View>
@@ -600,11 +595,11 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       <View
         style={s.phaseRow}
         accessible
-        accessibilityLabel={PHASE_LABELS[phase]}
+        accessibilityLabel={phaseLabel(phase)}
         accessibilityRole="text"
       >
         <Text style={s.phaseLabel} importantForAccessibility="no">
-          {PHASE_LABELS[phase]}
+          {phaseLabel(phase)}
         </Text>
       </View>
 
@@ -617,7 +612,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
           accessibilityLabel={setA11yLabel}
           accessibilityRole="text"
         >
-          <Text style={s.infoLabel} importantForAccessibility="no">Set</Text>
+          <Text style={s.infoLabel} importantForAccessibility="no">{t('workout.set')}</Text>
           <Text style={s.infoValue} importantForAccessibility="no">{setDisplay}</Text>
         </View>
         <View
@@ -626,7 +621,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
           accessibilityLabel={cycleA11yLabel}
           accessibilityRole="text"
         >
-          <Text style={s.infoLabel} importantForAccessibility="no">Cycle</Text>
+          <Text style={s.infoLabel} importantForAccessibility="no">{t('workout.cycle')}</Text>
           <Text style={s.infoValue} importantForAccessibility="no">{cycleDisplay}</Text>
         </View>
         <View
@@ -635,7 +630,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
           accessibilityLabel={totalA11yLabel}
           accessibilityRole="text"
         >
-          <Text style={s.infoLabel} importantForAccessibility="no">Total</Text>
+          <Text style={s.infoLabel} importantForAccessibility="no">{t('workout.total')}</Text>
           <Text style={s.infoValue} importantForAccessibility="no">{formatTime(totalRemaining)}</Text>
         </View>
       </View>
@@ -722,7 +717,7 @@ function firePhaseStart(
 function playComplete(sounds: SoundSettings, speechMode: boolean): void {
   const style = sounds.workoutComplete as string;
   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-  AccessibilityInfo.announceForAccessibility('Workout complete');
+  AccessibilityInfo.announceForAccessibility(t('workout.complete'));
 
   if (style === 'voice' && speechMode) {
     speakAndReactivate('Workout complete');
@@ -757,7 +752,7 @@ function phasesFrom(
   for (let i = idx; i < steps.length; i++) {
     out.push({
       id: `step-${i}`,
-      label: PHASE_LABELS[steps[i].phase],
+      label: phaseLabel(steps[i].phase),
       durationSeconds:
         i === idx && activeOverrideSeconds != null
           ? activeOverrideSeconds

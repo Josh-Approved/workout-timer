@@ -9,7 +9,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { RootStackParamList } from './src/types';
 import { AudioEngine } from './src/audio/AudioEngine';
-import { useAppFonts, lightColors, darkColors, fontFamily } from './src/theme';
+import { useAppFonts, lightColors, darkColors, fontFamily, useApplyThemePreference } from './src/theme';
+import { useApplyLocalePreference, useLocaleVersion } from './src/i18n/localePreference';
 import TimerListScreen from './src/screens/TimerListScreen';
 import TimerEditorScreen from './src/screens/TimerEditorScreen';
 import ActiveWorkoutScreen from './src/screens/ActiveWorkoutScreen';
@@ -49,6 +50,13 @@ function buildNavTheme(isDark: boolean): Theme {
 }
 
 export default function App() {
+  // Restore + apply the saved appearance preference (System/Light/Dark) before
+  // first paint; drives useColorScheme() here and in every screen.
+  useApplyThemePreference();
+  // Restore + apply the saved language; the version keys <NavigationContainer>
+  // below so a language switch re-renders the whole app (canon § Translations).
+  useApplyLocalePreference();
+  const localeVersion = useLocaleVersion();
   const isDark = useColorScheme() === 'dark';
   const [fontsLoaded] = useAppFonts();
   const [splashDone, setSplashDone] = useState(false);
@@ -67,7 +75,7 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         {ready && (
-          <NavigationContainer theme={buildNavTheme(isDark)}>
+          <NavigationContainer key={localeVersion} theme={buildNavTheme(isDark)}>
             <StatusBar style={isDark ? 'light' : 'dark'} />
             <Stack.Navigator screenOptions={{ headerShown: false, animation: QA_MODE ? 'none' : undefined }}>
               <Stack.Screen name="TimerList" component={TimerListScreen} />

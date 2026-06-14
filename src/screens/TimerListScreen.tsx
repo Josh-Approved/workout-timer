@@ -14,13 +14,14 @@ import { RootStackParamList, TimerConfig } from '../types';
 import { loadTimers, saveTimers } from '../storage/storage';
 import { getTimerSummary, getTotalDuration, formatTime } from '../utils/workout';
 import { buildFeedbackEmailUrl } from '../utils/feedback';
+import { t } from '../i18n';
 import { SortableList } from '../components/SortableList';
 import {
   useTheme,
   fontFamily,
   space,
   radius,
-  type as t,
+  type as ty,
   hairline,
   target,
   Colors,
@@ -49,12 +50,12 @@ export default function TimerListScreen({ navigation }: Props) {
     <SafeAreaView style={s.container}>
       <View style={s.header}>
         <Text style={s.title} accessibilityRole="header">
-          Free workout timer
+          {t('timerList.title')}
         </Text>
         <Pressable
           onPress={() => navigation.navigate('Settings')}
           hitSlop={8}
-          accessibilityLabel="Settings"
+          accessibilityLabel={t('settings.title')}
           accessibilityRole="button"
           style={({ pressed }) => [s.iconBtn, pressed && s.pressed]}
         >
@@ -66,28 +67,30 @@ export default function TimerListScreen({ navigation }: Props) {
         items={timers}
         keyExtractor={(item) => item.id}
         onOrderChange={handleOrderChange}
+        moveUpLabel={t('timerList.moveUp')}
+        moveDownLabel={t('timerList.moveDown')}
         contentContainerStyle={s.list}
         ListFooterComponent={
           <View style={s.footer}>
             <Pressable
               style={({ pressed }) => [s.linkRow, pressed && s.pressed]}
               onPress={() => Linking.openURL('https://buymeacoffee.com/jtysonwilliams')}
-              accessibilityLabel="Support this app"
+              accessibilityLabel={t('about.support')}
               accessibilityRole="link"
-              accessibilityHint="Opens in your browser"
+              accessibilityHint={t('a11y.opensInBrowser')}
             >
               <HandHeart size={18} color={c.fgMuted} strokeWidth={1.5} />
-              <Text style={s.linkText}>Support this app</Text>
+              <Text style={s.linkText}>{t('about.support')}</Text>
             </Pressable>
             <Pressable
               style={({ pressed }) => [s.linkRow, pressed && s.pressed]}
               onPress={() => Linking.openURL(buildFeedbackEmailUrl())}
-              accessibilityLabel="Send feedback"
+              accessibilityLabel={t('about.feedback')}
               accessibilityRole="link"
-              accessibilityHint="Opens your email app to send feedback or report a bug"
+              accessibilityHint={t('a11y.feedbackHint')}
             >
               <Mail size={18} color={c.fgMuted} strokeWidth={1.5} />
-              <Text style={s.linkText}>Send feedback</Text>
+              <Text style={s.linkText}>{t('about.feedback')}</Text>
             </Pressable>
           </View>
         }
@@ -96,8 +99,8 @@ export default function TimerListScreen({ navigation }: Props) {
             <View style={s.emptyIcon} importantForAccessibility="no">
               <Timer size={32} color={c.fgSubtle} strokeWidth={1.25} />
             </View>
-            <Text style={s.emptyTitle}>No timers yet</Text>
-            <Text style={s.emptyHint}>Tap + to build your first one.</Text>
+            <Text style={s.emptyTitle}>{t('timerList.emptyTitle')}</Text>
+            <Text style={s.emptyHint}>{t('timerList.emptyHint')}</Text>
           </View>
         }
         renderItem={({ item, drag, accessibilityProps }) => (
@@ -116,9 +119,9 @@ export default function TimerListScreen({ navigation }: Props) {
               onPress={() => navigation.navigate('TimerEditor', { timerId: item.id })}
               onLongPress={drag}
               delayLongPress={250}
-              accessibilityLabel={`Edit ${item.name}`}
+              accessibilityLabel={t('timerList.editTimer', { name: item.name })}
               accessibilityRole="button"
-              accessibilityHint="Opens the editor. Use the actions rotor to move this timer up or down."
+              accessibilityHint={t('timerList.editTimerHint')}
               accessibilityActions={accessibilityProps.accessibilityActions}
               onAccessibilityAction={accessibilityProps.onAccessibilityAction}
             >
@@ -126,7 +129,7 @@ export default function TimerListScreen({ navigation }: Props) {
                 <Text style={s.cardName}>{item.name}</Text>
                 <Text style={s.cardSummary}>{getTimerSummary(item)}</Text>
                 <Text style={s.cardDuration}>
-                  Total · {formatTime(getTotalDuration(item))}
+                  {t('timerList.total')} · {formatTime(getTotalDuration(item))}
                 </Text>
               </View>
               <ChevronRight
@@ -139,9 +142,9 @@ export default function TimerListScreen({ navigation }: Props) {
             <Pressable
               style={({ pressed }) => [s.playBtn, pressed && s.pressed]}
               onPress={() => navigation.navigate('ActiveWorkout', { timerId: item.id })}
-              accessibilityLabel={`Start ${item.name}`}
+              accessibilityLabel={t('timerList.startTimer', { name: item.name })}
               accessibilityRole="button"
-              accessibilityHint="Begins the workout"
+              accessibilityHint={t('timerList.startTimerHint')}
             >
               <Play size={20} color={c.inkButtonText} strokeWidth={1.75} fill={c.inkButtonText} />
             </Pressable>
@@ -152,7 +155,7 @@ export default function TimerListScreen({ navigation }: Props) {
       <Pressable
         style={({ pressed }) => [s.fab, pressed && s.pressed]}
         onPress={() => navigation.navigate('TimerEditor', {})}
-        accessibilityLabel="Create new timer"
+        accessibilityLabel={t('timerList.createNew')}
         accessibilityRole="button"
       >
         <Plus size={28} color={c.inkButtonText} strokeWidth={1.75} />
@@ -175,7 +178,7 @@ function makeStyles(c: Colors) {
       borderBottomColor: c.hairline,
     },
     title: {
-      ...t.md,
+      ...ty.md,
       color: c.fg,
       fontFamily: fontFamily.sansSemibold,
     },
@@ -222,19 +225,19 @@ function makeStyles(c: Colors) {
     cardBodyPressed: { backgroundColor: c.bg },
     cardInfo: { flex: 1 },
     cardName: {
-      ...t.md,
+      ...ty.md,
       color: c.fg,
       fontFamily: fontFamily.sansSemibold,
       marginBottom: space.s2,
     },
     cardSummary: {
-      ...t.sm,
+      ...ty.sm,
       color: c.fgMuted,
       fontFamily: fontFamily.sans,
       marginBottom: space.s1,
     },
     cardDuration: {
-      ...t.xs,
+      ...ty.xs,
       color: c.fgSubtle,
       fontFamily: fontFamily.mono,
     },
@@ -260,12 +263,12 @@ function makeStyles(c: Colors) {
       marginBottom: space.s2,
     },
     emptyTitle: {
-      ...t.md,
+      ...ty.md,
       color: c.fg,
       fontFamily: fontFamily.sansSemibold,
     },
     emptyHint: {
-      ...t.sm,
+      ...ty.sm,
       color: c.fgMuted,
       fontFamily: fontFamily.sans,
     },
@@ -277,7 +280,7 @@ function makeStyles(c: Colors) {
       paddingVertical: space.s3,
     },
     linkText: {
-      ...t.sm,
+      ...ty.sm,
       color: c.fgMuted,
       fontFamily: fontFamily.sans,
     },

@@ -38,16 +38,19 @@ import { loadSettings, saveSettings } from '../storage/storage';
 import { DEFAULT_SETTINGS } from '../constants/defaultTimers';
 import { AudioEngine } from '../audio/AudioEngine';
 import { buildFeedbackEmailUrl } from '../utils/feedback';
+import { t } from '../i18n';
 import Wordmark from '../components/Wordmark';
+import { LanguageSetting } from '../components/LanguageSetting';
 import {
   useTheme,
   fontFamily,
   space,
   radius,
-  type as t,
+  type as ty,
   hairline,
   tracking,
   Colors,
+  AppearanceToggle,
 } from '../theme';
 import { boundedContent } from '../theme';
 
@@ -80,19 +83,18 @@ function formatVersion(): string {
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
 
-interface SoundEventRow {
-  key: keyof Omit<SoundSettings, 'countdownDuration'>;
-  label: string;
-}
+type SoundEventKey = keyof Omit<SoundSettings, 'countdownDuration'>;
 
-const SOUND_EVENTS: SoundEventRow[] = [
-  { key: 'warmUpStart', label: 'Warm up start' },
-  { key: 'workStart', label: 'Exercise start' },
-  { key: 'restStart', label: 'Rest start' },
-  { key: 'recoveryStart', label: 'Recovery start' },
-  { key: 'coolDownStart', label: 'Cool down start' },
-  { key: 'workoutComplete', label: 'Workout complete' },
-  { key: 'halfwaySound', label: 'Halfway through interval' },
+// Keys only — the visible label is resolved at render via t() so it stays
+// translatable (canon § Translations: never resolve copy in a module constant).
+const SOUND_EVENT_KEYS: SoundEventKey[] = [
+  'warmUpStart',
+  'workStart',
+  'restStart',
+  'recoveryStart',
+  'coolDownStart',
+  'workoutComplete',
+  'halfwaySound',
 ];
 
 export default function SettingsScreen({ navigation }: Props) {
@@ -135,10 +137,10 @@ export default function SettingsScreen({ navigation }: Props) {
   };
 
   const handleReset = () => {
-    Alert.alert('Reset to defaults', 'Restore all settings to defaults?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('settings.resetTitle'), t('settings.resetMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Reset',
+        text: t('settings.reset'),
         style: 'destructive',
         onPress: async () => {
           setSounds(DEFAULT_SETTINGS.sounds);
@@ -155,33 +157,49 @@ export default function SettingsScreen({ navigation }: Props) {
         <Pressable
           onPress={() => navigation.goBack()}
           hitSlop={8}
-          accessibilityLabel="Back"
+          accessibilityLabel={t('common.back')}
           accessibilityRole="button"
           style={({ pressed }) => [s.headerSide, pressed && s.pressed]}
         >
           <ChevronLeft size={22} color={c.fg} strokeWidth={1.5} />
-          <Text style={s.headerBackText}>Back</Text>
+          <Text style={s.headerBackText}>{t('common.back')}</Text>
         </Pressable>
-        <Text style={s.headerTitle} accessibilityRole="header">Settings</Text>
+        <Text style={s.headerTitle} accessibilityRole="header">{t('settings.title')}</Text>
         <Pressable
           onPress={handleReset}
           hitSlop={8}
-          accessibilityLabel="Reset to defaults"
+          accessibilityLabel={t('settings.resetA11y')}
           accessibilityRole="button"
-          accessibilityHint="Restores all sound settings to their defaults"
+          accessibilityHint={t('settings.resetHint')}
           style={({ pressed }) => [s.headerSide, s.headerSideRight, pressed && s.pressed]}
         >
-          <Text style={s.headerReset}>Reset</Text>
+          <Text style={s.headerReset}>{t('settings.reset')}</Text>
         </Pressable>
       </View>
 
       <ScrollView contentContainerStyle={s.scroll}>
-        <Text style={s.sectionHeader} accessibilityRole="header">Accessibility</Text>
+        <Text style={s.sectionHeader} accessibilityRole="header">{t('settings.appearance')}</Text>
+        <AppearanceToggle
+          style={{ paddingHorizontal: 0, marginBottom: space.s6 }}
+          labels={{
+            title: t('settings.appearance'),
+            system: t('settings.themeSystem'),
+            light: t('settings.themeLight'),
+            dark: t('settings.themeDark'),
+          }}
+        />
+
+        <Text style={s.sectionHeader} accessibilityRole="header">{t('settings.language')}</Text>
+        <View style={{ marginBottom: space.s6 }}>
+          <LanguageSetting />
+        </View>
+
+        <Text style={s.sectionHeader} accessibilityRole="header">{t('settings.accessibility')}</Text>
         <View style={s.card}>
           <View style={s.row}>
             <View style={s.rowLabel} importantForAccessibility="no-hide-descendants">
-              <Text style={s.rowTitle}>Voice cues</Text>
-              <Text style={s.rowHint}>Speaks phase name, set, and duration aloud during your workout.</Text>
+              <Text style={s.rowTitle}>{t('settings.voiceCues')}</Text>
+              <Text style={s.rowHint}>{t('settings.voiceCuesHint')}</Text>
             </View>
             <Switch
               value={audioMode}
@@ -190,23 +208,23 @@ export default function SettingsScreen({ navigation }: Props) {
               thumbColor={c.bgElevated}
               ios_backgroundColor={c.hairlineStrong}
               accessibilityRole="switch"
-              accessibilityLabel="Voice cues"
+              accessibilityLabel={t('settings.voiceCues')}
               accessibilityState={{ checked: audioMode }}
             />
           </View>
         </View>
 
-        <Text style={s.sectionHeader} accessibilityRole="header">Countdown</Text>
+        <Text style={s.sectionHeader} accessibilityRole="header">{t('settings.countdown')}</Text>
         <View style={s.card}>
           <View style={s.row}>
             <View
               style={s.rowLabel}
               accessible
               accessibilityRole="text"
-              accessibilityLabel="Countdown duration. Seconds of beeping before each interval. Zero is off."
+              accessibilityLabel={t('settings.countdownDurationA11y')}
             >
-              <Text style={s.rowTitle} importantForAccessibility="no">Countdown duration</Text>
-              <Text style={s.rowHint} importantForAccessibility="no">Seconds of beeping before each interval (0 = off).</Text>
+              <Text style={s.rowTitle} importantForAccessibility="no">{t('settings.countdownDuration')}</Text>
+              <Text style={s.rowHint} importantForAccessibility="no">{t('settings.countdownDurationHint')}</Text>
             </View>
             <View
               style={s.stepper}
@@ -214,13 +232,13 @@ export default function SettingsScreen({ navigation }: Props) {
               accessibilityRole="adjustable"
               accessibilityLabel={
                 sounds.countdownDuration === 0
-                  ? 'Off'
+                  ? t('common.off')
                   : `${sounds.countdownDuration} second${sounds.countdownDuration !== 1 ? 's' : ''}`
               }
-              accessibilityHint="Swipe up to increase, swipe down to decrease"
+              accessibilityHint={t('settings.swipeHint')}
               accessibilityActions={[
-                { name: 'increment', label: 'increase' },
-                { name: 'decrement', label: 'decrease' },
+                { name: 'increment', label: t('a11y.increase') },
+                { name: 'decrement', label: t('a11y.decrease') },
               ]}
               onAccessibilityAction={(event) => {
                 if (event.nativeEvent.actionName === 'increment')
@@ -252,12 +270,14 @@ export default function SettingsScreen({ navigation }: Props) {
           </View>
         </View>
 
-        <Text style={s.sectionHeader} accessibilityRole="header">Sounds</Text>
-        <Text style={s.sectionHint}>Tap a sound to preview it.</Text>
+        <Text style={s.sectionHeader} accessibilityRole="header">{t('settings.sounds')}</Text>
+        <Text style={s.sectionHint}>{t('settings.soundsHint')}</Text>
         <View style={s.card}>
-          {SOUND_EVENTS.map((event, idx) => (
-            <View key={event.key} style={[s.soundRow, idx > 0 && s.soundRowBorder]}>
-              <Text style={s.soundEventLabel}>{event.label}</Text>
+          {SOUND_EVENT_KEYS.map((eventKey, idx) => {
+            const eventLabel = t(`settings.soundEvents.${eventKey}`);
+            return (
+            <View key={eventKey} style={[s.soundRow, idx > 0 && s.soundRowBorder]}>
+              <Text style={s.soundEventLabel}>{eventLabel}</Text>
               {/* There are 9+ sound styles — more than fit a phone width, so
                   this row scrolls horizontally. Keep the scroll indicator on
                   so the affordance is visible: without it the last chip is
@@ -268,10 +288,10 @@ export default function SettingsScreen({ navigation }: Props) {
                 showsHorizontalScrollIndicator
                 contentContainerStyle={s.pillRow}
                 accessibilityRole="radiogroup"
-                accessibilityLabel={`${event.label} sound`}
+                accessibilityLabel={t('settings.soundEventA11y', { label: eventLabel })}
               >
                 {ALL_SOUND_STYLES.map((style) => {
-                  const active = sounds[event.key] === style;
+                  const active = sounds[eventKey] === style;
                   return (
                     <Pressable
                       key={style}
@@ -280,11 +300,11 @@ export default function SettingsScreen({ navigation }: Props) {
                         active && s.pillActive,
                         pressed && s.pressed,
                       ]}
-                      onPress={() => updateSound(event.key, style)}
+                      onPress={() => updateSound(eventKey, style)}
                       accessibilityRole="radio"
                       accessibilityState={{ selected: active }}
                       accessibilityLabel={SOUND_STYLE_LABELS[style]}
-                      accessibilityHint={active ? 'Currently selected' : 'Tap to select and preview'}
+                      accessibilityHint={active ? t('settings.soundSelected') : t('settings.soundSelectHint')}
                     >
                       <Text style={[s.pillText, active && s.pillTextActive]} importantForAccessibility="no">
                         {SOUND_STYLE_LABELS[style]}
@@ -294,85 +314,86 @@ export default function SettingsScreen({ navigation }: Props) {
                 })}
               </ScrollView>
             </View>
-          ))}
+            );
+          })}
         </View>
 
-        <Text style={s.sectionHeader} accessibilityRole="header">About</Text>
+        <Text style={s.sectionHeader} accessibilityRole="header">{t('settings.about')}</Text>
         <View style={s.card}>
           <Pressable
             style={({ pressed }) => [s.aboutRow, pressed && s.pressed]}
             onPress={() => Linking.openURL(BMAC_URL).catch(() => {})}
-            accessibilityLabel="Support this app"
+            accessibilityLabel={t('about.support')}
             accessibilityRole="link"
-            accessibilityHint="Opens in your browser"
+            accessibilityHint={t('a11y.opensInBrowser')}
           >
             <HandHeart size={20} color={c.fg} strokeWidth={1.5} />
-            <Text style={s.aboutRowLabel}>Support this app</Text>
+            <Text style={s.aboutRowLabel}>{t('about.support')}</Text>
             <ChevronRight size={18} color={c.fgMuted} strokeWidth={1.5} />
           </Pressable>
           <Pressable
             style={({ pressed }) => [s.aboutRow, s.aboutRowBorder, pressed && s.pressed]}
             onPress={() => Linking.openURL(buildFeedbackEmailUrl())}
-            accessibilityLabel="Send feedback"
+            accessibilityLabel={t('about.feedback')}
             accessibilityRole="link"
-            accessibilityHint="Opens your email app to send feedback or report a bug"
+            accessibilityHint={t('a11y.feedbackHint')}
           >
             <Mail size={20} color={c.fg} strokeWidth={1.5} />
-            <Text style={s.aboutRowLabel}>Send feedback</Text>
+            <Text style={s.aboutRowLabel}>{t('about.feedback')}</Text>
             <ChevronRight size={18} color={c.fgMuted} strokeWidth={1.5} />
           </Pressable>
           <Pressable
             style={({ pressed }) => [s.aboutRow, s.aboutRowBorder, pressed && s.pressed]}
             onPress={() => Linking.openURL(reviewUrl).catch(() => {})}
-            accessibilityLabel="Leave a review"
+            accessibilityLabel={t('about.review')}
             accessibilityRole="link"
-            accessibilityHint="Opens the app store to leave a review"
+            accessibilityHint={t('settings.reviewHint')}
           >
             <Star size={20} color={c.fg} strokeWidth={1.5} />
-            <Text style={s.aboutRowLabel}>Leave a review</Text>
+            <Text style={s.aboutRowLabel}>{t('about.review')}</Text>
             <ChevronRight size={18} color={c.fgMuted} strokeWidth={1.5} />
           </Pressable>
           <Pressable
             style={({ pressed }) => [s.aboutRow, s.aboutRowBorder, pressed && s.pressed]}
             onPress={() => Linking.openURL(PRIVACY_URL).catch(() => {})}
-            accessibilityLabel="Privacy"
+            accessibilityLabel={t('about.privacy')}
             accessibilityRole="link"
-            accessibilityHint="Opens this app's privacy statement on GitHub"
+            accessibilityHint={t('settings.privacyHint')}
           >
             <Shield size={20} color={c.fg} strokeWidth={1.5} />
-            <Text style={s.aboutRowLabel}>Privacy</Text>
+            <Text style={s.aboutRowLabel}>{t('about.privacy')}</Text>
             <ChevronRight size={18} color={c.fgMuted} strokeWidth={1.5} />
           </Pressable>
           <Pressable
             style={({ pressed }) => [s.aboutRow, s.aboutRowBorder, pressed && s.pressed]}
             onPress={() => Linking.openURL(GITHUB_REPO_URL).catch(() => {})}
-            accessibilityLabel="Source code"
+            accessibilityLabel={t('about.source')}
             accessibilityRole="link"
-            accessibilityHint="Opens this app's public source code on GitHub"
+            accessibilityHint={t('settings.sourceHint')}
           >
             <Code size={20} color={c.fg} strokeWidth={1.5} />
-            <Text style={s.aboutRowLabel}>Source code</Text>
+            <Text style={s.aboutRowLabel}>{t('about.source')}</Text>
             <ChevronRight size={18} color={c.fgMuted} strokeWidth={1.5} />
           </Pressable>
           <Pressable
             style={({ pressed }) => [s.aboutRow, s.aboutRowBorder, pressed && s.pressed]}
             onPress={() => navigation.navigate('Acknowledgements')}
-            accessibilityLabel="Acknowledgements"
+            accessibilityLabel={t('about.acknowledgements')}
             accessibilityRole="button"
-            accessibilityHint="Opens credits for the open source projects this app is built on"
+            accessibilityHint={t('settings.acknowledgementsHint')}
           >
             <Library size={20} color={c.fg} strokeWidth={1.5} />
-            <Text style={s.aboutRowLabel}>Acknowledgements</Text>
+            <Text style={s.aboutRowLabel}>{t('about.acknowledgements')}</Text>
             <ChevronRight size={18} color={c.fgMuted} strokeWidth={1.5} />
           </Pressable>
           <View
             style={[s.aboutRow, s.aboutRowBorder]}
             accessible
             accessibilityRole="text"
-            accessibilityLabel={`Version ${formatVersion()}`}
+            accessibilityLabel={t('settings.versionA11y', { version: formatVersion() })}
           >
             <View style={s.aboutRowIconSpacer} importantForAccessibility="no" />
-            <Text style={s.aboutRowLabel} importantForAccessibility="no">Version</Text>
+            <Text style={s.aboutRowLabel} importantForAccessibility="no">{t('about.version')}</Text>
             <Text style={s.versionValue} importantForAccessibility="no">{formatVersion()}</Text>
           </View>
         </View>
@@ -380,17 +401,17 @@ export default function SettingsScreen({ navigation }: Props) {
         <View style={s.stamp}>
           <Wordmark />
           <Text style={s.stampText}>
-            Privacy-first replacements for paywalled utility apps. Open source. Pay what you want.
+            {t('about.oneLiner')}
           </Text>
           <Pressable
             onPress={() => Linking.openURL('https://joshapproved.com').catch(() => {})}
             hitSlop={8}
-            accessibilityLabel="Learn more about Josh Approved"
+            accessibilityLabel={t('settings.learnMoreA11y')}
             accessibilityRole="link"
-            accessibilityHint="Opens joshapproved.com in your browser"
+            accessibilityHint={t('settings.learnMoreHint')}
             style={({ pressed }) => pressed && s.pressed}
           >
-            <Text style={s.stampLink}>Learn more</Text>
+            <Text style={s.stampLink}>{t('about.learnMore')}</Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -418,18 +439,18 @@ function makeStyles(c: Colors) {
     },
     headerSideRight: { justifyContent: 'flex-end' },
     pressed: { opacity: 0.7 },
-    headerBackText: { ...t.base, color: c.fg, fontFamily: fontFamily.sans },
+    headerBackText: { ...ty.base, color: c.fg, fontFamily: fontFamily.sans },
     headerTitle: {
-      ...t.base,
+      ...ty.base,
       color: c.fg,
       fontFamily: fontFamily.sansSemibold,
       textAlign: 'center',
     },
-    headerReset: { ...t.sm, color: c.danger, fontFamily: fontFamily.sansMedium },
+    headerReset: { ...ty.sm, color: c.danger, fontFamily: fontFamily.sansMedium },
 
     scroll: { ...boundedContent, padding: space.s5, paddingBottom: space.s8 },
     sectionHeader: {
-      ...t.xs,
+      ...ty.xs,
       fontFamily: fontFamily.sansMedium,
       color: c.fgMuted,
       letterSpacing: tracking.wide,
@@ -439,7 +460,7 @@ function makeStyles(c: Colors) {
       paddingHorizontal: space.s1,
     },
     sectionHint: {
-      ...t.xs,
+      ...ty.xs,
       color: c.fgMuted,
       fontFamily: fontFamily.sans,
       marginBottom: space.s3,
@@ -462,9 +483,9 @@ function makeStyles(c: Colors) {
       paddingVertical: space.s4,
     },
     rowLabel: { flex: 1, marginRight: space.s4 },
-    rowTitle: { ...t.sm, color: c.fg, fontFamily: fontFamily.sansMedium },
-    rowHint: { ...t.xs, color: c.fgMuted, fontFamily: fontFamily.sans, marginTop: 2 },
-    rowValue: { ...t.sm, color: c.fgMuted, fontFamily: fontFamily.mono },
+    rowTitle: { ...ty.sm, color: c.fg, fontFamily: fontFamily.sansMedium },
+    rowHint: { ...ty.xs, color: c.fgMuted, fontFamily: fontFamily.sans, marginTop: 2 },
+    rowValue: { ...ty.sm, color: c.fgMuted, fontFamily: fontFamily.mono },
 
     aboutRow: {
       flexDirection: 'row',
@@ -480,14 +501,14 @@ function makeStyles(c: Colors) {
       borderTopColor: c.hairline,
     },
     aboutRowLabel: {
-      ...t.sm,
+      ...ty.sm,
       color: c.fg,
       fontFamily: fontFamily.sansMedium,
       flex: 1,
     },
     aboutRowIconSpacer: { width: 20 },
     versionValue: {
-      ...t.sm,
+      ...ty.sm,
       color: c.fgMuted,
       fontFamily: fontFamily.mono,
     },
@@ -504,7 +525,7 @@ function makeStyles(c: Colors) {
       alignItems: 'center',
     },
     stepValue: {
-      ...t.base,
+      ...ty.base,
       fontFamily: fontFamily.monoMedium,
       color: c.fg,
       minWidth: 36,
@@ -514,7 +535,7 @@ function makeStyles(c: Colors) {
     soundRow: { paddingHorizontal: space.s5, paddingVertical: space.s4 },
     soundRowBorder: { borderTopWidth: hairline, borderTopColor: c.hairline },
     soundEventLabel: {
-      ...t.sm,
+      ...ty.sm,
       fontFamily: fontFamily.sansMedium,
       color: c.fg,
       marginBottom: space.s3,
@@ -533,19 +554,19 @@ function makeStyles(c: Colors) {
       backgroundColor: c.bg,
     },
     pillActive: { backgroundColor: c.fg, borderColor: c.fg },
-    pillText: { ...t.sm, color: c.fg, fontFamily: fontFamily.sans },
+    pillText: { ...ty.sm, color: c.fg, fontFamily: fontFamily.sans },
     pillTextActive: { color: c.bg, fontFamily: fontFamily.sansMedium },
 
     stamp: { alignItems: 'center', paddingVertical: space.s5, gap: space.s3 },
     stampText: {
-      ...t.xs,
+      ...ty.xs,
       color: c.fgMuted,
       fontFamily: fontFamily.sans,
       textAlign: 'center',
       paddingHorizontal: space.s6,
     },
     stampLink: {
-      ...t.xs,
+      ...ty.xs,
       color: c.fg,
       fontFamily: fontFamily.sansMedium,
       textDecorationLine: 'underline',
