@@ -656,12 +656,15 @@ const ruleFlowDrift = async ({ appDir }) => {
 const enforceI18n = baseline['i18n/enforce'] === true;
 const i18nWarn = (id, message, detail) => (enforceI18n ? fail : warn)(id, message, detail);
 
-// Factory-synced / brand-locked components: copy is already externalized or is
-// a locked brand string — never flag these (skip by basename).
+// Brand-locked components: their only literal is the "josh approved" wordmark,
+// a brand proper noun that never translates (canon § voice) — skip by basename.
+// Every OTHER canonical component (FundingFooter, DonationModal, ReviewModal,
+// ErrorBoundary, Credits, SettingsAbout, AboutRow, ScreenHeader, EmptyState) is
+// now fully externalized via t() and IS scanned, so a re-introduced hardcoded
+// string in shell chrome is caught — the gap that shipped the untranslated
+// footer/modals (fixed 2026-06-14).
 const I18N_SKIP_FILES = new Set([
-  'AboutRow.tsx', 'FundingFooter.tsx', 'SettingsAbout.tsx', 'Wordmark.tsx',
-  'ErrorBoundary.tsx', 'ScreenHeader.tsx', 'EmptyState.tsx', 'Credits.tsx',
-  'ReviewModal.tsx', 'DonationModal.tsx', 'AnimatedSplash.tsx',
+  'Wordmark.tsx', 'AnimatedSplash.tsx',
 ]);
 // Words that are valid bare JSX text but never user copy to translate.
 const I18N_TEXT_OK = /^(?:[\s\d.,:;!?%$€£¥+\-/×·•|()[\]]+|[A-Za-z]{1})$/;
@@ -669,8 +672,10 @@ const I18N_TEXT_OK = /^(?:[\s\d.,:;!?%$€£¥+\-/×·•|()[\]]+|[A-Za-z]{1})$/
 // (`=>`), a TS generic, or a comparison, followed later by a JSX `<`, swallows a
 // run of source between them. User-facing copy never contains these tokens, so
 // reject the match when any appears. (Found 2026-06-11: `(it) => it.done).length;
-// return (` flagged as copy.)
-const I18N_CODE_LIKE = /[;=]|=>|\)\.|\]\(|\b(?:return|const|let|var|function|import|export|null|undefined)\b/;
+// return (` flagged as copy.) Also reject a span that starts with a closing
+// bracket or ends with an opening one — that's a swallowed JSX ternary fragment
+// like `) : onPress ? (`, never copy (found 2026-06-14 on AboutRow).
+const I18N_CODE_LIKE = /[;=]|=>|\)\.|\]\(|\b(?:return|const|let|var|function|import|export|null|undefined)\b|^[)\]}]|[([{]$/;
 
 const ruleNoHardcodedStrings = () => {
   if (surface !== 'rn') return skip('i18n/no-hardcoded-strings', 'Not a React Native app');
@@ -681,7 +686,9 @@ const ruleNoHardcodedStrings = () => {
   const files = srcSourceFiles().filter((f) => {
     const rel = relative(join(appDir, 'src'), f).replace(/\\/g, '/');
     if (!/\.tsx$/.test(f)) return false;
-    if (!(rel.startsWith('screens/') || rel.startsWith('components/'))) return false;
+    // Scan screens + components AND the app shell (src/shell — AppShell and any
+    // shell chrome); the shell renders user-facing text too (canon § Translations).
+    if (!(rel.startsWith('screens/') || rel.startsWith('components/') || rel.startsWith('shell/'))) return false;
     if (I18N_SKIP_FILES.has(f.split(/[\\/]/).pop())) return false;
     return true;
   });
@@ -716,6 +723,74 @@ const ruleNoHardcodedStrings = () => {
   return pass('i18n/no-hardcoded-strings', `No hardcoded user-facing strings in ${files.length} screen/component file(s)`);
 };
 
+// ---------- rule: dark-mode appearance control (canon § Theming) ----------
+//
+// Rendering already follows the OS via the canonical useTheme() (light/dark
+// palettes in src/theme/colors.ts). This rule guards the USER-FACING control:
+// every app renders the canonical <AppearanceToggle/> (System/Light/Dark) in
+// Settings and applies the saved choice at the app root via
+// useApplyThemePreference() — both shipped by the design-system module so no
+// app forks them. WARN during rollout (codify→backfill→shipgate, like the
+// testing/i18n tiers); promote per-app to FAIL with `"theme/enforce": true` in
+// qa/baseline.json once it's wired green.
+const enforceTheme = baseline['theme/enforce'] === true;
+const themeWarn = (id, message, detail) => (enforceTheme ? fail : warn)(id, message, detail);
+
+const ruleAppearanceToggle = () => {
+  if (surface !== 'rn') return skip('theme/appearance-toggle', 'Not a React Native app');
+  // App.tsx (root apply hook in non-shell apps) lives outside src/, so include
+  // it explicitly; shell apps carry the hook in src/shell/AppShell.tsx.
+  const haystack = [...srcSourceFiles(), join(appDir, 'App.tsx')]
+    .map(readText)
+    .filter(Boolean)
+    .join('\n');
+  if (!haystack) return skip('theme/appearance-toggle', 'No source files');
+  const hasToggle = /<AppearanceToggle\b/.test(haystack);
+  const hasApply = /useApplyThemePreference\s*\(/.test(haystack);
+  if (hasToggle && hasApply) {
+    return pass('theme/appearance-toggle',
+      'Renders <AppearanceToggle/> and applies the saved preference at root (canon § Theming)');
+  }
+  const missing = [];
+  if (!hasToggle) missing.push('no <AppearanceToggle/> rendered — Settings must offer System / Light / Dark');
+  if (!hasApply) missing.push('no useApplyThemePreference() at the app root — a saved Light/Dark choice is ignored on launch');
+  return themeWarn('theme/appearance-toggle', 'Dark-mode appearance control incomplete (canon § Theming)', missing);
+};
+
+// ---------- rule: in-app language control (canon § Translations) ----------
+//
+// The shell already follows the device locale automatically; this rule guards
+// the USER-FACING control: a shell app renders the canonical <LanguageSetting/>
+// in Settings (the translation sibling of <AppearanceToggle/>) and applies the
+// saved language at root via useApplyLocalePreference() (shipped in AppShell, so
+// shell apps get it for free). It only applies to shell apps — a pre-shell app
+// has no in-app i18n to switch, so the rule SKIPS when the locale store is
+// absent. WARN during rollout (codify→backfill→shipgate, like § Theming);
+// promote per-app to FAIL with `"language/enforce": true` in qa/baseline.json.
+const enforceLanguage = baseline['language/enforce'] === true;
+const languageWarn = (id, message, detail) => (enforceLanguage ? fail : warn)(id, message, detail);
+
+const ruleLanguageControl = () => {
+  if (surface !== 'rn') return skip('language/control', 'Not a React Native app');
+  if (!exists(join(appDir, 'src/i18n/localePreference.ts')))
+    return skip('language/control', 'No shell i18n locale store — pre-shell app, nothing to switch in-app');
+  const haystack = [...srcSourceFiles(), join(appDir, 'App.tsx')]
+    .map(readText)
+    .filter(Boolean)
+    .join('\n');
+  if (!haystack) return skip('language/control', 'No source files');
+  const hasControl = /<LanguageSetting\b/.test(haystack);
+  const hasApply = /useApplyLocalePreference\s*\(/.test(haystack);
+  if (hasControl && hasApply) {
+    return pass('language/control',
+      'Renders <LanguageSetting/> and applies the saved language at root (canon § Translations)');
+  }
+  const missing = [];
+  if (!hasControl) missing.push('no <LanguageSetting/> rendered — Settings must offer a Language picker');
+  if (!hasApply) missing.push('no useApplyLocalePreference() at the app root (should ride the synced AppShell)');
+  return languageWarn('language/control', 'In-app language control incomplete (canon § Translations)', missing);
+};
+
 // ---------- runner ----------
 
 const CANONICAL_RULES = [
@@ -733,6 +808,8 @@ const CANONICAL_RULES = [
   ruleNoAlertPrompt,
   ruleNoPlatformEarlyReturn,
   ruleEasJsonShape,
+  ruleAppearanceToggle,
+  ruleLanguageControl,
   ruleAppNameSpotlightSafe,
   ruleKeyboardDismissEscape,
   ruleManifestMv3,
