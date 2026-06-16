@@ -36,6 +36,7 @@ import {
 } from '../types';
 import { loadSettings, saveSettings } from '../storage/storage';
 import { DEFAULT_SETTINGS } from '../constants/defaultTimers';
+import { DONATIONS_ENABLED } from '../constants/features';
 import { AudioEngine } from '../audio/AudioEngine';
 import { buildFeedbackEmailUrl } from '../utils/feedback';
 import { t } from '../i18n';
@@ -320,17 +321,19 @@ export default function SettingsScreen({ navigation }: Props) {
 
         <Text style={s.sectionHeader} accessibilityRole="header">{t('settings.about')}</Text>
         <View style={s.card}>
-          <Pressable
-            style={({ pressed }) => [s.aboutRow, pressed && s.pressed]}
-            onPress={() => Linking.openURL(BMAC_URL).catch(() => {})}
-            accessibilityLabel={t('about.support')}
-            accessibilityRole="link"
-            accessibilityHint={t('a11y.opensInBrowser')}
-          >
-            <HandHeart size={20} color={c.fg} strokeWidth={1.5} />
-            <Text style={s.aboutRowLabel}>{t('about.support')}</Text>
-            <ChevronRight size={18} color={c.fgMuted} strokeWidth={1.5} />
-          </Pressable>
+          {DONATIONS_ENABLED && (
+            <Pressable
+              style={({ pressed }) => [s.aboutRow, pressed && s.pressed]}
+              onPress={() => Linking.openURL(BMAC_URL).catch(() => {})}
+              accessibilityLabel={t('about.support')}
+              accessibilityRole="link"
+              accessibilityHint={t('a11y.opensInBrowser')}
+            >
+              <HandHeart size={20} color={c.fg} strokeWidth={1.5} />
+              <Text style={s.aboutRowLabel}>{t('about.support')}</Text>
+              <ChevronRight size={18} color={c.fgMuted} strokeWidth={1.5} />
+            </Pressable>
+          )}
           <Pressable
             style={({ pressed }) => [s.aboutRow, s.aboutRowBorder, pressed && s.pressed]}
             onPress={() => Linking.openURL(buildFeedbackEmailUrl())}

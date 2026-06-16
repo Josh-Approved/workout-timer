@@ -15,6 +15,7 @@ import { loadTimers, saveTimers } from '../storage/storage';
 import { getTimerSummary, getTotalDuration, formatTime } from '../utils/workout';
 import { buildFeedbackEmailUrl } from '../utils/feedback';
 import { t } from '../i18n';
+import { DONATIONS_ENABLED } from '../constants/features';
 import { SortableList } from '../components/SortableList';
 import {
   useTheme,
@@ -72,16 +73,18 @@ export default function TimerListScreen({ navigation }: Props) {
         contentContainerStyle={s.list}
         ListFooterComponent={
           <View style={s.footer}>
-            <Pressable
-              style={({ pressed }) => [s.linkRow, pressed && s.pressed]}
-              onPress={() => Linking.openURL('https://buymeacoffee.com/jtysonwilliams')}
-              accessibilityLabel={t('about.support')}
-              accessibilityRole="link"
-              accessibilityHint={t('a11y.opensInBrowser')}
-            >
-              <HandHeart size={18} color={c.fgMuted} strokeWidth={1.5} />
-              <Text style={s.linkText}>{t('about.support')}</Text>
-            </Pressable>
+            {DONATIONS_ENABLED && (
+              <Pressable
+                style={({ pressed }) => [s.linkRow, pressed && s.pressed]}
+                onPress={() => Linking.openURL('https://buymeacoffee.com/jtysonwilliams')}
+                accessibilityLabel={t('about.support')}
+                accessibilityRole="link"
+                accessibilityHint={t('a11y.opensInBrowser')}
+              >
+                <HandHeart size={18} color={c.fgMuted} strokeWidth={1.5} />
+                <Text style={s.linkText}>{t('about.support')}</Text>
+              </Pressable>
+            )}
             <Pressable
               style={({ pressed }) => [s.linkRow, pressed && s.pressed]}
               onPress={() => Linking.openURL(buildFeedbackEmailUrl())}

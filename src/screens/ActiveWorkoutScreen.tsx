@@ -27,6 +27,7 @@ import {
 import { AudioEngine } from '../audio/AudioEngine';
 import { recordSuccessfulCompletion as recordReviewCompletion } from '../storage/reviewPrompt';
 import { recordSuccessfulCompletion as recordDonationCompletion } from '../storage/donationPrompt';
+import { DONATIONS_ENABLED } from '../constants/features';
 import ReviewModal from '../components/ReviewModal';
 import DonationModal from '../components/DonationModal';
 import { t } from '../i18n';
@@ -243,7 +244,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
         setShowReview(true);
         return;
       }
-      if (await recordDonationCompletion()) {
+      if (DONATIONS_ENABLED && (await recordDonationCompletion())) {
         setShowDonation(true);
       }
     })();
