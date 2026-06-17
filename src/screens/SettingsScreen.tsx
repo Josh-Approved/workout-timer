@@ -36,7 +36,9 @@ import {
 } from '../types';
 import { loadSettings, saveSettings } from '../storage/storage';
 import { DEFAULT_SETTINGS } from '../constants/defaultTimers';
-import { DONATIONS_ENABLED } from '../constants/features';
+import { TIP_JAR_ENABLED } from '../constants/features';
+import { TIP_PRODUCT_IDS } from '../constants/tipProducts';
+import TipJarSheet from '../components/TipJarSheet';
 import { AudioEngine } from '../audio/AudioEngine';
 import { buildFeedbackEmailUrl } from '../utils/feedback';
 import { t } from '../i18n';
@@ -69,7 +71,6 @@ const APP_STORE_ID = '6767314178';
 const ANDROID_PACKAGE_NAME = 'com.joshapproved.freeworkouttimer';
 const GITHUB_REPO_URL = 'https://github.com/Josh-Approved/workout-timer';
 const PRIVACY_URL = `${GITHUB_REPO_URL}/blob/main/PRIVACY.md`;
-const BMAC_URL = 'https://buymeacoffee.com/jtysonwilliams';
 
 const reviewUrl =
   Platform.OS === 'ios'
@@ -104,6 +105,7 @@ export default function SettingsScreen({ navigation }: Props) {
 
   const [sounds, setSounds] = useState<SoundSettings>(DEFAULT_SETTINGS.sounds);
   const [audioMode, setAudioMode] = useState(DEFAULT_SETTINGS.audioAccessibilityMode);
+  const [tipVisible, setTipVisible] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -321,13 +323,12 @@ export default function SettingsScreen({ navigation }: Props) {
 
         <Text style={s.sectionHeader} accessibilityRole="header">{t('settings.about')}</Text>
         <View style={s.card}>
-          {DONATIONS_ENABLED && (
+          {TIP_JAR_ENABLED && (
             <Pressable
               style={({ pressed }) => [s.aboutRow, pressed && s.pressed]}
-              onPress={() => Linking.openURL(BMAC_URL).catch(() => {})}
+              onPress={() => setTipVisible(true)}
               accessibilityLabel={t('about.support')}
-              accessibilityRole="link"
-              accessibilityHint={t('a11y.opensInBrowser')}
+              accessibilityRole="button"
             >
               <HandHeart size={20} color={c.fg} strokeWidth={1.5} />
               <Text style={s.aboutRowLabel}>{t('about.support')}</Text>
@@ -418,6 +419,13 @@ export default function SettingsScreen({ navigation }: Props) {
           </Pressable>
         </View>
       </ScrollView>
+      {tipVisible && (
+        <TipJarSheet
+          visible
+          onDismiss={() => setTipVisible(false)}
+          productIds={TIP_PRODUCT_IDS}
+        />
+      )}
     </SafeAreaView>
   );
 }

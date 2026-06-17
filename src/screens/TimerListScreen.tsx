@@ -15,7 +15,9 @@ import { loadTimers, saveTimers } from '../storage/storage';
 import { getTimerSummary, getTotalDuration, formatTime } from '../utils/workout';
 import { buildFeedbackEmailUrl } from '../utils/feedback';
 import { t } from '../i18n';
-import { DONATIONS_ENABLED } from '../constants/features';
+import { TIP_JAR_ENABLED } from '../constants/features';
+import { TIP_PRODUCT_IDS } from '../constants/tipProducts';
+import TipJarSheet from '../components/TipJarSheet';
 import { SortableList } from '../components/SortableList';
 import {
   useTheme,
@@ -33,6 +35,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'TimerList'>;
 
 export default function TimerListScreen({ navigation }: Props) {
   const [timers, setTimers] = useState<TimerConfig[]>([]);
+  const [tipVisible, setTipVisible] = useState(false);
   const { c } = useTheme();
   const s = makeStyles(c);
 
@@ -73,13 +76,12 @@ export default function TimerListScreen({ navigation }: Props) {
         contentContainerStyle={s.list}
         ListFooterComponent={
           <View style={s.footer}>
-            {DONATIONS_ENABLED && (
+            {TIP_JAR_ENABLED && (
               <Pressable
                 style={({ pressed }) => [s.linkRow, pressed && s.pressed]}
-                onPress={() => Linking.openURL('https://buymeacoffee.com/jtysonwilliams')}
+                onPress={() => setTipVisible(true)}
                 accessibilityLabel={t('about.support')}
-                accessibilityRole="link"
-                accessibilityHint={t('a11y.opensInBrowser')}
+                accessibilityRole="button"
               >
                 <HandHeart size={18} color={c.fgMuted} strokeWidth={1.5} />
                 <Text style={s.linkText}>{t('about.support')}</Text>
@@ -163,6 +165,13 @@ export default function TimerListScreen({ navigation }: Props) {
       >
         <Plus size={28} color={c.inkButtonText} strokeWidth={1.75} />
       </Pressable>
+      {tipVisible && (
+        <TipJarSheet
+          visible
+          onDismiss={() => setTipVisible(false)}
+          productIds={TIP_PRODUCT_IDS}
+        />
+      )}
     </SafeAreaView>
   );
 }

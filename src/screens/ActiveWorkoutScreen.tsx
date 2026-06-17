@@ -27,9 +27,10 @@ import {
 import { AudioEngine } from '../audio/AudioEngine';
 import { recordSuccessfulCompletion as recordReviewCompletion } from '../storage/reviewPrompt';
 import { recordSuccessfulCompletion as recordDonationCompletion } from '../storage/donationPrompt';
-import { DONATIONS_ENABLED } from '../constants/features';
+import { TIP_JAR_ENABLED } from '../constants/features';
+import { TIP_PRODUCT_IDS } from '../constants/tipProducts';
 import ReviewModal from '../components/ReviewModal';
-import DonationModal from '../components/DonationModal';
+import TipJarSheet from '../components/TipJarSheet';
 import { t } from '../i18n';
 import {
   startLiveTimer,
@@ -93,7 +94,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
   const [isRunning, setIsRunning] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [showReview, setShowReview] = useState(false);
-  const [showDonation, setShowDonation] = useState(false);
+  const [showTip, setShowTip] = useState(false);
 
   useEffect(() => {
     ScreenOrientation.unlockAsync().catch(() => {});
@@ -244,8 +245,8 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
         setShowReview(true);
         return;
       }
-      if (DONATIONS_ENABLED && (await recordDonationCompletion())) {
-        setShowDonation(true);
+      if (TIP_JAR_ENABLED && (await recordDonationCompletion())) {
+        setShowTip(true);
       }
     })();
   }, [displayState.mode]);
@@ -582,11 +583,13 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
           iosAppStoreId={APP_STORE_ID}
           androidPackageName={ANDROID_PACKAGE_NAME}
         />
-        <DonationModal
-          visible={showDonation}
-          onDismiss={() => setShowDonation(false)}
-          appName="Free workout timer"
-        />
+        {showTip && (
+          <TipJarSheet
+            visible
+            onDismiss={() => setShowTip(false)}
+            productIds={TIP_PRODUCT_IDS}
+          />
+        )}
       </SafeAreaView>
     );
   }
@@ -646,11 +649,13 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
         iosAppStoreId={APP_STORE_ID}
         androidPackageName={ANDROID_PACKAGE_NAME}
       />
-      <DonationModal
-        visible={showDonation}
-        onDismiss={() => setShowDonation(false)}
-        appName="Free workout timer"
-      />
+      {showTip && (
+        <TipJarSheet
+          visible
+          onDismiss={() => setShowTip(false)}
+          productIds={TIP_PRODUCT_IDS}
+        />
+      )}
     </SafeAreaView>
   );
 }

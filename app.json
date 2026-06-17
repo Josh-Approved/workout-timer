@@ -67,7 +67,8 @@
       "expo-font",
       "live-timer",
       "@bacons/apple-targets",
-      "./plugins/withGradleJvmArgs"
+      "./plugins/withGradleJvmArgs",
+      "expo-iap"
     ]
   }
 }
