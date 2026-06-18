@@ -2,7 +2,7 @@
   "expo": {
     "name": "Workout Timer",
     "slug": "Free-Workout-Timer",
-    "version": "1.1.2",
+    "version": "1.1.4",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -67,7 +67,8 @@
       "expo-font",
       "live-timer",
       "@bacons/apple-targets",
-      "./plugins/withGradleJvmArgs"
+      "./plugins/withGradleJvmArgs",
+      "expo-iap"
     ]
   }
 }

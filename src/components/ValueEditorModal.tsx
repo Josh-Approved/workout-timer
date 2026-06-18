@@ -14,10 +14,11 @@ import {
   fontFamily,
   space,
   radius,
-  type as t,
+  type as ty,
   hairline,
   Colors,
 } from '../theme';
+import { t } from '../i18n';
 
 interface Props {
   visible: boolean;
@@ -116,9 +117,9 @@ export default function ValueEditorModal({
                     keyboardType="number-pad"
                     maxLength={2}
                     selectTextOnFocus
-                    accessibilityLabel={`${label} minutes`}
+                    accessibilityLabel={t('valueEditor.minutesA11y', { label })}
                   />
-                  <Text style={s.caption}>min</Text>
+                  <Text style={s.caption}>{t('valueEditor.minUnit')}</Text>
                 </View>
                 <View style={s.field}>
                   <TextInput
@@ -129,9 +130,9 @@ export default function ValueEditorModal({
                     keyboardType="number-pad"
                     maxLength={2}
                     selectTextOnFocus
-                    accessibilityLabel={`${label} seconds`}
+                    accessibilityLabel={t('valueEditor.secondsA11y', { label })}
                   />
-                  <Text style={s.caption}>sec</Text>
+                  <Text style={s.caption}>{t('valueEditor.secUnit')}</Text>
                 </View>
               </View>
             ) : (
@@ -153,9 +154,9 @@ export default function ValueEditorModal({
               style={({ pressed }) => [s.primaryBtn, pressed && s.pressed]}
               onPress={handleSave}
               accessibilityRole="button"
-              accessibilityLabel="Done"
+              accessibilityLabel={t('common.done')}
             >
-              <Text style={s.primaryBtnText}>Done</Text>
+              <Text style={s.primaryBtnText}>{t('common.done')}</Text>
             </Pressable>
           </Pressable>
         </Pressable>
@@ -188,7 +189,7 @@ function makeStyles(c: Colors) {
       elevation: 10,
     },
     title: {
-      ...t.md,
+      ...ty.md,
       fontFamily: fontFamily.sansSemibold,
       color: c.fg,
       textAlign: 'center',
@@ -205,7 +206,7 @@ function makeStyles(c: Colors) {
     },
     field: { alignItems: 'center' },
     input: {
-      ...t.md,
+      ...ty.md,
       fontFamily: fontFamily.monoMedium,
       color: c.fg,
       textAlign: 'center',
@@ -218,7 +219,7 @@ function makeStyles(c: Colors) {
       minWidth: 88,
     },
     caption: {
-      ...t.xs,
+      ...ty.xs,
       fontFamily: fontFamily.sans,
       color: c.fgMuted,
       marginTop: space.s2,
@@ -232,7 +233,7 @@ function makeStyles(c: Colors) {
       alignItems: 'center',
     },
     primaryBtnText: {
-      ...t.base,
+      ...ty.base,
       fontFamily: fontFamily.sansSemibold,
       color: c.inkButtonText,
     },

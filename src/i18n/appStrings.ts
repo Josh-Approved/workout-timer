@@ -1,0 +1,162 @@
+/**
+ * App-specific copy. APP-OWNED — every user-facing string in this app's domain
+ * screens lives here (canon § Translations: no copy hardcoded in components).
+ * Reference it via `t('<key>')` from `../i18n`. Voice canon applies: sentence
+ * case, plain second person, no emoji. These overlay the shell strings, so the
+ * `common`/`settings`/`about` namespaces extend (not replace) the shell's.
+ */
+
+export const APP_STRINGS = {
+  // Extends the shell common namespace (back/cancel/done/save/delete/edit/add).
+  common: {
+    ok: 'OK',
+    off: 'Off',
+  },
+  // Shared accessibility copy reused across screens.
+  a11y: {
+    increase: 'increase',
+    decrease: 'decrease',
+    opensInBrowser: 'Opens in your browser',
+    feedbackHint: 'Opens your email app to send feedback or report a bug',
+  },
+  timerList: {
+    title: 'Free workout timer',
+    emptyTitle: 'No timers yet',
+    emptyHint: 'Tap + to build your first one.',
+    total: 'Total',
+    editTimer: 'Edit {name}',
+    editTimerHint: 'Opens the editor. Use the actions rotor to move this timer up or down.',
+    startTimer: 'Start {name}',
+    startTimerHint: 'Begins the workout',
+    createNew: 'Create new timer',
+    moveUp: 'Move up',
+    moveDown: 'Move down',
+  },
+  editor: {
+    editTitle: 'Edit timer',
+    newTitle: 'New timer',
+    saveTimer: 'Save timer',
+    name: 'Name',
+    namePlaceholder: 'e.g. Leg day tabata',
+    nameA11y: 'Timer name',
+    nameHint: 'Enter a name for this timer',
+    nameRequiredTitle: 'Name required',
+    nameRequiredBody: 'Give your timer a name.',
+    exerciseRequiredTitle: 'Exercise time required',
+    exerciseRequiredBody: 'Exercise interval must be at least 1 second.',
+    deleteTitle: 'Delete timer',
+    deleteBody: 'Permanently delete "{name}"? This can\'t be undone.',
+    deleteTimer: 'Delete timer',
+    deleteHint: "Permanently removes this timer. Can't be undone.",
+    // Section headers.
+    preparation: 'Preparation',
+    intervals: 'Intervals',
+    structure: 'Structure',
+    finish: 'Finish',
+    // Slider labels + hints.
+    initialCountdown: 'Initial countdown',
+    initialCountdownHint: 'Get-ready period before the workout starts (0 = skip)',
+    warmUp: 'Warm up',
+    warmUpHint: 'Warm-up interval before first set (0 = skip)',
+    exercise: 'Exercise',
+    exerciseHint: 'Work interval duration (required)',
+    rest: 'Rest',
+    restHint: 'Rest between exercise sets (0 = no rest)',
+    sets: 'Sets',
+    setsHint: 'Exercise + rest rounds per cycle',
+    cycles: 'Cycles',
+    cyclesHint: 'How many times to repeat all sets',
+    recovery: 'Recovery',
+    recoveryHint: 'Rest between cycles (0 = no recovery)',
+    coolDown: 'Cool down',
+    coolDownHint: 'Cool-down interval after the last set (0 = skip)',
+  },
+  // The exact-value editor sheet (ValueEditorModal).
+  valueEditor: {
+    minUnit: 'min',
+    secUnit: 'sec',
+    minutesA11y: '{label} minutes',
+    secondsA11y: '{label} seconds',
+  },
+  // The slider field's accessibility actions.
+  slider: {
+    enterExactValue: 'enter an exact value',
+    activateHint: '{hint}. Double tap to enter an exact value.',
+  },
+  // The active-workout screen.
+  workout: {
+    // Phase names — keyed by the WorkoutPhase value for a direct lookup.
+    phase: {
+      initial_countdown: 'Get ready',
+      warm_up: 'Warm up',
+      exercise: 'Exercise',
+      rest: 'Rest',
+      recovery: 'Recovery',
+      cool_down: 'Cool down',
+      complete: 'Complete',
+    },
+    set: 'Set',
+    cycle: 'Cycle',
+    total: 'Total',
+    errorTitle: 'Error',
+    timerNotFound: 'Timer not found.',
+    stopWorkout: 'Stop workout',
+    stopBody: 'End this workout?',
+    keepGoing: 'Keep going',
+    stop: 'Stop',
+    pause: 'Pause',
+    resume: 'Resume',
+    skip: 'Skip to next interval',
+    previousInterval: 'Previous interval',
+    restartInterval: 'Restart current interval',
+    backToTimers: 'Back to timers',
+    complete: 'Workout complete',
+    loading: 'Loading…',
+    setA11y: 'Set, {current} of {total}',
+    setA11yNone: 'Set, not applicable',
+    cycleA11y: 'Cycle, {current} of {total}',
+    cycleA11yDefault: 'Cycle, 1 of 1',
+    remainingA11y: '{time} remaining',
+    totalRemainingA11y: 'Total remaining, {time}',
+    progressA11y: 'Workout progress, {percent} percent',
+  },
+  // Extends the shell settings namespace (title/appearance/theme*/language*/about).
+  settings: {
+    accessibility: 'Accessibility',
+    countdown: 'Countdown',
+    sounds: 'Sounds',
+    soundsHint: 'Tap a sound to preview it.',
+    voiceCues: 'Voice cues',
+    voiceCuesHint: 'Speaks phase name, set, and duration aloud during your workout.',
+    countdownDuration: 'Countdown duration',
+    countdownDurationHint: 'Seconds of beeping before each interval (0 = off).',
+    countdownDurationA11y: 'Countdown duration. Seconds of beeping before each interval. Zero is off.',
+    swipeHint: 'Swipe up to increase, swipe down to decrease',
+    reset: 'Reset',
+    resetA11y: 'Reset to defaults',
+    resetHint: 'Restores all sound settings to their defaults',
+    resetTitle: 'Reset to defaults',
+    resetMessage: 'Restore all settings to defaults?',
+    // Sound-event row labels — keyed by SoundSettings key.
+    soundEvents: {
+      warmUpStart: 'Warm up start',
+      workStart: 'Exercise start',
+      restStart: 'Rest start',
+      recoveryStart: 'Recovery start',
+      coolDownStart: 'Cool down start',
+      workoutComplete: 'Workout complete',
+      halfwaySound: 'Halfway through interval',
+    },
+    soundEventA11y: '{label} sound',
+    soundSelected: 'Currently selected',
+    soundSelectHint: 'Tap to select and preview',
+    // About-row accessibility hints.
+    reviewHint: 'Opens the app store to leave a review',
+    privacyHint: "Opens this app's privacy statement on GitHub",
+    sourceHint: "Opens this app's public source code on GitHub",
+    acknowledgementsHint: 'Opens credits for the open source projects this app is built on',
+    learnMoreA11y: 'Learn more about Josh Approved',
+    learnMoreHint: 'Opens joshapproved.com in your browser',
+    versionA11y: 'Version {version}',
+  },
+} as const;

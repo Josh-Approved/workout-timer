@@ -16,13 +16,14 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList, TimerConfig } from '../types';
 import { loadTimers, saveTimer, deleteTimer } from '../storage/storage';
 import { generateId } from '../utils/workout';
+import { t } from '../i18n';
 import { SliderField } from '../components/SliderField';
 import {
   useTheme,
   fontFamily,
   space,
   radius,
-  type as t,
+  type as ty,
   hairline,
   target,
   tracking,
@@ -72,11 +73,11 @@ export default function TimerEditorScreen({ route, navigation }: Props) {
 
   const handleSave = async () => {
     if (!form.name.trim()) {
-      Alert.alert('Name required', 'Give your timer a name.');
+      Alert.alert(t('editor.nameRequiredTitle'), t('editor.nameRequiredBody'));
       return;
     }
     if (form.exercise < 1) {
-      Alert.alert('Exercise time required', 'Exercise interval must be at least 1 second.');
+      Alert.alert(t('editor.exerciseRequiredTitle'), t('editor.exerciseRequiredBody'));
       return;
     }
     const timer: TimerConfig = {
@@ -92,12 +93,12 @@ export default function TimerEditorScreen({ route, navigation }: Props) {
 
   const handleDelete = () => {
     Alert.alert(
-      'Delete timer',
-      `Permanently delete "${form.name}"? This can't be undone.`,
+      t('editor.deleteTitle'),
+      t('editor.deleteBody', { name: form.name }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             await deleteTimer(timerId!);
@@ -114,24 +115,24 @@ export default function TimerEditorScreen({ route, navigation }: Props) {
         <Pressable
           onPress={() => navigation.goBack()}
           hitSlop={8}
-          accessibilityLabel="Back"
+          accessibilityLabel={t('common.back')}
           accessibilityRole="button"
           style={({ pressed }) => [s.headerSide, pressed && s.pressed]}
         >
           <ChevronLeft size={22} color={c.fg} strokeWidth={1.5} />
-          <Text style={s.headerBackText}>Back</Text>
+          <Text style={s.headerBackText}>{t('common.back')}</Text>
         </Pressable>
         <Text style={s.headerTitle} accessibilityRole="header">
-          {timerId ? 'Edit timer' : 'New timer'}
+          {timerId ? t('editor.editTitle') : t('editor.newTitle')}
         </Text>
         <Pressable
           onPress={handleSave}
           hitSlop={8}
-          accessibilityLabel="Save timer"
+          accessibilityLabel={t('editor.saveTimer')}
           accessibilityRole="button"
           style={({ pressed }) => [s.headerSide, s.headerSideRight, pressed && s.pressed]}
         >
-          <Text style={s.headerSave}>Save</Text>
+          <Text style={s.headerSave}>{t('common.save')}</Text>
         </Pressable>
       </View>
 
@@ -141,28 +142,28 @@ export default function TimerEditorScreen({ route, navigation }: Props) {
       >
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
           <View style={s.section}>
-            <Text style={s.sectionTitle} accessibilityRole="header">Name</Text>
+            <Text style={s.sectionTitle} accessibilityRole="header">{t('editor.name')}</Text>
             <View style={s.sectionBody}>
               <TextInput
                 style={s.nameInput}
                 value={form.name}
                 onChangeText={(v) => set('name', v)}
-                placeholder="e.g. Leg day tabata"
+                placeholder={t('editor.namePlaceholder')}
                 placeholderTextColor={c.fgSubtle}
                 maxLength={60}
                 returnKeyType="done"
-                accessibilityLabel="Timer name"
-                accessibilityHint="Enter a name for this timer"
+                accessibilityLabel={t('editor.nameA11y')}
+                accessibilityHint={t('editor.nameHint')}
               />
             </View>
           </View>
 
           <View style={s.section}>
-            <Text style={s.sectionTitle} accessibilityRole="header">Preparation</Text>
+            <Text style={s.sectionTitle} accessibilityRole="header">{t('editor.preparation')}</Text>
             <View style={s.sectionBody}>
               <SliderField
-                label="Initial countdown"
-                hint="Get-ready period before the workout starts (0 = skip)"
+                label={t('editor.initialCountdown')}
+                hint={t('editor.initialCountdownHint')}
                 value={form.initialCountdown}
                 onChange={(v) => set('initialCountdown', v)}
                 min={0}
@@ -172,8 +173,8 @@ export default function TimerEditorScreen({ route, navigation }: Props) {
                 colors={c}
               />
               <SliderField
-                label="Warm up"
-                hint="Warm-up interval before first set (0 = skip)"
+                label={t('editor.warmUp')}
+                hint={t('editor.warmUpHint')}
                 value={form.warmUp}
                 onChange={(v) => set('warmUp', v)}
                 min={0}
@@ -186,11 +187,11 @@ export default function TimerEditorScreen({ route, navigation }: Props) {
           </View>
 
           <View style={s.section}>
-            <Text style={s.sectionTitle} accessibilityRole="header">Intervals</Text>
+            <Text style={s.sectionTitle} accessibilityRole="header">{t('editor.intervals')}</Text>
             <View style={s.sectionBody}>
               <SliderField
-                label="Exercise"
-                hint="Work interval duration (required)"
+                label={t('editor.exercise')}
+                hint={t('editor.exerciseHint')}
                 value={form.exercise}
                 onChange={(v) => set('exercise', Math.max(5, v))}
                 min={5}
@@ -200,8 +201,8 @@ export default function TimerEditorScreen({ route, navigation }: Props) {
                 colors={c}
               />
               <SliderField
-                label="Rest"
-                hint="Rest between exercise sets (0 = no rest)"
+                label={t('editor.rest')}
+                hint={t('editor.restHint')}
                 value={form.rest}
                 onChange={(v) => set('rest', v)}
                 min={0}
@@ -214,11 +215,11 @@ export default function TimerEditorScreen({ route, navigation }: Props) {
           </View>
 
           <View style={s.section}>
-            <Text style={s.sectionTitle} accessibilityRole="header">Structure</Text>
+            <Text style={s.sectionTitle} accessibilityRole="header">{t('editor.structure')}</Text>
             <View style={s.sectionBody}>
               <SliderField
-                label="Sets"
-                hint="Exercise + rest rounds per cycle"
+                label={t('editor.sets')}
+                hint={t('editor.setsHint')}
                 value={form.sets}
                 onChange={(v) => set('sets', Math.max(1, v))}
                 min={1}
@@ -227,8 +228,8 @@ export default function TimerEditorScreen({ route, navigation }: Props) {
                 colors={c}
               />
               <SliderField
-                label="Cycles"
-                hint="How many times to repeat all sets"
+                label={t('editor.cycles')}
+                hint={t('editor.cyclesHint')}
                 value={form.cycles}
                 onChange={(v) => set('cycles', Math.max(1, v))}
                 min={1}
@@ -237,8 +238,8 @@ export default function TimerEditorScreen({ route, navigation }: Props) {
                 colors={c}
               />
               <SliderField
-                label="Recovery"
-                hint="Rest between cycles (0 = no recovery)"
+                label={t('editor.recovery')}
+                hint={t('editor.recoveryHint')}
                 value={form.recovery}
                 onChange={(v) => set('recovery', v)}
                 min={0}
@@ -251,11 +252,11 @@ export default function TimerEditorScreen({ route, navigation }: Props) {
           </View>
 
           <View style={s.section}>
-            <Text style={s.sectionTitle} accessibilityRole="header">Finish</Text>
+            <Text style={s.sectionTitle} accessibilityRole="header">{t('editor.finish')}</Text>
             <View style={s.sectionBody}>
               <SliderField
-                label="Cool down"
-                hint="Cool-down interval after the last set (0 = skip)"
+                label={t('editor.coolDown')}
+                hint={t('editor.coolDownHint')}
                 value={form.coolDown}
                 onChange={(v) => set('coolDown', v)}
                 min={0}
@@ -271,11 +272,11 @@ export default function TimerEditorScreen({ route, navigation }: Props) {
             <Pressable
               style={({ pressed }) => [s.deleteBtn, pressed && s.pressed]}
               onPress={handleDelete}
-              accessibilityLabel="Delete timer"
+              accessibilityLabel={t('editor.deleteTimer')}
               accessibilityRole="button"
-              accessibilityHint="Permanently removes this timer. Can't be undone."
+              accessibilityHint={t('editor.deleteHint')}
             >
-              <Text style={s.deleteBtnText}>Delete timer</Text>
+              <Text style={s.deleteBtnText}>{t('editor.deleteTimer')}</Text>
             </Pressable>
           ) : null}
         </ScrollView>
@@ -305,18 +306,18 @@ function makeStyles(c: Colors) {
     },
     headerSideRight: { justifyContent: 'flex-end' },
     pressed: { opacity: 0.7 },
-    headerBackText: { ...t.base, color: c.fg, fontFamily: fontFamily.sans },
+    headerBackText: { ...ty.base, color: c.fg, fontFamily: fontFamily.sans },
     headerTitle: {
-      ...t.base,
+      ...ty.base,
       color: c.fg,
       fontFamily: fontFamily.sansSemibold,
       textAlign: 'center',
     },
-    headerSave: { ...t.base, color: c.fg, fontFamily: fontFamily.sansSemibold },
+    headerSave: { ...ty.base, color: c.fg, fontFamily: fontFamily.sansSemibold },
     scroll: { ...boundedContent, padding: space.s5, paddingBottom: space.s8 },
     section: { marginBottom: space.s6 },
     sectionTitle: {
-      ...t.xs,
+      ...ty.xs,
       fontFamily: fontFamily.sansMedium,
       color: c.fgMuted,
       letterSpacing: tracking.wide,
@@ -332,7 +333,7 @@ function makeStyles(c: Colors) {
       overflow: 'hidden',
     },
     nameInput: {
-      ...t.base,
+      ...ty.base,
       color: c.fg,
       fontFamily: fontFamily.sans,
       paddingHorizontal: space.s5,
@@ -349,7 +350,7 @@ function makeStyles(c: Colors) {
       marginBottom: space.s5,
     },
     deleteBtnText: {
-      ...t.base,
+      ...ty.base,
       fontFamily: fontFamily.sansMedium,
       color: c.danger,
     },

@@ -23,6 +23,7 @@
     "expo-file-system": "~55.0.17",
     "expo-font": "~55.0.6",
     "expo-haptics": "~55.0.14",
+    "expo-iap": "^4.3.1",
     "expo-keep-awake": "~55.0.6",
     "expo-linking": "~8.0.7",
     "expo-screen-orientation": "~55.0.13",
@@ -70,7 +71,6 @@
     "@xmldom/xmldom": "0.8.13",
     "ws": "^8.20.1",
     "postcss": "^8.5.10",
-    "brace-expansion": "^5.0.6",
     "uuid": "^11.1.1"
   }
 }

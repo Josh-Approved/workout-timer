@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import Slider from '@react-native-community/slider';
 import ValueEditorModal from './ValueEditorModal';
+import { t } from '../i18n';
 import {
   fontFamily,
   space,
   radius,
-  type as t,
+  type as ty,
   hairline,
   Colors,
 } from '../theme';
@@ -65,11 +66,11 @@ export function SliderField({
       accessible
       accessibilityRole="adjustable"
       accessibilityLabel={`${label}, ${spokenValue}`}
-      accessibilityHint={`${hint}. Double tap to enter an exact value.`}
+      accessibilityHint={t('slider.activateHint', { hint })}
       accessibilityActions={[
-        { name: 'increment', label: 'increase' },
-        { name: 'decrement', label: 'decrease' },
-        { name: 'activate', label: 'enter an exact value' },
+        { name: 'increment', label: t('a11y.increase') },
+        { name: 'decrement', label: t('a11y.decrease') },
+        { name: 'activate', label: t('slider.enterExactValue') },
       ]}
       onAccessibilityAction={(event) => {
         if (event.nativeEvent.actionName === 'increment') {
@@ -138,7 +139,7 @@ function sliderFieldStyles(c: Colors) {
       alignItems: 'baseline',
       justifyContent: 'space-between',
     },
-    label: { ...t.sm, color: c.fg, fontFamily: fontFamily.sansMedium },
+    label: { ...ty.sm, color: c.fg, fontFamily: fontFamily.sansMedium },
     valueCell: {
       flexDirection: 'row',
       alignItems: 'baseline',
@@ -149,7 +150,7 @@ function sliderFieldStyles(c: Colors) {
     },
     valueCellPressed: { opacity: 0.6 },
     valueText: {
-      ...t.base,
+      ...ty.base,
       fontFamily: fontFamily.monoMedium,
       color: c.fg,
       textAlign: 'right',
@@ -157,7 +158,7 @@ function sliderFieldStyles(c: Colors) {
       minWidth: 24,
     },
     unit: {
-      ...t.xs,
+      ...ty.xs,
       color: c.fgMuted,
       fontFamily: fontFamily.mono,
       marginLeft: 1,
@@ -167,6 +168,6 @@ function sliderFieldStyles(c: Colors) {
       height: 32,
       marginTop: space.s1,
     },
-    hint: { ...t.xs, color: c.fgMuted, fontFamily: fontFamily.sans, marginTop: 2 },
+    hint: { ...ty.xs, color: c.fgMuted, fontFamily: fontFamily.sans, marginTop: 2 },
   });
 }
