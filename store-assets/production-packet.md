@@ -156,6 +156,6 @@ First release. Build, save, and run interval timers for Tabata, HIIT, and any wo
     - 02-android-phone-josh-approved.png
     - 03-android-phone-editor.png
     - 04-android-phone-list.png
-  - Feature graphic ← `store-assets/feature-graphic/android.png`
+  - Feature graphic ← `store-assets/screenshots/android/feature-graphic/android.png`
 
 **Console click path:** Play Console → your app → **Test and release** → Production (or Internal testing for beta). **First Android release for this app is a MANUAL .aab upload** (the Play API blocks new apps until one release exists) — upload `build … --local`’s `.aab` by hand to Internal testing once; after that `--auto-submit` is unattended. With **Managed publishing OFF**, you send the whole batch from **Publishing overview → "Send N changes for review"** — not from the Production page (see memory reference_play_console_publish_flow). The Releases-overview status chip is the truth source.
