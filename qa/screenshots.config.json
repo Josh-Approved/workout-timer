@@ -1,4 +1,5 @@
 {
+  "_note": "Android tablet (7\"/10\") screenshots intentionally omitted: FWT is portrait by design on Android (ScreenOrientation locks PORTRAIT_UP except during an active workout), so tablet shots can only duplicate the phone layout. Play shows the phone screenshots to tablet users, which matches the real layout. Apple/iPad is unaffected (its store separates iPhone/iPad by device tab).",
   "stores": {
     "ios": [
       { "id": "core",          "source": "ios/active.png", "caption": "Free workout timer. Set intervals, hit start." },
@@ -17,12 +18,6 @@
       { "id": "josh-approved", "kind": "card" },
       { "id": "editor",        "source": "ipad/editor.png", "caption": "Build any interval set in seconds." },
       { "id": "list",          "source": "ipad/list.png",   "caption": "Save your timers. Reuse them in one tap." }
-    ],
-    "androidTablet": [
-      { "id": "core",          "source": "androidTablet/active.png", "caption": "Free workout timer. Set intervals, hit start." },
-      { "id": "josh-approved", "kind": "card" },
-      { "id": "editor",        "source": "androidTablet/editor.png", "caption": "Build any interval set in seconds." },
-      { "id": "list",          "source": "androidTablet/list.png",   "caption": "Save your timers. Reuse them in one tap." }
     ]
   }
 }
