@@ -4,20 +4,19 @@ import {
   Text,
   Pressable,
   StyleSheet,
-  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { ChevronRight, GripVertical, HandHeart, Mail, Play, Plus, Settings as SettingsIcon, Timer } from 'lucide-react-native';
+import { ChevronRight, GripVertical, Play, Plus, Settings as SettingsIcon, Timer } from 'lucide-react-native';
 import { RootStackParamList, TimerConfig } from '../types';
 import { loadTimers, saveTimers } from '../storage/storage';
 import { getTimerSummary, getTotalDuration, formatTime } from '../utils/workout';
-import { buildFeedbackEmailUrl } from '../utils/feedback';
 import { t } from '../i18n';
 import { TIP_JAR_ENABLED } from '../constants/features';
 import { TIP_PRODUCT_IDS } from '../constants/tipProducts';
 import TipJarSheet from '../components/TipJarSheet';
+import { FundingFooter } from '../components/FundingFooter';
 import { SortableList } from '../components/SortableList';
 import {
   useTheme,
@@ -75,29 +74,7 @@ export default function TimerListScreen({ navigation }: Props) {
         moveDownLabel={t('timerList.moveDown')}
         contentContainerStyle={s.list}
         ListFooterComponent={
-          <View style={s.footer}>
-            {TIP_JAR_ENABLED && (
-              <Pressable
-                style={({ pressed }) => [s.linkRow, pressed && s.pressed]}
-                onPress={() => setTipVisible(true)}
-                accessibilityLabel={t('about.support')}
-                accessibilityRole="button"
-              >
-                <HandHeart size={18} color={c.fgMuted} strokeWidth={1.5} />
-                <Text style={s.linkText}>{t('about.support')}</Text>
-              </Pressable>
-            )}
-            <Pressable
-              style={({ pressed }) => [s.linkRow, pressed && s.pressed]}
-              onPress={() => Linking.openURL(buildFeedbackEmailUrl())}
-              accessibilityLabel={t('about.feedback')}
-              accessibilityRole="link"
-              accessibilityHint={t('a11y.feedbackHint')}
-            >
-              <Mail size={18} color={c.fgMuted} strokeWidth={1.5} />
-              <Text style={s.linkText}>{t('about.feedback')}</Text>
-            </Pressable>
-          </View>
+          <FundingFooter onSupport={TIP_JAR_ENABLED ? () => setTipVisible(true) : undefined} />
         }
         ListEmptyComponent={
           <View style={s.empty} accessibilityLiveRegion="polite">
@@ -280,18 +257,6 @@ function makeStyles(c: Colors) {
       fontFamily: fontFamily.sansSemibold,
     },
     emptyHint: {
-      ...ty.sm,
-      color: c.fgMuted,
-      fontFamily: fontFamily.sans,
-    },
-    footer: { ...boundedContent, alignItems: 'center', gap: space.s5, paddingTop: space.s7 },
-    linkRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: space.s3,
-      paddingVertical: space.s3,
-    },
-    linkText: {
       ...ty.sm,
       color: c.fgMuted,
       fontFamily: fontFamily.sans,

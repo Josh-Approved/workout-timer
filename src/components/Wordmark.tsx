@@ -3,7 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Check } from 'lucide-react-native';
 import { useTheme, fontFamily, tracking, type as t } from '../theme';
 
-export default function Wordmark() {
+export function Wordmark() {
   const { c } = useTheme();
   return (
     <View style={s.row} accessible accessibilityRole="text" accessibilityLabel="josh approved">
@@ -30,3 +30,5 @@ const s = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   text: {},
 });
+
+export default Wordmark;
