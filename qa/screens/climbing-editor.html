@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Workout Timer — Climbing Hangboard editor (generated screen)</title>
+<!--
+  Generated app-screen for the "Climbing Hangboard" store screenshot (slot 5).
+
+  This is NOT a real device capture — it's a faithful HTML rebuild of the app's
+  "Edit timer" screen, using the app's own IBM Plex fonts + design tokens, so the
+  store screenshot can show a discipline-specific timer ("Climbing Hangboard",
+  7s on / 3s off) without standing up a sim and re-running the Maestro journey.
+
+  Rendered to a source PNG by scripts/render-screenshots.mjs (it reads ?platform=
+  and screenshots this at the platform's native capture resolution), then framed
+  in device chrome by the same pipeline as the other four shots. Edit the VALUES
+  object below to change the displayed timer; re-run the renderer to propagate.
+
+  Fonts/tokens mirror qa/frame.html and the app's design system. Keep them in
+  sync if the app's editor restyles.
+-->
+<style>
+  /* App fonts — loaded from the repo so the mockup matches the real UI exactly.
+     Paths are relative to this file (qa/screens/ → assets/fonts/). */
+  @font-face { font-family: "IBM Plex Sans"; font-weight: 400; src: url("../../assets/fonts/IBMPlexSans-Regular.otf") format("opentype"); }
+  @font-face { font-family: "IBM Plex Sans"; font-weight: 500; src: url("../../assets/fonts/IBMPlexSans-Medium.otf") format("opentype"); }
+  @font-face { font-family: "IBM Plex Sans"; font-weight: 600; src: url("../../assets/fonts/IBMPlexSans-SemiBold.otf") format("opentype"); }
+  @font-face { font-family: "IBM Plex Mono"; font-weight: 400; src: url("../../assets/fonts/IBMPlexMono-Regular.otf") format("opentype"); }
+  @font-face { font-family: "IBM Plex Mono"; font-weight: 500; src: url("../../assets/fonts/IBMPlexMono-Medium.otf") format("opentype"); }
+
+  :root {
+    --paper:    #FAFAF7;
+    --card:     #FFFFFF;
+    --card-bd:  #ECECE7;
+    --ink-1000: #0E0E0F;
+    --ink-700:  #3D3D42;
+    --ink-500:  #6B6B72;
+    --ink-300:  #A8A8AE;
+    --track:    #D6D6D2;
+    --divider:  #ECECE9;
+    --persimmon:#B85040;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--paper);
+    color: var(--ink-1000);
+    font-family: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow: hidden;
+  }
+
+  .screen { display: flex; flex-direction: column; height: 100%; }
+
+  /* ---------- status bar ---------- */
+  .statusbar {
+    flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 22px 2px;
+    font-weight: 600; font-size: 15px; letter-spacing: -0.01em;
+    color: var(--ink-1000);
+  }
+  .statusbar .sb-right { display: flex; align-items: center; gap: 7px; }
+  .statusbar svg { display: block; }
+  .sb-date { font-weight: 600; }
+  .sb-date .sb-dow { color: var(--ink-1000); margin-left: 10px; }
+  .sb-pct { font-weight: 600; font-size: 14px; }
+  body.platform-ipad .statusbar { padding: 8px 26px 2px; font-size: 14px; }
+  body.platform-ipad .statusbar svg.battery { margin-left: 1px; }
+
+  /* ---------- nav bar ---------- */
+  .nav {
+    flex: 0 0 auto;
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+    padding: 8px 16px 12px;
+    border-bottom: 1px solid var(--divider);
+  }
+  .nav .back { display: flex; align-items: center; gap: 3px; font-size: 17px; color: var(--ink-1000); justify-self: start; }
+  .nav .back svg { width: 11px; height: 19px; }
+  .nav .title { font-weight: 600; font-size: 17px; letter-spacing: -0.01em; }
+  .nav .save { font-size: 17px; color: var(--ink-1000); justify-self: end; }
+
+  /* ---------- form ---------- */
+  .form { flex: 1 1 auto; overflow: hidden; padding: 16px; }
+  .col { width: 100%; }
+  body.platform-ipad .form { padding: 22px 0; }
+  body.platform-ipad .col { max-width: 760px; margin: 0 auto; padding: 0 24px; }
+
+  .section { margin-bottom: 18px; }
+  .section-label {
+    font-weight: 500; font-size: 12px; letter-spacing: 0.085em; text-transform: uppercase;
+    color: var(--ink-500); margin: 0 0 8px 4px;
+  }
+  .card { background: var(--card); border: 1px solid var(--card-bd); border-radius: 14px; overflow: hidden; }
+  .row { padding: 15px 16px; }
+  .row + .row { border-top: 1px solid var(--divider); }
+
+  .row-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .row-name { font-weight: 600; font-size: 16px; letter-spacing: -0.01em; color: var(--ink-1000); }
+  .row-val { font-weight: 600; font-size: 19px; letter-spacing: -0.01em; color: var(--ink-1000); white-space: nowrap; }
+  .row-val .unit { font-weight: 400; font-size: 13px; color: var(--ink-500); margin-left: 2px; }
+
+  /* name field — a text input rendered as filled value */
+  .namefield { padding: 14px 16px; }
+  .namefield .input {
+    font-size: 17px; color: var(--ink-1000); letter-spacing: -0.01em;
+  }
+
+  /* slider */
+  .slider { position: relative; height: 18px; margin-top: 12px; }
+  .slider .track { position: absolute; top: 50%; left: 0; right: 0; height: 3px; transform: translateY(-50%); background: var(--track); border-radius: 3px; }
+  .slider .fill  { position: absolute; top: 50%; left: 0; height: 3px; transform: translateY(-50%); background: var(--ink-1000); border-radius: 3px; }
+  .slider .thumb { position: absolute; top: 50%; width: 18px; height: 18px; border-radius: 50%; background: var(--ink-1000); transform: translate(-50%, -50%); }
+
+  .helper { margin-top: 11px; font-size: 12.5px; line-height: 1.3; color: var(--ink-500); }
+
+  .delete { margin-top: 4px; background: var(--card); border: 1px solid var(--card-bd); border-radius: 14px; padding: 16px; text-align: center; }
+  .delete span { color: var(--persimmon); font-weight: 600; font-size: 16px; }
+</style>
+</head>
+<body>
+  <div class="screen">
+    <div class="statusbar" id="statusbar"></div>
+    <div class="nav">
+      <div class="back">
+        <svg viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="10 2 2 10 10 18"></polyline></svg>
+        <span>Back</span>
+      </div>
+      <div class="title">Edit timer</div>
+      <div class="save">Save</div>
+    </div>
+    <div class="form"><div class="col" id="col"></div></div>
+  </div>
+
+<script>
+  // ---- the timer being shown: "Climbing Hangboard" repeaters (7s on / 3s off) ----
+  // Edit these to change the screenshot; re-run scripts/render-screenshots.mjs.
+  const NAME = "Climbing Hangboard";
+  const SECTIONS = [
+    { label: "Name", name: true, value: NAME },
+    { label: "Preparation", rows: [
+      { name: "Initial countdown", value: "15", unit: "s", fill: 6,  help: "Get-ready period before the workout starts (0 = skip)" },
+      { name: "Warm up",           value: "0:00",          fill: 0,  help: "Warm-up interval before first set (0 = skip)" },
+    ]},
+    { label: "Intervals", rows: [
+      { name: "Exercise", value: "7", unit: "s", fill: 5, help: "Work interval duration (required)" },
+      { name: "Rest",     value: "3", unit: "s", fill: 3, help: "Rest between exercise sets (0 = no rest)" },
+    ]},
+    { label: "Structure", rows: [
+      { name: "Sets",     value: "6",            fill: 22, help: "Exercise + rest rounds per cycle" },
+      { name: "Cycles",   value: "6",            fill: 20, help: "How many times to repeat all sets" },
+      { name: "Recovery", value: "2:30",         fill: 28, help: "Rest between cycles (0 = no recovery)" },
+    ]},
+    { label: "Finish", rows: [
+      { name: "Cool down", value: "0:00",        fill: 0,  help: "Cool-down interval after the last set (0 = skip)" },
+    ]},
+  ];
+
+  const qp = new URLSearchParams(location.search);
+  const platform = qp.get("platform") || "ios";
+  document.body.className = "platform-" + platform;
+
+  // The renderer screenshots at the platform's NATIVE pixel width (always ≥ 500,
+  // dodging Chrome headless's 500px-minimum innerWidth clamp) and passes a `zoom`
+  // so the design still lays out at the real device point-width (e.g. 440pt for
+  // the 6.9" iPhone → 1320px output ⇒ zoom 3). zoom re-renders crisply at scale.
+  const zoom = parseFloat(qp.get("zoom") || "1");
+  if (zoom && zoom !== 1) document.documentElement.style.zoom = String(zoom);
+
+  // ---- status bar per platform ----
+  const cell = `<svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="0.6"/><rect x="5" y="5.5" width="3" height="6.5" rx="0.6"/><rect x="10" y="3" width="3" height="9" rx="0.6"/><rect x="15" y="0.5" width="3" height="11.5" rx="0.6"/></svg>`;
+  const wifi = `<svg width="17" height="12" viewBox="0 0 17 12" fill="currentColor"><path d="M8.5 11.2 10.7 8.5a3.4 3.4 0 0 0-4.4 0zM8.5 4.1c1.9 0 3.7.7 5 2l1.6-2A9.6 9.6 0 0 0 8.5 3.6 9.6 9.6 0 0 0 1.9 4.1l1.6 2a7.3 7.3 0 0 1 5-2z"/></svg>`;
+  const batt = (green) => `<svg class="battery" width="26" height="13" viewBox="0 0 26 13" fill="none"><rect x="0.7" y="1" width="21" height="11" rx="3" stroke="currentColor" stroke-opacity="0.4"/><rect x="2.2" y="2.5" width="18" height="8" rx="1.8" fill="${green ? '#34C759' : 'currentColor'}"/><rect x="23" y="4.3" width="1.6" height="4.4" rx="0.8" fill="currentColor" fill-opacity="0.4"/></svg>`;
+
+  const sb = document.getElementById("statusbar");
+  if (platform === "ipad") {
+    sb.innerHTML = `<div class="sb-date">5:58 PM<span class="sb-dow">Wed Jun 3</span></div>`
+      + `<div class="sb-right">${wifi}<span class="sb-pct">100%</span>${batt(false)}</div>`;
+  } else if (platform === "android") {
+    sb.innerHTML = `<div>9:41</div><div class="sb-right">${wifi}${cell}${batt(false)}</div>`;
+  } else { // ios
+    sb.innerHTML = `<div>9:41</div><div class="sb-right">${cell}${wifi}${batt(true)}</div>`;
+  }
+
+  // ---- form ----
+  const col = document.getElementById("col");
+  let html = "";
+  for (const sec of SECTIONS) {
+    html += `<div class="section"><div class="section-label">${sec.label}</div>`;
+    if (sec.name) {
+      html += `<div class="card"><div class="namefield"><div class="input">${sec.value}</div></div></div>`;
+    } else {
+      html += `<div class="card">`;
+      for (const r of sec.rows) {
+        html += `<div class="row">`
+          + `<div class="row-head"><div class="row-name">${r.name}</div>`
+          + `<div class="row-val">${r.value}${r.unit ? `<span class="unit">${r.unit}</span>` : ""}</div></div>`
+          + `<div class="slider"><div class="track"></div>`
+          + `<div class="fill" style="width:${Math.max(r.fill, 1.5)}%"></div>`
+          + `<div class="thumb" style="left:${Math.max(r.fill, 2.5)}%"></div></div>`
+          + `<div class="helper">${r.help}</div>`
+          + `</div>`;
+      }
+      html += `</div>`;
+    }
+    html += `</div>`;
+  }
+  // Delete action (visible on the taller iPad crop, like the real editor).
+  html += `<div class="delete"><span>Delete timer</span></div>`;
+  col.innerHTML = html;
+
+  // Signal readiness once fonts are in (the renderer waits on this flag).
+  document.fonts.ready.then(() => { document.body.dataset.ready = "1"; });
+</script>
+</body>
+</html>

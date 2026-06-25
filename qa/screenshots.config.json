@@ -5,19 +5,22 @@
       { "id": "core",          "source": "ios/active.png", "caption": "A workout timer. Set intervals, hit start." },
       { "id": "josh-approved", "kind": "card" },
       { "id": "editor",        "source": "ios/editor.png", "caption": "Build any interval set in seconds." },
-      { "id": "list",          "source": "ios/list.png",   "caption": "Save your timers. Reuse them in one tap." }
+      { "id": "list",          "source": "ios/list.png",   "caption": "Save your timers. Reuse them in one tap." },
+      { "id": "climbing",      "source": "ios/climbing-editor.png", "generate": "climbing-editor", "caption": "Climbers: time hangboard repeaters. 7s on, 3s off." }
     ],
     "android": [
       { "id": "core",          "source": "android/active.png", "caption": "A workout timer. Set intervals, hit start." },
       { "id": "josh-approved", "kind": "card" },
       { "id": "editor",        "source": "android/editor.png", "caption": "Build any interval set in seconds." },
-      { "id": "list",          "source": "android/list.png",   "caption": "Save your timers. Reuse them in one tap." }
+      { "id": "list",          "source": "android/list.png",   "caption": "Save your timers. Reuse them in one tap." },
+      { "id": "climbing",      "source": "android/climbing-editor.png", "generate": "climbing-editor", "caption": "Climbers: time hangboard repeaters. 7s on, 3s off." }
     ],
     "ipad": [
       { "id": "core",          "source": "ipad/active.png", "caption": "A workout timer. Set intervals, hit start." },
       { "id": "josh-approved", "kind": "card" },
       { "id": "editor",        "source": "ipad/editor.png", "caption": "Build any interval set in seconds." },
-      { "id": "list",          "source": "ipad/list.png",   "caption": "Save your timers. Reuse them in one tap." }
+      { "id": "list",          "source": "ipad/list.png",   "caption": "Save your timers. Reuse them in one tap." },
+      { "id": "climbing",      "source": "ipad/climbing-editor.png", "generate": "climbing-editor", "caption": "Climbers: time hangboard repeaters. 7s on, 3s off." }
     ]
   }
 }

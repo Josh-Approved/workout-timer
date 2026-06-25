@@ -271,6 +271,63 @@ console.log(`Chrome: ${chromePath}`);
 console.log(`App:    ${appDir}`);
 console.log('');
 
+// ---------- generated source screens ----------
+// Most shots are real device captures (qa/captures/<source>, dropped by the
+// Maestro journey). A shot may instead carry a `generate: "<name>"` field: its
+// source is rebuilt from qa/screens/<name>.html — a faithful HTML mockup of an
+// app screen using the app's own fonts/tokens. This lets a store screenshot show
+// a discipline-specific timer (e.g. the "Climbing Hangboard" editor) without
+// standing up a sim and re-running the journey. We render each generated screen
+// to its `source` PNG at the store's NATIVE capture resolution here, BEFORE the
+// framing loop, so everything downstream treats it exactly like a real capture.
+//
+// The template reads ?platform=<store> for the right status bar / layout, and a
+// `zoom` so the design lays out at the real device point-width while we screenshot
+// at the native pixel width. We render at the NATIVE width (always ≥ 500) rather
+// than the point-width because Chrome headless clamps innerWidth to a 500px
+// minimum — asking for a 440px window silently yields a 500px-wide layout cropped
+// back to 440px, which clips the right edge. zoom = w / layoutW re-renders the
+// point-width design crisply at full resolution (e.g. 440pt @ zoom 3 → 1320px).
+const SCREEN_RENDER = {
+  ios:     { w: 1320, h: 2868, layoutW: 440 },
+  android: { w: 1080, h: 2400, layoutW: 360 },
+  ipad:    { w: 2064, h: 2752, layoutW: 1032 },
+};
+for (const storeKey of stores) {
+  const spec = SCREEN_RENDER[storeKey];
+  for (const shot of (config.stores[storeKey] || [])) {
+    if (!shot.generate) continue;
+    if (onlyShot && shot.id !== onlyShot) continue;
+    if (!spec) { console.warn(`  [gen-skip] ${shot.id}: no render spec for store "${storeKey}"`); continue; }
+    if (!shot.source) { console.warn(`  [gen-skip] ${shot.id}: a generated shot needs a "source" to write to`); continue; }
+    const tplPath = path.join(appDir, 'qa', 'screens', `${shot.generate}.html`);
+    if (!fs.existsSync(tplPath)) {
+      console.warn(`  [gen-skip] ${shot.id}: template not found — ${path.relative(appDir, tplPath)}`);
+      continue;
+    }
+    const outSource = path.join(appDir, 'qa', 'captures', shot.source);
+    fs.mkdirSync(path.dirname(outSource), { recursive: true });
+    const zoom = spec.w / spec.layoutW;
+    const tplUrl = `${pathToFileURL(tplPath).href}?platform=${encodeURIComponent(storeKey)}&zoom=${zoom}`;
+    const r = spawnSync(chromePath, [
+      '--headless=new',
+      '--disable-gpu',
+      '--hide-scrollbars',
+      '--no-sandbox',
+      `--window-size=${spec.w},${spec.h}`,
+      `--screenshot=${outSource}`,
+      '--virtual-time-budget=4000',
+      tplUrl,
+    ], { stdio: 'pipe' });
+    if (r.status !== 0 || !fs.existsSync(outSource)) {
+      console.warn(`  [gen-fail] ${shot.id}: chrome exited ${r.status}`);
+      if (r.stderr) console.warn(r.stderr.toString().split('\n').slice(0, 5).join('\n'));
+    } else {
+      console.log(`  [gen]  ${storeKey}/${shot.id} → ${path.relative(appDir, outSource)} (${spec.w}×${spec.h})`);
+    }
+  }
+}
+
 let total = 0;
 let written = 0;
 
