@@ -1,4 +1,6 @@
 {
+  "style": "signature",
+  "motif": "dots",
   "_note": "Android tablet (7\"/10\") screenshots intentionally omitted: FWT is portrait by design on Android (ScreenOrientation locks PORTRAIT_UP except during an active workout), so tablet shots can only duplicate the phone layout. Play shows the phone screenshots to tablet users, which matches the real layout. Apple/iPad is unaffected (its store separates iPhone/iPad by device tab).",
   "stores": {
     "ios": [
