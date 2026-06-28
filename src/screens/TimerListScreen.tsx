@@ -5,6 +5,7 @@ import {
   Pressable,
   StyleSheet,
   Platform,
+  type LayoutChangeEvent,
 } from 'react-native';
 import { useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -54,6 +55,14 @@ export default function TimerListScreen({ navigation }: Props) {
     },
   });
 
+  // Measure the in-scroll footer so the floating FAB can sit just above it
+  // rather than overlapping the support / feedback buttons.
+  const [footerH, setFooterH] = useState(96);
+  const onFooterLayout = useCallback(
+    (e: LayoutChangeEvent) => setFooterH(Math.round(e.nativeEvent.layout.height)),
+    []
+  );
+
   useFocusEffect(
     useCallback(() => {
       loadTimers().then(setTimers);
@@ -82,7 +91,6 @@ export default function TimerListScreen({ navigation }: Props) {
         </Pressable>
       </View>
 
-      <View style={s.listArea}>
       <SortableList
         items={timers}
         keyExtractor={(item) => item.id}
@@ -92,6 +100,15 @@ export default function TimerListScreen({ navigation }: Props) {
         contentContainerStyle={s.list}
         onScroll={pullToReveal ? onScroll : undefined}
         alwaysBounceVertical={pullToReveal}
+        ListFooterComponent={
+          <View style={s.footerHolder} onLayout={onFooterLayout}>
+            <FundingFooter
+              onSupport={TIP_JAR_ENABLED ? () => setTipVisible(true) : undefined}
+              reveal={reveal}
+              pullToReveal={pullToReveal}
+            />
+          </View>
+        }
         ListEmptyComponent={
           <View style={s.empty} accessibilityLiveRegion="polite">
             <View style={s.emptyIcon} importantForAccessibility="no">
@@ -151,22 +168,13 @@ export default function TimerListScreen({ navigation }: Props) {
       />
 
       <Pressable
-        style={({ pressed }) => [s.fab, pressed && s.pressed]}
+        style={({ pressed }) => [s.fab, { bottom: footerH + space.s4 }, pressed && s.pressed]}
         onPress={() => navigation.navigate('TimerEditor', {})}
         accessibilityLabel={t('timerList.createNew')}
         accessibilityRole="button"
       >
         <Plus size={28} color={c.inkButtonText} strokeWidth={1.75} />
       </Pressable>
-      </View>
-
-      <View style={s.footerWrap}>
-        <FundingFooter
-          onSupport={TIP_JAR_ENABLED ? () => setTipVisible(true) : undefined}
-          reveal={reveal}
-          pullToReveal={pullToReveal}
-        />
-      </View>
       {tipVisible && (
         <TipJarSheet
           visible
@@ -181,11 +189,6 @@ export default function TimerListScreen({ navigation }: Props) {
 function makeStyles(c: Colors) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: c.bg },
-    // The scrolling list + its floating FAB live here; the funding footer is a
-    // separate bar pinned beneath, so the footer always rests at the bottom of
-    // the screen (not under the last card) and never collides with the FAB.
-    listArea: { flex: 1 },
-    footerWrap: { ...boundedContent },
     header: {
       ...boundedContent,
       flexDirection: 'row',
@@ -208,12 +211,15 @@ function makeStyles(c: Colors) {
       justifyContent: 'center',
     },
     pressed: { opacity: 0.7 },
-    // paddingBottom must clear the absolutely-positioned FAB (bottom:
-    // space.s8, 56pt tall → top edge at space.s8 + 56) plus a margin, so the
-    // last timer card can always scroll clear of the FAB and its play button
-    // is never occluded (was a flat 120 ≈ the FAB's top edge, leaving the
-    // last card under the FAB at the just-saved scroll position).
-    list: { ...boundedContent, padding: space.s5, paddingBottom: space.s8 + 56 + space.s8 },
+    // flexGrow lets a SHORT list fill the screen so the footer (the list's
+    // ListFooterComponent) rests at the BOTTOM of the scroll, not under the
+    // last card; a long list flows past it normally. The footer is the bottom
+    // content now and the FAB floats just above it (offset by the measured
+    // footer height), so no large bottom padding is needed.
+    list: { ...boundedContent, padding: space.s5, paddingBottom: space.s5, flexGrow: 1 },
+    // Pushed to the bottom of the scroll when the list is short (via flexGrow
+    // above); flows naturally after the last card when the list is long.
+    footerHolder: { marginTop: 'auto' },
 
     card: {
       flexDirection: 'row',
