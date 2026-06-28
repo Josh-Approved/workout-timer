@@ -77,9 +77,9 @@ function pngSize(file) {
 // read each PNG's real size, scale every thumb to a fixed row height, greedily
 // wrap rows under a fixed content width, compute the exact canvas, then let
 // headless Chrome screenshot an absolutely-positioned HTML page at that size.
-function buildContactSheets(appDir, only) {
+function buildContactSheets(appDir, only, screensRootOverride) {
   const chromePath = findChrome();
-  const screensRoot = path.join(appDir, 'store-assets', 'screenshots');
+  const screensRoot = screensRootOverride || path.join(appDir, 'store-assets', 'screenshots');
   if (!fs.existsSync(screensRoot)) {
     console.error(`No framed screenshots at ${screensRoot} — render before --contact-sheet.`);
     process.exit(1);
@@ -159,7 +159,7 @@ function buildContactSheets(appDir, only) {
 
     const htmlPath = path.join(os.tmpdir(), `contact-${dir}-${process.pid}.html`);
     fs.writeFileSync(htmlPath, html);
-    const outPath = path.join(appDir, 'store-assets', `contact-sheet-${dir}.png`);
+    const outPath = path.join(path.dirname(screensRoot), `contact-sheet-${dir}.png`);
 
     const result = spawnSync(chromePath, [
       '--headless=new',
@@ -191,7 +191,7 @@ function buildContactSheets(appDir, only) {
 const args = process.argv.slice(2);
 // Track indices that follow a value-taking flag so they aren't mistaken
 // for the optional <app-name> positional (factory mode).
-const VALUE_FLAGS = new Set(['--store', '--shot']);
+const VALUE_FLAGS = new Set(['--store', '--shot', '--out', '--config']);
 const consumedAsValue = new Set();
 for (let i = 0; i < args.length; i++) {
   if (VALUE_FLAGS.has(args[i])) consumedAsValue.add(i + 1);
@@ -203,6 +203,15 @@ const onlyStore = storeFlagIdx >= 0 ? args[storeFlagIdx + 1] : null;
 const shotFlagIdx = args.indexOf('--shot');
 const onlyShot = shotFlagIdx >= 0 ? args[shotFlagIdx + 1] : null;
 const contactSheet = args.includes('--contact-sheet');
+// --out <dir>     write framed PNGs under <dir>/<surface.dir>/ instead of
+//                 <app>/store-assets/screenshots/ (preview renders that must NOT
+//                 mutate an app's committed store assets).
+// --config <path> read the slot config from <path> instead of the app's own
+//                 qa/screenshots.config.json (prototype a look without editing it).
+const outFlagIdx = args.indexOf('--out');
+const outBaseOverride = outFlagIdx >= 0 ? path.resolve(args[outFlagIdx + 1]) : null;
+const configFlagIdx = args.indexOf('--config');
+const configOverride = configFlagIdx >= 0 ? path.resolve(args[configFlagIdx + 1]) : null;
 
 if (onlyStore && !SURFACES[onlyStore]) {
   console.error(`Unknown store "${onlyStore}". Choose from: ${Object.keys(SURFACES).join(', ')}`);
@@ -232,7 +241,7 @@ if (appNameArg) {
   framePath = path.join(appDir, 'qa', 'frame.html');
 }
 
-const configPath = path.join(appDir, 'qa', 'screenshots.config.json');
+const configPath = configOverride || path.join(appDir, 'qa', 'screenshots.config.json');
 const frameUrl = pathToFileURL(framePath).href;
 
 if (!fs.existsSync(appDir)) {
@@ -244,7 +253,7 @@ if (!fs.existsSync(appDir)) {
 // PNGs that already exist under store-assets/screenshots/. Nothing to render,
 // no frame.html / config needed.
 if (contactSheet) {
-  buildContactSheets(appDir, onlyStore);
+  buildContactSheets(appDir, onlyStore, outBaseOverride);
   // buildContactSheets calls process.exit itself.
 }
 
@@ -260,6 +269,21 @@ if (!fs.existsSync(configPath)) {
 }
 
 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+
+// Per-app look. The accent is read from the app's own appAccent.ts (one source
+// of truth) unless the config overrides it. style/motif are app-wide defaults
+// any per-slot field can override. Default style "flat" reproduces the original
+// output exactly, so an un-migrated app renders byte-for-byte as before.
+function readAppAccent(dir) {
+  try {
+    const m = fs.readFileSync(path.join(dir, 'src', 'theme', 'appAccent.ts'), 'utf8').match(/#[0-9A-Fa-f]{6}/);
+    return m ? m[0] : null;
+  } catch { return null; }
+}
+const appAccent = config.accent || readAppAccent(appDir);
+const appStyle = config.style || 'flat';
+const appMotif = config.motif || (appStyle === 'signature' ? 'dots' : 'none');
+
 const stores = onlyStore ? [onlyStore] : Object.keys(config.stores || {});
 if (stores.length === 0) {
   console.error('No stores defined in screenshots.config.json.');
@@ -270,63 +294,6 @@ const chromePath = findChrome();
 console.log(`Chrome: ${chromePath}`);
 console.log(`App:    ${appDir}`);
 console.log('');
-
-// ---------- generated source screens ----------
-// Most shots are real device captures (qa/captures/<source>, dropped by the
-// Maestro journey). A shot may instead carry a `generate: "<name>"` field: its
-// source is rebuilt from qa/screens/<name>.html — a faithful HTML mockup of an
-// app screen using the app's own fonts/tokens. This lets a store screenshot show
-// a discipline-specific timer (e.g. the "Climbing Hangboard" editor) without
-// standing up a sim and re-running the journey. We render each generated screen
-// to its `source` PNG at the store's NATIVE capture resolution here, BEFORE the
-// framing loop, so everything downstream treats it exactly like a real capture.
-//
-// The template reads ?platform=<store> for the right status bar / layout, and a
-// `zoom` so the design lays out at the real device point-width while we screenshot
-// at the native pixel width. We render at the NATIVE width (always ≥ 500) rather
-// than the point-width because Chrome headless clamps innerWidth to a 500px
-// minimum — asking for a 440px window silently yields a 500px-wide layout cropped
-// back to 440px, which clips the right edge. zoom = w / layoutW re-renders the
-// point-width design crisply at full resolution (e.g. 440pt @ zoom 3 → 1320px).
-const SCREEN_RENDER = {
-  ios:     { w: 1320, h: 2868, layoutW: 440 },
-  android: { w: 1080, h: 2400, layoutW: 360 },
-  ipad:    { w: 2064, h: 2752, layoutW: 1032 },
-};
-for (const storeKey of stores) {
-  const spec = SCREEN_RENDER[storeKey];
-  for (const shot of (config.stores[storeKey] || [])) {
-    if (!shot.generate) continue;
-    if (onlyShot && shot.id !== onlyShot) continue;
-    if (!spec) { console.warn(`  [gen-skip] ${shot.id}: no render spec for store "${storeKey}"`); continue; }
-    if (!shot.source) { console.warn(`  [gen-skip] ${shot.id}: a generated shot needs a "source" to write to`); continue; }
-    const tplPath = path.join(appDir, 'qa', 'screens', `${shot.generate}.html`);
-    if (!fs.existsSync(tplPath)) {
-      console.warn(`  [gen-skip] ${shot.id}: template not found — ${path.relative(appDir, tplPath)}`);
-      continue;
-    }
-    const outSource = path.join(appDir, 'qa', 'captures', shot.source);
-    fs.mkdirSync(path.dirname(outSource), { recursive: true });
-    const zoom = spec.w / spec.layoutW;
-    const tplUrl = `${pathToFileURL(tplPath).href}?platform=${encodeURIComponent(storeKey)}&zoom=${zoom}`;
-    const r = spawnSync(chromePath, [
-      '--headless=new',
-      '--disable-gpu',
-      '--hide-scrollbars',
-      '--no-sandbox',
-      `--window-size=${spec.w},${spec.h}`,
-      `--screenshot=${outSource}`,
-      '--virtual-time-budget=4000',
-      tplUrl,
-    ], { stdio: 'pipe' });
-    if (r.status !== 0 || !fs.existsSync(outSource)) {
-      console.warn(`  [gen-fail] ${shot.id}: chrome exited ${r.status}`);
-      if (r.stderr) console.warn(r.stderr.toString().split('\n').slice(0, 5).join('\n'));
-    } else {
-      console.log(`  [gen]  ${storeKey}/${shot.id} → ${path.relative(appDir, outSource)} (${spec.w}×${spec.h})`);
-    }
-  }
-}
 
 let total = 0;
 let written = 0;
@@ -345,8 +312,20 @@ for (const storeKey of stores) {
 
   // A store key may render into several variants (e.g. Play 7" + 10" tablet).
   for (const surface of variants) {
-    const outDir = path.join(appDir, 'store-assets', 'screenshots', surface.dir);
+    const outDir = path.join(outBaseOverride || path.join(appDir, 'store-assets', 'screenshots'), surface.dir);
     fs.mkdirSync(outDir, { recursive: true });
+
+    // On a full render, clear stale PNGs first so a removed/renamed slot (or an
+    // old naming convention) can't leave orphans behind. This is the root-cause
+    // fix for grocery-list's "two 1s, two 2s, one 4" mess: the framer used to
+    // only ever ADD files, so dropping the `share` slot + the label-infix rename
+    // left three overlapping generations on disk. A targeted `--shot` re-render
+    // deliberately skips this so it can refresh one slot without wiping siblings.
+    if (!onlyShot) {
+      const removed = fs.readdirSync(outDir).filter((f) => f.toLowerCase().endsWith('.png'));
+      for (const f of removed) fs.rmSync(path.join(outDir, f), { force: true });
+      if (removed.length) console.log(`[${storeKey}] cleared ${removed.length} stale PNG${removed.length === 1 ? '' : 's'} in ${path.relative(appDir, outDir)}`);
+    }
 
     console.log(`[${storeKey}${variants.length > 1 ? ` · ${surface.label}` : ''}] ${shots.length} shot${shots.length === 1 ? '' : 's'} → ${path.relative(appDir, outDir)}`);
 
@@ -357,9 +336,20 @@ for (const storeKey of stores) {
       // Two shot kinds: an app screen framed in device chrome (default), or a
       // generated card with no source file (currently only the Josh Approved
       // slot-2 card; identical across every app).
+      // Shared "look" params (style/theme/motif/accent) ride every shot; the
+      // per-slot fields (bg→theme, style, motif) override the app-wide defaults.
+      const theme = shot.theme || (shot.bg === 'ink' ? 'dark' : 'light');
+      const style = shot.style || appStyle;
+      const motifVal = shot.motif || appMotif;
+      const look = `&style=${encodeURIComponent(style)}`
+        + `&theme=${encodeURIComponent(theme)}`
+        + `&motif=${encodeURIComponent(motifVal)}`
+        + (appAccent ? `&accent=${encodeURIComponent(appAccent)}` : '');
+
       let url;
       if (shot.kind === 'card') {
         url = `${frameUrl}?surface=josh-card`
+          + look
           + `&bg=${encodeURIComponent(shot.bg || 'paper')}`;
       } else {
         const sourcePath = path.isAbsolute(shot.source)
@@ -373,6 +363,9 @@ for (const storeKey of stores) {
         url = `${frameUrl}?surface=${surface.surface}`
           + `&screen=${encodeURIComponent(screenUrl)}`
           + `&caption=${encodeURIComponent(shot.caption || '')}`
+          + look
+          + `&layout=${encodeURIComponent(shot.layout || 'hero')}`
+          + (shot.crop ? `&crop=${encodeURIComponent(shot.crop)}` : '')
           + `&bg=${encodeURIComponent(shot.bg || 'paper')}`;
       }
 
