@@ -5,10 +5,13 @@
 
 import React, { useCallback } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
+import { useAnimatedScrollHandler } from 'react-native-reanimated';
 import ReorderableList, {
   reorderItems,
   useReorderableDrag,
 } from 'react-native-reorderable-list';
+
+type ScrollHandler = ReturnType<typeof useAnimatedScrollHandler>;
 
 export type SortableRenderItemInfo<T> = {
   item: T;
@@ -31,6 +34,12 @@ export type SortableListProps<T> = {
   ListEmptyComponent?: React.ReactElement | null;
   moveUpLabel?: string;
   moveDownLabel?: string;
+  /** Reanimated scroll handler (the lib takes a UI-thread handler, not a plain
+   *  onScroll) — used to drive the foot-of-screen wordmark pull-to-reveal. */
+  onScroll?: ScrollHandler;
+  /** iOS: bounce at the bottom even when content fits, so the pull-to-reveal
+   *  gesture is reachable on a short list. No-op on Android. */
+  alwaysBounceVertical?: boolean;
 };
 
 export function SortableList<T>({
@@ -44,6 +53,8 @@ export function SortableList<T>({
   ListEmptyComponent,
   moveUpLabel = 'Move up',
   moveDownLabel = 'Move down',
+  onScroll,
+  alwaysBounceVertical,
 }: SortableListProps<T>) {
   const handleReorder = useCallback(
     ({ from, to }: { from: number; to: number }) => {
@@ -86,6 +97,8 @@ export function SortableList<T>({
       ListHeaderComponent={ListHeaderComponent ?? undefined}
       ListFooterComponent={ListFooterComponent ?? undefined}
       ListEmptyComponent={ListEmptyComponent ?? undefined}
+      onScroll={onScroll}
+      alwaysBounceVertical={alwaysBounceVertical}
     />
   );
 }

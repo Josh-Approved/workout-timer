@@ -4,7 +4,9 @@ import {
   Text,
   Pressable,
   StyleSheet,
+  Platform,
 } from 'react-native';
+import { useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -38,6 +40,20 @@ export default function TimerListScreen({ navigation }: Props) {
   const { c } = useTheme();
   const s = makeStyles(c);
 
+  // Pull-to-reveal: 0→1 as the list is over-pulled past its bottom edge. iOS
+  // bounces (incl. a short list, via alwaysBounceVertical); Android has no
+  // bottom bounce, so there the wordmark is shown statically instead.
+  const pullToReveal = Platform.OS === 'ios';
+  const reveal = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler({
+    onScroll: (e) => {
+      const over =
+        e.contentOffset.y + e.layoutMeasurement.height - e.contentSize.height;
+      const p = over / 88;
+      reveal.value = p < 0 ? 0 : p > 1 ? 1 : p;
+    },
+  });
+
   useFocusEffect(
     useCallback(() => {
       loadTimers().then(setTimers);
@@ -66,6 +82,7 @@ export default function TimerListScreen({ navigation }: Props) {
         </Pressable>
       </View>
 
+      <View style={s.listArea}>
       <SortableList
         items={timers}
         keyExtractor={(item) => item.id}
@@ -73,9 +90,8 @@ export default function TimerListScreen({ navigation }: Props) {
         moveUpLabel={t('timerList.moveUp')}
         moveDownLabel={t('timerList.moveDown')}
         contentContainerStyle={s.list}
-        ListFooterComponent={
-          <FundingFooter onSupport={TIP_JAR_ENABLED ? () => setTipVisible(true) : undefined} />
-        }
+        onScroll={pullToReveal ? onScroll : undefined}
+        alwaysBounceVertical={pullToReveal}
         ListEmptyComponent={
           <View style={s.empty} accessibilityLiveRegion="polite">
             <View style={s.emptyIcon} importantForAccessibility="no">
@@ -142,6 +158,15 @@ export default function TimerListScreen({ navigation }: Props) {
       >
         <Plus size={28} color={c.inkButtonText} strokeWidth={1.75} />
       </Pressable>
+      </View>
+
+      <View style={s.footerWrap}>
+        <FundingFooter
+          onSupport={TIP_JAR_ENABLED ? () => setTipVisible(true) : undefined}
+          reveal={reveal}
+          pullToReveal={pullToReveal}
+        />
+      </View>
       {tipVisible && (
         <TipJarSheet
           visible
@@ -156,6 +181,11 @@ export default function TimerListScreen({ navigation }: Props) {
 function makeStyles(c: Colors) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: c.bg },
+    // The scrolling list + its floating FAB live here; the funding footer is a
+    // separate bar pinned beneath, so the footer always rests at the bottom of
+    // the screen (not under the last card) and never collides with the FAB.
+    listArea: { flex: 1 },
+    footerWrap: { ...boundedContent },
     header: {
       ...boundedContent,
       flexDirection: 'row',
