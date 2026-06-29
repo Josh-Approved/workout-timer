@@ -44,8 +44,8 @@ type Props = {
   /** When set, the support button opens the in-app tip jar instead of the BMAC
    *  link-out (canon § Tip jar — the 3.1.1-compliant IAP replacement). */
   onSupport?: () => void;
-  /** 0→1 progress of the bottom-overscroll pull (driven by the list's scroll
-   *  handler). At 0 the wordmark is hidden; at 1 it has fully popped in. */
+  /** 0→1 progress of the bottom-overscroll pull (from usePullRevealFooter). At
+   *  0 the wordmark is hidden; at 1 it has fully popped in. */
   reveal?: SharedValue<number>;
   /** When true the wordmark is hidden at rest and pops in on pull (the splash
    *  pop, echoed at the foot of the screen). When false it is statically shown

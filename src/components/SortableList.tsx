@@ -35,7 +35,7 @@ export type SortableListProps<T> = {
   moveUpLabel?: string;
   moveDownLabel?: string;
   /** Reanimated scroll handler (the lib takes a UI-thread handler, not a plain
-   *  onScroll) — used to drive the foot-of-screen wordmark pull-to-reveal. */
+   *  onScroll) — drives the foot-of-screen wordmark pull-to-reveal. */
   onScroll?: ScrollHandler;
   /** iOS: bounce at the bottom even when content fits, so the pull-to-reveal
    *  gesture is reachable on a short list. No-op on Android. */

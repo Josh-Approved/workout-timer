@@ -4,10 +4,7 @@ import {
   Text,
   Pressable,
   StyleSheet,
-  Platform,
-  type LayoutChangeEvent,
 } from 'react-native';
-import { useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -21,6 +18,7 @@ import { TIP_PRODUCT_IDS } from '../constants/tipProducts';
 import TipJarSheet from '../components/TipJarSheet';
 import { FundingFooter } from '../components/FundingFooter';
 import { SortableList } from '../components/SortableList';
+import { usePullRevealFooter } from '../components/usePullRevealFooter';
 import {
   useTheme,
   fontFamily,
@@ -41,27 +39,10 @@ export default function TimerListScreen({ navigation }: Props) {
   const { c } = useTheme();
   const s = makeStyles(c);
 
-  // Pull-to-reveal: 0→1 as the list is over-pulled past its bottom edge. iOS
-  // bounces (incl. a short list, via alwaysBounceVertical); Android has no
-  // bottom bounce, so there the wordmark is shown statically instead.
-  const pullToReveal = Platform.OS === 'ios';
-  const reveal = useSharedValue(0);
-  const onScroll = useAnimatedScrollHandler({
-    onScroll: (e) => {
-      const over =
-        e.contentOffset.y + e.layoutMeasurement.height - e.contentSize.height;
-      const p = over / 88;
-      reveal.value = p < 0 ? 0 : p > 1 ? 1 : p;
-    },
-  });
-
-  // Measure the in-scroll footer so the floating FAB can sit just above it
-  // rather than overlapping the support / feedback buttons.
-  const [footerH, setFooterH] = useState(96);
-  const onFooterLayout = useCallback(
-    (e: LayoutChangeEvent) => setFooterH(Math.round(e.nativeEvent.layout.height)),
-    []
-  );
+  // Pull-to-reveal funding footer (rests at the bottom of the scroll; the
+  // wordmark pops on over-pull). iOS drives it; Android shows the mark statically.
+  const { pullToReveal, reveal, onScroll, footerHeight, onFooterLayout } =
+    usePullRevealFooter();
 
   useFocusEffect(
     useCallback(() => {
@@ -168,7 +149,7 @@ export default function TimerListScreen({ navigation }: Props) {
       />
 
       <Pressable
-        style={({ pressed }) => [s.fab, { bottom: footerH + space.s4 }, pressed && s.pressed]}
+        style={({ pressed }) => [s.fab, { bottom: footerHeight + space.s4 }, pressed && s.pressed]}
         onPress={() => navigation.navigate('TimerEditor', {})}
         accessibilityLabel={t('timerList.createNew')}
         accessibilityRole="button"
