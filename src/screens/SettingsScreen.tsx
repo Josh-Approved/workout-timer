@@ -40,7 +40,6 @@ import { TIP_JAR_ENABLED } from '../constants/features';
 import { TIP_PRODUCT_IDS } from '../constants/tipProducts';
 import TipJarSheet from '../components/TipJarSheet';
 import { AudioEngine } from '../audio/AudioEngine';
-import { buildFeedbackEmailUrl } from '../utils/feedback';
 import { t } from '../i18n';
 import Wordmark from '../components/Wordmark';
 import { LanguageSetting } from '../components/LanguageSetting';
@@ -56,6 +55,7 @@ import {
   AppearanceToggle,
 } from '../theme';
 import { boundedContent } from '../theme';
+import { useFeedback } from '../feedback/FeedbackProvider';
 
 const VOICE_PREVIEW_PHRASES: Partial<Record<keyof Omit<SoundSettings, 'countdownDuration'>, string>> = {
   warmUpStart: 'Warm Up',
@@ -101,6 +101,7 @@ const SOUND_EVENT_KEYS: SoundEventKey[] = [
 
 export default function SettingsScreen({ navigation }: Props) {
   const { c } = useTheme();
+  const { open: openFeedback } = useFeedback();
   const s = makeStyles(c);
 
   const [sounds, setSounds] = useState<SoundSettings>(DEFAULT_SETTINGS.sounds);
@@ -337,7 +338,7 @@ export default function SettingsScreen({ navigation }: Props) {
           )}
           <Pressable
             style={({ pressed }) => [s.aboutRow, s.aboutRowBorder, pressed && s.pressed]}
-            onPress={() => Linking.openURL(buildFeedbackEmailUrl())}
+            onPress={() => openFeedback()}
             accessibilityLabel={t('about.feedback')}
             accessibilityRole="link"
             accessibilityHint={t('a11y.feedbackHint')}

@@ -9,7 +9,7 @@
  * marketing-ese. "Josh Approved" is a brand proper noun and never translates.
  * The app overlays its OWN domain strings per locale in `locales.ts`.
  *
- * Machine-drafted (Claude, $0 — canon § Translations). A native per-locale
+ * Machine-drafted initial pass (canon § Translations). A native per-locale
  * layout/quality pass rides the Tier-3 capture machinery before these are
  * treated as final; the keys map 1:1 to shellStrings.ts.
  */
@@ -24,6 +24,16 @@ export const SHELL_LOCALES = {
     review: { title: '¿Te gusta {app}?', body: 'Una valoración rápida ayuda a que más personas descubran esta app.', leaveA11y: 'Dejar una reseña en la tienda de apps' },
     error: { title: 'Algo salió mal', body: 'La app tuvo un error inesperado. Vuelve a abrirla para continuar: tus datos están a salvo en este dispositivo.' },
     credits: { footnote: 'Los textos completos de las licencias están en el repositorio de cada proyecto.', linkHint: 'Abre la página del proyecto en el navegador' },
+    feedback: {
+      title: 'Enviar comentarios', lead: '¿Qué te gustaría compartir?',
+      type: { bug: 'Informar de un error', bugDesc: 'Algo está roto o no funciona bien', feature: 'Sugerir una función', featureDesc: 'Propón algo que la app podría hacer', general: 'Comentario general', generalDesc: 'Comparte una idea, una pregunta o un agradecimiento' },
+      bug: { title: 'Informar de un error', guidanceTitle: 'Un informe claro ayuda a corregirlo antes', guidance: 'Cuéntanos qué pasó, qué esperabas en su lugar y los pasos para verlo de nuevo. Sé específico: no podemos ver tu pantalla.', whatHappened: '¿Qué pasó?', whatHappenedHint: 'p. ej. La app se cerró al tocar Guardar', expected: '¿Qué esperabas que pasara?', expectedHint: 'p. ej. Debería haber guardado y vuelto a la lista', steps: 'Pasos para reproducirlo', stepsHint: '1. Abre una lista\n2. Toca el botón +\n3. …', frequency: '¿Con qué frecuencia ocurre?', frequencyHint: '¿Siempre, a veces o solo una vez?', placeholder: '[Describe el error aquí]' },
+      feature: { title: 'Sugerir una función', want: '¿Qué te gustaría poder hacer?', wantHint: 'p. ej. Ordenar mi lista por pasillo', goal: '¿Qué intentas conseguir?', goalHint: 'El objetivo detrás de la idea: ¿en qué te ayudaría?', workaround: '¿Cómo lo resuelves ahora?', workaroundHint: 'p. ej. Uso una nota aparte o lo hago a mano', placeholder: '[Describe tu idea aquí]' },
+      general: { title: 'Comentario general', message: 'Tu comentario', messageHint: 'Lo que quieras compartir', placeholder: '[Tu comentario aquí]' },
+      logs: { label: 'Compartir registros de diagnóstico', hint: 'Un breve registro técnico de lo que hizo la app y de cualquier error. Sin nombres, notas ni contenido de listas.', view: 'Ver qué se comparte', previewTitle: 'Qué se comparte', previewLead: 'Este es el texto exacto que se adjunta a tu correo. Nada sale de tu dispositivo hasta que lo envías.' },
+      body: { autoIncluded: 'Se incluye automáticamente', envHeader: 'App y dispositivo', logHeader: 'Registro de diagnóstico', logTruncatedNote: '(Tu app de correo no pudo adjuntar el archivo de registro completo, así que arriba se incluye un breve extracto.)' },
+      send: { action: 'Continuar al correo', note: 'Esto abre tu correo con todo rellenado. Puedes revisarlo y editarlo antes de enviar.', failed: 'No se pudo abrir tu app de correo. Puedes escribirnos a feedback@joshapproved.com.' },
+    },
   },
   de: {
     common: { back: 'Zurück', cancel: 'Abbrechen', done: 'Fertig', save: 'Speichern', delete: 'Löschen', edit: 'Bearbeiten', rename: 'Umbenennen', add: 'Hinzufügen', maybeLater: 'Vielleicht später', notNow: 'Jetzt nicht' },
@@ -34,6 +44,16 @@ export const SHELL_LOCALES = {
     review: { title: 'Gefällt dir {app}?', body: 'Eine kurze Bewertung hilft mehr Menschen, diese App zu finden.', leaveA11y: 'Eine Bewertung im App-Store abgeben' },
     error: { title: 'Etwas ist schiefgelaufen', body: 'Die App hatte einen unerwarteten Fehler. Öffne sie erneut, um weiterzumachen – deine Daten sind auf diesem Gerät sicher.' },
     credits: { footnote: 'Die vollständigen Lizenztexte stehen im Repository des jeweiligen Projekts.', linkHint: 'Öffnet die Projektseite im Browser' },
+    feedback: {
+      title: 'Feedback senden', lead: 'Was möchtest du mitteilen?',
+      type: { bug: 'Fehler melden', bugDesc: 'Etwas ist kaputt oder funktioniert nicht richtig', feature: 'Funktion vorschlagen', featureDesc: 'Schlag etwas vor, das die App können sollte', general: 'Allgemeines Feedback', generalDesc: 'Teile einen Gedanken, eine Frage oder ein Dankeschön' },
+      bug: { title: 'Fehler melden', guidanceTitle: 'Ein klarer Bericht hilft, ihn schneller zu beheben', guidance: 'Sag uns, was passiert ist, was du stattdessen erwartet hast und die Schritte, um es erneut zu sehen. Sei genau – wir können deinen Bildschirm nicht sehen.', whatHappened: 'Was ist passiert?', whatHappenedHint: 'z. B. Die App schloss sich beim Tippen auf Speichern', expected: 'Was hast du erwartet?', expectedHint: 'z. B. Es hätte speichern und zur Liste zurückkehren sollen', steps: 'Schritte zum Nachstellen', stepsHint: '1. Eine Liste öffnen\n2. Auf + tippen\n3. …', frequency: 'Wie oft passiert es?', frequencyHint: 'Jedes Mal, manchmal oder nur einmal?', placeholder: '[Beschreibe den Fehler hier]' },
+      feature: { title: 'Funktion vorschlagen', want: 'Was möchtest du tun können?', wantHint: 'z. B. Meine Liste nach Gang sortieren', goal: 'Was möchtest du erreichen?', goalHint: 'Das Ziel dahinter – wobei würde es dir helfen?', workaround: 'Wie löst du das heute?', workaroundHint: 'z. B. Ich nutze eine separate Notiz oder mache es von Hand', placeholder: '[Beschreibe deine Idee hier]' },
+      general: { title: 'Allgemeines Feedback', message: 'Dein Feedback', messageHint: 'Alles, was du mitteilen möchtest', placeholder: '[Dein Feedback hier]' },
+      logs: { label: 'Diagnoseprotokoll teilen', hint: 'Eine kurze technische Aufzeichnung dessen, was die App getan hat, und etwaiger Fehler. Keine Namen, Notizen oder Listeninhalte.', view: 'Ansehen, was geteilt wird', previewTitle: 'Was geteilt wird', previewLead: 'Das ist genau der Text, der deiner E-Mail angehängt wird. Nichts verlässt dein Gerät, bevor du sendest.' },
+      body: { autoIncluded: 'Automatisch enthalten', envHeader: 'App & Gerät', logHeader: 'Diagnoseprotokoll', logTruncatedNote: '(Deine Mail-App konnte die vollständige Protokolldatei nicht anhängen, daher steht oben ein kurzer Auszug.)' },
+      send: { action: 'Weiter zur E-Mail', note: 'Das öffnet deine E-Mail mit allem vorausgefüllt. Du kannst vor dem Senden alles prüfen und bearbeiten.', failed: 'Deine Mail-App konnte nicht geöffnet werden. Du erreichst uns unter feedback@joshapproved.com.' },
+    },
   },
   fr: {
     common: { back: 'Retour', cancel: 'Annuler', done: 'Terminé', save: 'Enregistrer', delete: 'Supprimer', edit: 'Modifier', rename: 'Renommer', add: 'Ajouter', maybeLater: 'Plus tard', notNow: 'Pas maintenant' },
@@ -44,6 +64,16 @@ export const SHELL_LOCALES = {
     review: { title: 'Vous aimez {app} ?', body: 'Une note rapide aide plus de monde à découvrir cette app.', leaveA11y: "Laisser un avis sur la boutique d'applications" },
     error: { title: 'Une erreur est survenue', body: "L'app a rencontré une erreur inattendue. Rouvrez-la pour continuer : vos données sont en sécurité sur cet appareil." },
     credits: { footnote: 'Les textes complets des licences se trouvent dans le dépôt de chaque projet.', linkHint: 'Ouvre la page du projet dans le navigateur' },
+    feedback: {
+      title: 'Envoyer un commentaire', lead: 'Que souhaitez-vous partager ?',
+      type: { bug: 'Signaler un bug', bugDesc: 'Quelque chose est cassé ou ne fonctionne pas bien', feature: 'Proposer une fonctionnalité', featureDesc: 'Suggérez quelque chose que l’app pourrait faire', general: 'Commentaire général', generalDesc: 'Partagez une idée, une question ou un merci' },
+      bug: { title: 'Signaler un bug', guidanceTitle: 'Un rapport clair aide à corriger plus vite', guidance: 'Dites-nous ce qui s’est passé, ce que vous attendiez à la place et les étapes pour le revoir. Soyez précis : nous ne voyons pas votre écran.', whatHappened: 'Que s’est-il passé ?', whatHappenedHint: 'p. ex. L’app s’est fermée quand j’ai touché Enregistrer', expected: 'À quoi vous attendiez-vous ?', expectedHint: 'p. ex. Elle aurait dû enregistrer et revenir à la liste', steps: 'Étapes pour reproduire', stepsHint: '1. Ouvrir une liste\n2. Toucher le bouton +\n3. …', frequency: 'À quelle fréquence cela arrive-t-il ?', frequencyHint: 'À chaque fois, parfois ou une seule fois ?', placeholder: '[Décrivez le bug ici]' },
+      feature: { title: 'Proposer une fonctionnalité', want: 'Que voudriez-vous pouvoir faire ?', wantHint: 'p. ex. Trier ma liste par rayon', goal: 'Qu’essayez-vous d’accomplir ?', goalHint: 'Le but derrière l’idée : en quoi cela vous aiderait-il ?', workaround: 'Comment faites-vous aujourd’hui ?', workaroundHint: 'p. ex. Je garde une note à part, ou je le fais à la main', placeholder: '[Décrivez votre idée ici]' },
+      general: { title: 'Commentaire général', message: 'Votre commentaire', messageHint: 'Tout ce que vous voulez partager', placeholder: '[Votre commentaire ici]' },
+      logs: { label: 'Partager les journaux de diagnostic', hint: 'Un bref relevé technique de ce que l’app a fait et des erreurs éventuelles. Aucun nom, note ni contenu de liste.', view: 'Voir ce qui est partagé', previewTitle: 'Ce qui est partagé', previewLead: 'Voici le texte exact joint à votre e-mail. Rien ne quitte votre appareil tant que vous n’envoyez pas.' },
+      body: { autoIncluded: 'Inclus automatiquement', envHeader: 'App et appareil', logHeader: 'Journal de diagnostic', logTruncatedNote: '(Votre app de messagerie n’a pas pu joindre le fichier de journal complet ; un court extrait figure donc ci-dessus.)' },
+      send: { action: 'Continuer vers l’e-mail', note: 'Cela ouvre votre messagerie avec tout pré-rempli. Vous pouvez relire et modifier avant d’envoyer.', failed: 'Impossible d’ouvrir votre app de messagerie. Vous pouvez nous écrire à feedback@joshapproved.com.' },
+    },
   },
   it: {
     common: { back: 'Indietro', cancel: 'Annulla', done: 'Fatto', save: 'Salva', delete: 'Elimina', edit: 'Modifica', rename: 'Rinomina', add: 'Aggiungi', maybeLater: 'Forse più tardi', notNow: 'Non ora' },
@@ -54,6 +84,16 @@ export const SHELL_LOCALES = {
     review: { title: 'Ti piace {app}?', body: 'Una valutazione veloce aiuta più persone a scoprire questa app.', leaveA11y: 'Lascia una recensione nello store' },
     error: { title: 'Qualcosa è andato storto', body: "L'app ha riscontrato un errore imprevisto. Riaprila per continuare: i tuoi dati sono al sicuro su questo dispositivo." },
     credits: { footnote: 'I testi completi delle licenze si trovano nel repository di ciascun progetto.', linkHint: 'Apre la pagina del progetto nel browser' },
+    feedback: {
+      title: 'Invia un feedback', lead: 'Cosa vuoi condividere?',
+      type: { bug: 'Segnala un problema', bugDesc: 'Qualcosa è rotto o non funziona bene', feature: 'Proponi una funzione', featureDesc: 'Suggerisci qualcosa che l’app potrebbe fare', general: 'Feedback generale', generalDesc: 'Condividi un pensiero, una domanda o un grazie' },
+      bug: { title: 'Segnala un problema', guidanceTitle: 'Una segnalazione chiara aiuta a risolvere prima', guidance: 'Dicci cosa è successo, cosa ti aspettavi invece e i passaggi per rivederlo. Sii specifico: non possiamo vedere il tuo schermo.', whatHappened: 'Cosa è successo?', whatHappenedHint: 'es. L’app si è chiusa quando ho toccato Salva', expected: 'Cosa ti aspettavi?', expectedHint: 'es. Avrebbe dovuto salvare e tornare alla lista', steps: 'Passaggi per riprodurlo', stepsHint: '1. Apri una lista\n2. Tocca il pulsante +\n3. …', frequency: 'Quanto spesso succede?', frequencyHint: 'Ogni volta, a volte o una sola volta?', placeholder: '[Descrivi il problema qui]' },
+      feature: { title: 'Proponi una funzione', want: 'Cosa vorresti poter fare?', wantHint: 'es. Ordinare la lista per corsia', goal: 'Cosa stai cercando di fare?', goalHint: 'L’obiettivo dietro l’idea: in cosa ti aiuterebbe?', workaround: 'Come fai oggi?', workaroundHint: 'es. Uso una nota a parte, o lo faccio a mano', placeholder: '[Descrivi la tua idea qui]' },
+      general: { title: 'Feedback generale', message: 'Il tuo feedback', messageHint: 'Tutto ciò che vuoi condividere', placeholder: '[Il tuo feedback qui]' },
+      logs: { label: 'Condividi i log di diagnostica', hint: 'Un breve registro tecnico di ciò che ha fatto l’app e di eventuali errori. Nessun nome, nota o contenuto delle liste.', view: 'Vedi cosa viene condiviso', previewTitle: 'Cosa viene condiviso', previewLead: 'Questo è il testo esatto allegato alla tua email. Niente lascia il tuo dispositivo finché non invii.' },
+      body: { autoIncluded: 'Incluso automaticamente', envHeader: 'App e dispositivo', logHeader: 'Log di diagnostica', logTruncatedNote: '(La tua app di posta non ha potuto allegare il file di log completo, quindi sopra è incluso un breve estratto.)' },
+      send: { action: 'Continua all’email', note: 'Questo apre la tua email con tutto già compilato. Puoi rivedere e modificare prima di inviare.', failed: 'Impossibile aprire la tua app di posta. Puoi scriverci a feedback@joshapproved.com.' },
+    },
   },
   'pt-BR': {
     common: { back: 'Voltar', cancel: 'Cancelar', done: 'Concluído', save: 'Salvar', delete: 'Excluir', edit: 'Editar', rename: 'Renomear', add: 'Adicionar', maybeLater: 'Talvez depois', notNow: 'Agora não' },
@@ -64,6 +104,16 @@ export const SHELL_LOCALES = {
     review: { title: 'Curtindo o {app}?', body: 'Uma avaliação rápida ajuda mais pessoas a encontrar este app.', leaveA11y: 'Deixar uma avaliação na loja de apps' },
     error: { title: 'Algo deu errado', body: 'O app encontrou um erro inesperado. Reabra para continuar — seus dados estão seguros neste dispositivo.' },
     credits: { footnote: 'Os textos completos das licenças estão no repositório de cada projeto.', linkHint: 'Abre a página do projeto no navegador' },
+    feedback: {
+      title: 'Enviar feedback', lead: 'O que você gostaria de compartilhar?',
+      type: { bug: 'Relatar um erro', bugDesc: 'Algo está quebrado ou não funciona direito', feature: 'Sugerir um recurso', featureDesc: 'Sugira algo que o app poderia fazer', general: 'Feedback geral', generalDesc: 'Compartilhe uma ideia, uma dúvida ou um obrigado' },
+      bug: { title: 'Relatar um erro', guidanceTitle: 'Um relato claro ajuda a corrigir mais rápido', guidance: 'Conte o que aconteceu, o que você esperava e os passos para ver de novo. Seja específico: não conseguimos ver sua tela.', whatHappened: 'O que aconteceu?', whatHappenedHint: 'ex.: O app fechou quando toquei em Salvar', expected: 'O que você esperava que acontecesse?', expectedHint: 'ex.: Deveria ter salvado e voltado para a lista', steps: 'Passos para reproduzir', stepsHint: '1. Abra uma lista\n2. Toque no botão +\n3. …', frequency: 'Com que frequência acontece?', frequencyHint: 'Toda vez, às vezes ou só uma vez?', placeholder: '[Descreva o erro aqui]' },
+      feature: { title: 'Sugerir um recurso', want: 'O que você gostaria de poder fazer?', wantHint: 'ex.: Ordenar minha lista por corredor', goal: 'O que você está tentando fazer?', goalHint: 'O objetivo por trás da ideia: no que isso ajudaria?', workaround: 'Como você resolve isso hoje?', workaroundHint: 'ex.: Uso uma nota separada, ou faço à mão', placeholder: '[Descreva sua ideia aqui]' },
+      general: { title: 'Feedback geral', message: 'Seu feedback', messageHint: 'Qualquer coisa que você queira compartilhar', placeholder: '[Seu feedback aqui]' },
+      logs: { label: 'Compartilhar logs de diagnóstico', hint: 'Um breve registro técnico do que o app fez e de quaisquer erros. Sem nomes, notas ou conteúdo das listas.', view: 'Ver o que é compartilhado', previewTitle: 'O que é compartilhado', previewLead: 'Este é o texto exato anexado ao seu e-mail. Nada sai do seu dispositivo até você enviar.' },
+      body: { autoIncluded: 'Incluído automaticamente', envHeader: 'App e dispositivo', logHeader: 'Log de diagnóstico', logTruncatedNote: '(Seu app de e-mail não conseguiu anexar o arquivo de log completo, então um breve trecho está incluído acima.)' },
+      send: { action: 'Continuar para o e-mail', note: 'Isso abre seu e-mail com tudo preenchido. Você pode revisar e editar antes de enviar.', failed: 'Não foi possível abrir seu app de e-mail. Você pode falar conosco em feedback@joshapproved.com.' },
+    },
   },
   ja: {
     common: { back: '戻る', cancel: 'キャンセル', done: '完了', save: '保存', delete: '削除', edit: '編集', rename: '名前を変更', add: '追加', maybeLater: 'あとで', notNow: '今はしない' },
@@ -74,5 +124,15 @@ export const SHELL_LOCALES = {
     review: { title: '{app} はいかがですか？', body: '簡単な評価が、より多くの人にこのアプリを届ける助けになります。', leaveA11y: 'アプリストアでレビューを書く' },
     error: { title: '問題が発生しました', body: 'アプリで予期しないエラーが発生しました。もう一度開くと続けられます。データはこの端末に安全に保存されています。' },
     credits: { footnote: '各ライセンスの全文は、それぞれのプロジェクトのリポジトリにあります。', linkHint: 'プロジェクトのページをブラウザで開きます' },
+    feedback: {
+      title: 'フィードバックを送る', lead: '何を伝えたいですか？',
+      type: { bug: '不具合を報告', bugDesc: '壊れている、またはうまく動かない', feature: '機能をリクエスト', featureDesc: 'アプリにできるとよいことを提案', general: '一般的なフィードバック', generalDesc: '感想や質問、お礼など' },
+      bug: { title: '不具合を報告', guidanceTitle: '具体的な報告ほど早く直せます', guidance: '何が起きたか、本来どうなるはずだったか、再現の手順を教えてください。こちらからは画面が見えないので、できるだけ具体的にお願いします。', whatHappened: '何が起きましたか？', whatHappenedHint: '例：保存を押したらアプリが落ちた', expected: 'どうなると思っていましたか？', expectedHint: '例：保存してリストに戻るはずだった', steps: '再現の手順', stepsHint: '1. リストを開く\n2. ＋ボタンを押す\n3. …', frequency: 'どのくらいの頻度で起きますか？', frequencyHint: '毎回、ときどき、一度だけ？', placeholder: '[ここに不具合を書いてください]' },
+      feature: { title: '機能をリクエスト', want: '何ができるようになるとよいですか？', wantHint: '例：リストを売り場順に並べ替える', goal: '何を実現したいですか？', goalHint: 'その背景にある目的：どんなことに役立ちますか？', workaround: '今はどうしていますか？', workaroundHint: '例：別のメモを使う、手作業で行う など', placeholder: '[ここにアイデアを書いてください]' },
+      general: { title: '一般的なフィードバック', message: 'フィードバック', messageHint: '伝えたいことを自由にどうぞ', placeholder: '[ここにフィードバックを書いてください]' },
+      logs: { label: '診断ログを共有', hint: 'アプリの動作とエラーの簡単な技術記録です。名前・メモ・リストの内容は含みません。', view: '共有される内容を見る', previewTitle: '共有される内容', previewLead: 'これはメールに添付される実際のテキストです。送信するまで端末から何も出ません。' },
+      body: { autoIncluded: '自動的に含まれます', envHeader: 'アプリと端末', logHeader: '診断ログ', logTruncatedNote: '（お使いのメールアプリが完全なログファイルを添付できなかったため、上に短い抜粋を含めています。）' },
+      send: { action: 'メールに進む', note: 'すべて入力済みの状態でメールが開きます。送信前に確認・編集できます。', failed: 'メールアプリを開けませんでした。feedback@joshapproved.com までご連絡ください。' },
+    },
   },
 } as const;

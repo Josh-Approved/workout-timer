@@ -68,7 +68,8 @@
       "live-timer",
       "@bacons/apple-targets",
       "./plugins/withGradleJvmArgs",
-      "expo-iap"
+      "expo-iap",
+      "expo-mail-composer"
     ]
   }
 }
