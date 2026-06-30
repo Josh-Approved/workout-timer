@@ -30,6 +30,14 @@
     },
     "settings": {
       "text": "Settings"
+    },
+    "send-feedback": {
+      "text": "Send feedback",
+      "note": "Settings 'Send feedback' row (i18n about.feedback) — opens the canonical feedback sheet"
+    },
+    "feedback-bug-option": {
+      "text": "Report a bug",
+      "note": "feedback sheet type option (i18n feedback.type.bug) — present once the sheet opens"
     }
   }
 }

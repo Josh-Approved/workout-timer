@@ -43,3 +43,9 @@ appId: com.joshapproved.freeworkouttimer
     visible: { text: "Back" }
     timeout: 5000
 - takeScreenshot: qa/captures/${STORE}/settings
+- tapOn: { text: "Send feedback" }
+- extendedWaitUntil:
+    visible: { text: "Report a bug" }
+    timeout: 8000
+- takeScreenshot: qa/captures/${STORE}/feedback
+- assertVisible: { text: "Report a bug" }

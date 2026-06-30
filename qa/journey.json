@@ -24,6 +24,11 @@
     { "assertNot": "@exercise" },
     { "tap": "@settings" },
     { "waitFor": "@back", "timeout": 5000 },
-    { "screenshot": "settings" }
+    { "screenshot": "settings" },
+
+    { "tap": "@send-feedback" },
+    { "waitFor": "@feedback-bug-option", "timeout": 8000 },
+    { "screenshot": "feedback" },
+    { "assert": "@feedback-bug-option" }
   ]
 }
