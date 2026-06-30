@@ -41,8 +41,16 @@ export default function TimerListScreen({ navigation }: Props) {
 
   // Pull-to-reveal funding footer (rests at the bottom of the scroll; the
   // wordmark pops on over-pull). iOS drives it; Android shows the mark statically.
-  const { pullToReveal, reveal, onScroll, footerHeight, onFooterLayout } =
-    usePullRevealFooter();
+  const {
+    pullToReveal,
+    reveal,
+    gesture,
+    onScroll,
+    onScrollViewLayout,
+    onContentSizeChange,
+    footerHeight,
+    onFooterLayout,
+  } = usePullRevealFooter();
 
   useFocusEffect(
     useCallback(() => {
@@ -81,6 +89,9 @@ export default function TimerListScreen({ navigation }: Props) {
         contentContainerStyle={s.list}
         onScroll={pullToReveal ? onScroll : undefined}
         alwaysBounceVertical={pullToReveal}
+        gesture={gesture}
+        onScrollViewLayout={onScrollViewLayout}
+        onContentSizeChange={onContentSizeChange}
         ListFooterComponent={
           <View style={s.footerHolder} onLayout={onFooterLayout}>
             <FundingFooter
