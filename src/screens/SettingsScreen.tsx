@@ -41,7 +41,7 @@ import { TIP_PRODUCT_IDS } from '../constants/tipProducts';
 import TipJarSheet from '../components/TipJarSheet';
 import { AudioEngine } from '../audio/AudioEngine';
 import { t } from '../i18n';
-import Wordmark from '../components/Wordmark';
+import { Wordmark } from '../components/Wordmark';
 import { LanguageSetting } from '../components/LanguageSetting';
 import {
   useTheme,

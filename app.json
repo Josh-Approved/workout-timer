@@ -69,7 +69,9 @@
       "@bacons/apple-targets",
       "./plugins/withGradleJvmArgs",
       "expo-iap",
-      "expo-mail-composer"
+      "expo-mail-composer",
+      "expo-sqlite",
+      "expo-sharing"
     ]
   }
 }
