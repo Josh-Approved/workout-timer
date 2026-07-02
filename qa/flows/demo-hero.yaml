@@ -1,0 +1,35 @@
+# Hand-authored HERO demo flow for the store/README GIF — the core loop:
+# pick a saved timer, hit start, and the interval clock counts down through
+# the phases (Get ready -> Exercise). NOT the generated screenshot journey
+# (qa/flows/mobile.yaml). Kept human-paced and held on the active screen so the
+# recording captures the countdown ticking. Driven headless by
+# josh-approved-factory/scripts/demo-capture.mjs (records the run + composites
+# it into the signature device frame). Runs against the QA_MODE build, which
+# seeds the "Standard Tabata" timer (src/qa/fixtures.ts: 10s get-ready, 20s
+# exercise, 10s rest, 8 sets).
+appId: com.joshapproved.freeworkouttimer
+---
+- launchApp:
+    clearState: true
+- waitForAnimationToEnd:
+    timeout: 4000
+- extendedWaitUntil:
+    visible:
+      text: "Start Standard Tabata"
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 1200
+- tapOn:
+    text: "Start Standard Tabata"
+- extendedWaitUntil:
+    visible:
+      text: "Get ready"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 3000
+- extendedWaitUntil:
+    visible:
+      text: "Exercise"
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 3500

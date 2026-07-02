@@ -1,0 +1,39 @@
+# Hand-authored WEDGE demo flow for the store/README GIF — the differentiator:
+# build any interval set. Open a timer's editor and reveal the phase fields
+# (warm-up, exercise, rest, sets, cycles, recovery, cool-down) that let you
+# shape any work-and-rest routine (STORE_LISTING.md slot 3: "Build any interval
+# set in seconds"). NOT the generated screenshot journey. We scroll the editor
+# rather than dragging the native sliders (a slider swipe is non-deterministic
+# in Maestro); the scroll reveals the full set of intervals. Driven headless by
+# josh-approved-factory/scripts/demo-capture.mjs. Runs against the QA_MODE build,
+# which seeds the "Standard Tabata" timer (src/qa/fixtures.ts).
+appId: com.joshapproved.freeworkouttimer
+---
+- launchApp:
+    clearState: true
+- waitForAnimationToEnd:
+    timeout: 4000
+- extendedWaitUntil:
+    visible:
+      text: "Edit Standard Tabata"
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 1200
+- tapOn:
+    text: "Edit Standard Tabata"
+- extendedWaitUntil:
+    visible:
+      text: "Save timer"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 1800
+# Two scrolls reveal the full interval structure (warm-up/exercise/rest → sets,
+# cycles, recovery) — the wedge. Stop there and hold on the revealed fields: a
+# third scroll only reaches "Delete timer" (off-story) and continuous scroll
+# motion inflates the GIF, whereas a static hold compresses cheaply.
+- scroll
+- waitForAnimationToEnd:
+    timeout: 1600
+- scroll
+- waitForAnimationToEnd:
+    timeout: 3500
