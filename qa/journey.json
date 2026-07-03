@@ -26,6 +26,7 @@
     { "waitFor": "@back", "timeout": 5000 },
     { "screenshot": "settings" },
 
+    { "scrollUntilVisible": "@send-feedback" },
     { "tap": "@send-feedback" },
     { "waitFor": "@feedback-bug-option", "timeout": 8000 },
     { "screenshot": "feedback" },
