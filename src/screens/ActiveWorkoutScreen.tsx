@@ -24,6 +24,17 @@ import {
   getTotalDuration,
   buildPhaseAnnouncement,
 } from '../utils/workout';
+import {
+  type PlaybackState,
+  initialPlayback,
+  advancePlayback,
+  goToStep as pbGoToStep,
+  skipPlayback,
+  backTargetIndex,
+  elapsedSeconds as pbElapsedSeconds,
+  totalRemaining as pbTotalRemaining,
+  progressFraction as pbProgressFraction,
+} from '../utils/playback';
 import { AudioEngine } from '../audio/AudioEngine';
 import { recordSuccessfulCompletion as recordReviewCompletion } from '../storage/reviewPrompt';
 import { recordSuccessfulCompletion as recordDonationCompletion } from '../storage/donationPrompt';
@@ -55,13 +66,8 @@ import {
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ActiveWorkout'>;
 
-type Mode = 'phase' | 'complete';
-
-interface DisplayState {
-  mode: Mode;
-  stepIndex: number;
-  timeRemaining: number;
-}
+// The rendered position is exactly the playback engine's state (utils/playback).
+type DisplayState = PlaybackState;
 
 // Resolve the visible phase label at call time (never a module-level constant —
 // canon § Translations: copy must follow the active language).
@@ -129,7 +135,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
 
       const maxCycles = getMaxCycles(steps);
       firePhaseStart(steps[0], settings.sounds, steps, maxCycles, settings.audioAccessibilityMode);
-      const initial: DisplayState = { mode: 'phase', stepIndex: 0, timeRemaining: steps[0].duration };
+      const initial: DisplayState = initialPlayback(steps);
       stateRef.current = initial;
       setDisplayState(initial);
       setLoaded(true);
@@ -158,9 +164,10 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     const s = stateRef.current;
     const sounds = soundsRef.current!;
     const steps = stepsRef.current;
-    const newTime = s.timeRemaining - 1;
+    const { next, event } = advancePlayback(steps, s);
 
-    if (newTime > 0) {
+    if (event === 'tick') {
+      const newTime = next.timeRemaining;
       if (sounds.countdownDuration > 0 && newTime <= sounds.countdownDuration) {
         AudioEngine.playTick().catch(() => {});
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
@@ -178,16 +185,13 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
         else AudioEngine.playSound(sounds.halfwaySound).catch(() => {});
         halfwayFiredRef.current = true;
       }
-      const next = { ...s, timeRemaining: newTime };
       stateRef.current = next;
       setDisplayState(next);
       return;
     }
 
-    const nextIdx = s.stepIndex + 1;
-    if (nextIdx >= steps.length) {
+    if (event === 'complete') {
       playComplete(sounds, speechModeRef.current);
-      const next: DisplayState = { mode: 'complete', stepIndex: s.stepIndex, timeRemaining: 0 };
       stateRef.current = next;
       setDisplayState(next);
       stopInterval();
@@ -197,10 +201,9 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       return;
     }
 
-    const nextStep = steps[nextIdx];
-    firePhaseStart(nextStep, sounds, steps, maxCyclesRef.current, speechModeRef.current);
+    // event === 'phase-start'
+    firePhaseStart(steps[next.stepIndex], sounds, steps, maxCyclesRef.current, speechModeRef.current);
     halfwayFiredRef.current = false;
-    const next: DisplayState = { mode: 'phase', stepIndex: nextIdx, timeRemaining: nextStep.duration };
     stateRef.current = next;
     setDisplayState(next);
     // No live-timer call here. iOS encodes the full schedule into the
@@ -286,7 +289,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     if (!step) return;
     firePhaseStart(step, soundsRef.current!, steps, maxCyclesRef.current, speechModeRef.current);
     halfwayFiredRef.current = false;
-    const next: DisplayState = { mode: 'phase', stepIndex: idx, timeRemaining: step.duration };
+    const next: DisplayState = pbGoToStep(steps, idx);
     stateRef.current = next;
     setDisplayState(next);
     updateLiveTimer({
@@ -304,20 +307,17 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     const s = stateRef.current;
     const currentStep = stepsRef.current[s.stepIndex];
     if (!currentStep) return;
-    const elapsed = currentStep.duration - s.timeRemaining;
-    const goPrevious = s.stepIndex > 0 && elapsed <= RESTART_THRESHOLD_SECONDS;
-    goToStep(goPrevious ? s.stepIndex - 1 : s.stepIndex);
+    goToStep(backTargetIndex(s, currentStep.duration, RESTART_THRESHOLD_SECONDS));
   };
 
   const handleSkip = () => {
     if (displayState.mode === 'complete') return;
     const s = stateRef.current;
     const steps = stepsRef.current;
-    const nextIdx = s.stepIndex + 1;
+    const { next, event } = skipPlayback(steps, s);
 
-    if (nextIdx >= steps.length) {
+    if (event === 'complete') {
       playComplete(soundsRef.current!, speechModeRef.current);
-      const next: DisplayState = { mode: 'complete', stepIndex: s.stepIndex, timeRemaining: 0 };
       stateRef.current = next;
       setDisplayState(next);
       stopInterval();
@@ -327,7 +327,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       return;
     }
 
-    goToStep(nextIdx);
+    goToStep(next.stepIndex);
   };
 
   const handleStop = () => {
@@ -378,26 +378,18 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     ? t('workout.complete')
     : t('workout.remainingA11y', { time: formatDurationSpoken(displayState.timeRemaining) });
 
-  const elapsedSeconds = stepsRef.current
-    .slice(0, displayState.stepIndex)
-    .reduce((sum, step) => sum + step.duration, 0)
-    + (displayState.mode === 'complete'
-        ? (currentStep?.duration ?? 0)
-        : (currentStep ? currentStep.duration - displayState.timeRemaining : 0));
-  const progressFraction = totalDurationRef.current > 0
-    ? Math.min(1, elapsedSeconds / totalDurationRef.current)
-    : 0;
+  const elapsedSeconds = pbElapsedSeconds(stepsRef.current, displayState);
+  const progressFraction = pbProgressFraction(totalDurationRef.current, elapsedSeconds);
 
-  const totalRemaining = Math.max(0, totalDurationRef.current - elapsedSeconds);
+  const totalRemaining = pbTotalRemaining(totalDurationRef.current, elapsedSeconds);
   const totalA11yLabel = t('workout.totalRemainingA11y', { time: formatDurationSpoken(totalRemaining) });
 
   // Label tracks what the back control will actually do right now, so VoiceOver
   // announces "Previous interval" only while it would step back.
   const backWillGoToPrevious =
     displayState.mode !== 'complete' &&
-    displayState.stepIndex > 0 &&
     currentStep != null &&
-    currentStep.duration - displayState.timeRemaining <= RESTART_THRESHOLD_SECONDS;
+    backTargetIndex(displayState, currentStep.duration, RESTART_THRESHOLD_SECONDS) < displayState.stepIndex;
   const backA11yLabel = backWillGoToPrevious ? t('workout.previousInterval') : t('workout.restartInterval');
 
   const s = makeStyles(c, isLandscape);
