@@ -1,0 +1,35 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "_comment": "Trust core = the interval/workout sequence engine (the intent fuzzer's target). Survivors are a work queue, never a gate. Incremental only. See stack/stryker.md.",
+  "packageManager": "npm",
+  "testRunner": "jest",
+  "jest": {
+    "projectType": "custom",
+    "configFile": "package.json",
+    "enableFindRelatedTests": false
+  },
+  "coverageAnalysis": "perTest",
+  "incremental": true,
+  "incrementalFile": "stryker-incremental.json",
+  "reporters": [
+    "json",
+    "clear-text"
+  ],
+  "concurrency": 2,
+  "timeoutMS": 20000,
+  "mutate": [
+    "src/utils/workout.ts"
+  ],
+  "ignorePatterns": [
+    "ios",
+    "android",
+    ".expo",
+    ".stryker-tmp",
+    "dist",
+    "build",
+    "reports",
+    "coverage",
+    "store-assets",
+    "qa/captures"
+  ]
+}
