@@ -38,6 +38,18 @@
     "feedback-bug-option": {
       "text": "Report a bug.*",
       "note": "feedback sheet type option (i18n feedback.type.bug). Trailing .* matches the iOS merged a11y label — the card's Pressable sets accessibilityLabel `${title}. ${desc}`, so a bare full-match never hits (the documented iOS card-merge convention)"
+    },
+    "create-new": {
+      "text": "Create new timer",
+      "note": "the timer-list create affordance (i18n timerList.createNew) — opens the editor with a blank EMPTY_TIMER (valid defaults, so Save succeeds with just a name). Used by the T4 survival flow."
+    },
+    "name-input": {
+      "text": "Timer name",
+      "note": "the editor name TextInput (i18n editor.nameA11y). A real RN TextInput — in the a11y tree on both platforms."
+    },
+    "survival-timer": {
+      "text": ".*Chaos Interval.*",
+      "note": "T4 survival marker — a created timer name absent from the seed, so assertNot holds before create and assert can only pass if the new timer persisted. .* for the iOS merged card a11y label."
     }
   }
 }
