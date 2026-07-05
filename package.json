@@ -75,6 +75,9 @@
     ],
     "setupFilesAfterEnv": [
       "<rootDir>/qa/quarantine.setup.cjs"
+    ],
+    "modulePathIgnorePatterns": [
+      "<rootDir>/qa/known-bad/"
     ]
   },
   "overrides": {
