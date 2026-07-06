@@ -15,6 +15,7 @@ import {
   formatDurationSpoken,
   buildPhaseAnnouncement,
   getTimerSummary,
+  generateId,
 } from '../workout';
 import { QA_TIMERS } from '../../qa/fixtures';
 
@@ -241,5 +242,49 @@ describe('getTimerSummary — list-row blurb', () => {
     expect(getTimerSummary(timer({ exercise: 30, rest: 0, sets: 1, cycles: 3 }))).toBe(
       '30 seconds work · 1 set · 3 cycles',
     );
+  });
+
+  // The `dur` helper (work/rest phrasing) has two branches: seconds under a
+  // minute, whole minutes at or above one. These pin both branches and the
+  // exact 60-second boundary so a refactor that drops the minutes branch,
+  // mis-rounds it, or flips the singular/plural or boundary comparison is caught.
+  it('singularizes a one-second work interval', () => {
+    expect(getTimerSummary(timer({ exercise: 1, rest: 0, sets: 1, cycles: 1 }))).toBe(
+      '1 second work · 1 set',
+    );
+  });
+
+  it('switches to whole minutes exactly at 60 seconds', () => {
+    // 59s stays in seconds, 60s becomes "1 min" — pins the < 60 boundary.
+    expect(getTimerSummary(timer({ exercise: 59, rest: 0, sets: 1, cycles: 1 }))).toBe(
+      '59 seconds work · 1 set',
+    );
+    expect(getTimerSummary(timer({ exercise: 60, rest: 0, sets: 1, cycles: 1 }))).toBe(
+      '1 min work · 1 set',
+    );
+  });
+
+  it('renders minutes for longer work and rest intervals (floored)', () => {
+    // 90s → "1 min" (floored, not 1.5), 120s rest → "2 min".
+    expect(getTimerSummary(timer({ exercise: 90, rest: 120, sets: 2, cycles: 1 }))).toBe(
+      '1 min work · 2 min rest · 2 sets',
+    );
+  });
+});
+
+describe('generateId — unique local id', () => {
+  it('returns a non-empty base36 token (letters/digits only, no separators)', () => {
+    const id = generateId();
+    expect(typeof id).toBe('string');
+    // Base36 of a timestamp plus a random suffix — no dot, no NaN, no truncation.
+    expect(id).toMatch(/^[0-9a-z]+$/);
+    expect(id.length).toBeGreaterThan(5);
+  });
+
+  it('produces distinct ids on successive calls', () => {
+    // Same-millisecond calls still differ via the random suffix (~1-in-60M
+    // collision), so a burst stays effectively unique.
+    const ids = Array.from({ length: 50 }, () => generateId());
+    expect(new Set(ids).size).toBe(ids.length);
   });
 });
