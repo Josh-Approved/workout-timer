@@ -27,6 +27,15 @@ appId: com.joshapproved.freeworkouttimer
     timeout: 5000
 - takeScreenshot: qa/captures/${STORE}/editor
 - tapOn: { text: "Back" }
+- scrollUntilVisible:
+    element: { text: "Edit Climbing Hangboard" }
+    direction: DOWN
+- tapOn: { text: "Edit Climbing Hangboard" }
+- extendedWaitUntil:
+    visible: { text: "Save timer" }
+    timeout: 10000
+- takeScreenshot: qa/captures/${STORE}/climbing-editor
+- tapOn: { text: "Back" }
 - tapOn: { text: "Start Standard Tabata" }
 - extendedWaitUntil:
     visible: { text: "Exercise" }

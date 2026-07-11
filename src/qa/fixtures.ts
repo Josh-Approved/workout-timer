@@ -47,4 +47,22 @@ export const QA_TIMERS: TimerConfig[] = [
     createdAt: T0,
     updatedAt: T0,
   },
+  // Sources the store listing's "climbing" screenshot slot (screenshots.config
+  // id: climbing) — values match the shipped store asset exactly, so the CI
+  // capture regenerates the same frame instead of the framer failing on a
+  // missing one-off capture.
+  {
+    id: 'qa-hangboard',
+    name: 'Climbing Hangboard',
+    initialCountdown: 15,
+    warmUp: 0,
+    exercise: 7,
+    rest: 3,
+    sets: 6,
+    recovery: 180,
+    cycles: 6,
+    coolDown: 0,
+    createdAt: T0,
+    updatedAt: T0,
+  },
 ];

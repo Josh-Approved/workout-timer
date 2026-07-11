@@ -30,6 +30,22 @@
       "tap": "@back"
     },
     {
+      "scrollUntilVisible": "@edit-climbing"
+    },
+    {
+      "tap": "@edit-climbing"
+    },
+    {
+      "waitFor": "@save-timer",
+      "timeout": 10000
+    },
+    {
+      "screenshot": "climbing-editor"
+    },
+    {
+      "tap": "@back"
+    },
+    {
       "tap": "@start-tabata"
     },
     {

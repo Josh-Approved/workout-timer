@@ -66,6 +66,10 @@
     "sound-work-row-bell": {
       "text": ".*Exercise start: Bell.*",
       "note": "the settings row after the pick \u2014 the Tier-2 outcome proof the spoke wrote through"
+    },
+    "edit-climbing": {
+      "text": "Edit Climbing Hangboard",
+      "note": "edit button on the seeded climbing timer (fixtures qa-hangboard) \u2014 sources the store climbing screenshot slot"
     }
   }
 }
