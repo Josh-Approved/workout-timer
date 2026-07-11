@@ -1,5 +1,5 @@
 {
-  "$comment": "Selector registry — the one place FWT's brittle UI strings live. Flows reference @keys, never raw copy. testID preferred (copy-proof); text is a Maestro regex matching visible text OR a11y label. Anchors target the seeded 'Standard Tabata' QA fixture (src/qa/fixtures.ts).",
+  "$comment": "Selector registry \u2014 the one place FWT's brittle UI strings live. Flows reference @keys, never raw copy. testID preferred (copy-proof); text is a Maestro regex matching visible text OR a11y label. Anchors target the seeded 'Standard Tabata' QA fixture (src/qa/fixtures.ts).",
   "anchors": {
     "app-title": {
       "text": "Workout Timer"
@@ -33,23 +33,39 @@
     },
     "send-feedback": {
       "text": "Send feedback",
-      "note": "Settings 'Send feedback' row (i18n about.feedback) — opens the canonical feedback sheet"
+      "note": "Settings 'Send feedback' row (i18n about.feedback) \u2014 opens the canonical feedback sheet"
     },
     "feedback-bug-option": {
       "text": "Report a bug.*",
-      "note": "feedback sheet type option (i18n feedback.type.bug). Trailing .* matches the iOS merged a11y label — the card's Pressable sets accessibilityLabel `${title}. ${desc}`, so a bare full-match never hits (the documented iOS card-merge convention)"
+      "note": "feedback sheet type option (i18n feedback.type.bug). Trailing .* matches the iOS merged a11y label \u2014 the card's Pressable sets accessibilityLabel `${title}. ${desc}`, so a bare full-match never hits (the documented iOS card-merge convention)"
     },
     "create-new": {
       "text": "Create new timer",
-      "note": "the timer-list create affordance (i18n timerList.createNew) — opens the editor with a blank EMPTY_TIMER (valid defaults, so Save succeeds with just a name). Used by the T4 survival flow."
+      "note": "the timer-list create affordance (i18n timerList.createNew) \u2014 opens the editor with a blank EMPTY_TIMER (valid defaults, so Save succeeds with just a name). Used by the T4 survival flow."
     },
     "name-input": {
       "text": "Timer name",
-      "note": "the editor name TextInput (i18n editor.nameA11y). A real RN TextInput — in the a11y tree on both platforms."
+      "note": "the editor name TextInput (i18n editor.nameA11y). A real RN TextInput \u2014 in the a11y tree on both platforms."
     },
     "survival-timer": {
       "text": ".*Chaos Interval.*",
-      "note": "T4 survival marker — a created timer name absent from the seed, so assertNot holds before create and assert can only pass if the new timer persisted. .* for the iOS merged card a11y label."
+      "note": "T4 survival marker \u2014 a created timer name absent from the seed, so assertNot holds before create and assert can only pass if the new timer persisted. .* for the iOS merged card a11y label."
+    },
+    "sound-work-row": {
+      "text": "Exercise start: Voice",
+      "note": "the Exercise-start sound DrilldownRow a11y label (default style Voice) \u2014 `label: value`"
+    },
+    "sound-style-chime": {
+      "text": "Ascending Chime",
+      "note": "a style option that only exists inside the SoundStyleSheet (no row shows it by default) \u2014 proves the sheet opened"
+    },
+    "sound-style-bell": {
+      "text": "Bell",
+      "note": "the style the flow picks; sheet stays open (audition semantics), Back closes"
+    },
+    "sound-work-row-bell": {
+      "text": ".*Exercise start: Bell.*",
+      "note": "the settings row after the pick \u2014 the Tier-2 outcome proof the spoke wrote through"
     }
   }
 }

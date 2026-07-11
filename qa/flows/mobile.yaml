@@ -43,6 +43,22 @@ appId: com.joshapproved.freeworkouttimer
     visible: { text: "Back" }
     timeout: 5000
 - takeScreenshot: qa/captures/${STORE}/settings
+- assertNotVisible: { text: "Ascending Chime" }
+- scrollUntilVisible:
+    element: { text: "Exercise start: Voice" }
+    direction: DOWN
+- tapOn: { text: "Exercise start: Voice" }
+- extendedWaitUntil:
+    visible: { text: "Ascending Chime" }
+    timeout: 10000
+- takeScreenshot: qa/captures/${STORE}/sound-style
+- tapOn: { text: "Bell" }
+- tapOn: { text: "Back" }
+- assertNotVisible: { text: "Ascending Chime" }
+- scrollUntilVisible:
+    element: { text: ".*Exercise start: Bell.*" }
+    direction: DOWN
+- assertVisible: { text: ".*Exercise start: Bell.*" }
 - scrollUntilVisible:
     element: { text: "Send feedback" }
     direction: DOWN

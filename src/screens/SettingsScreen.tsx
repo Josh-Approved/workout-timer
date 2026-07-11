@@ -31,7 +31,6 @@ import {
   RootStackParamList,
   SoundSettings,
   SoundStyle,
-  ALL_SOUND_STYLES,
   SOUND_STYLE_LABELS,
 } from '../types';
 import { loadSettings, saveSettings } from '../storage/storage';
@@ -43,6 +42,8 @@ import { AudioEngine } from '../audio/AudioEngine';
 import { t } from '../i18n';
 import { Wordmark } from '../components/Wordmark';
 import { LanguageSetting } from '../components/LanguageSetting';
+import { DrilldownRow } from '../components/DrilldownRow';
+import { SoundStyleSheet } from '../components/SoundStyleSheet';
 import {
   useTheme,
   fontFamily,
@@ -107,6 +108,9 @@ export default function SettingsScreen({ navigation }: Props) {
   const [sounds, setSounds] = useState<SoundSettings>(DEFAULT_SETTINGS.sounds);
   const [audioMode, setAudioMode] = useState(DEFAULT_SETTINGS.audioAccessibilityMode);
   const [tipVisible, setTipVisible] = useState(false);
+  /** Which event's sound-style sheet is open (hub-and-spoke — the settings
+   *  row shows the current style; the sheet holds the full list). */
+  const [soundSheetFor, setSoundSheetFor] = useState<SoundEventKey | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -275,51 +279,18 @@ export default function SettingsScreen({ navigation }: Props) {
         </View>
 
         <Text style={s.sectionHeader} accessibilityRole="header">{t('settings.sounds')}</Text>
-        <Text style={s.sectionHint}>{t('settings.soundsHint')}</Text>
         <View style={s.card}>
-          {SOUND_EVENT_KEYS.map((eventKey, idx) => {
-            const eventLabel = t(`settings.soundEvents.${eventKey}`);
-            return (
-            <View key={eventKey} style={[s.soundRow, idx > 0 && s.soundRowBorder]}>
-              <Text style={s.soundEventLabel}>{eventLabel}</Text>
-              {/* There are 9+ sound styles — more than fit a phone width, so
-                  this row scrolls horizontally. Keep the scroll indicator on
-                  so the affordance is visible: without it the last chip is
-                  clipped flush at the screen edge and reads as an unreachable,
-                  broken option rather than a scrollable list. */}
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator
-                contentContainerStyle={s.pillRow}
-                accessibilityRole="radiogroup"
-                accessibilityLabel={t('settings.soundEventA11y', { label: eventLabel })}
-              >
-                {ALL_SOUND_STYLES.map((style) => {
-                  const active = sounds[eventKey] === style;
-                  return (
-                    <Pressable
-                      key={style}
-                      style={({ pressed }) => [
-                        s.pill,
-                        active && s.pillActive,
-                        pressed && s.pressed,
-                      ]}
-                      onPress={() => updateSound(eventKey, style)}
-                      accessibilityRole="radio"
-                      accessibilityState={{ selected: active }}
-                      accessibilityLabel={SOUND_STYLE_LABELS[style]}
-                      accessibilityHint={active ? t('settings.soundSelected') : t('settings.soundSelectHint')}
-                    >
-                      <Text style={[s.pillText, active && s.pillTextActive]} importantForAccessibility="no">
-                        {SOUND_STYLE_LABELS[style]}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            </View>
-            );
-          })}
+          {/* One summary row per event (hub-and-spoke) — the full style list
+              lives in the SoundStyleSheet, where every option fits full-width
+              instead of a horizontally-clipped pill strip. */}
+          {SOUND_EVENT_KEYS.map((eventKey) => (
+            <DrilldownRow
+              key={eventKey}
+              label={t(`settings.soundEvents.${eventKey}`)}
+              value={SOUND_STYLE_LABELS[sounds[eventKey]]}
+              onPress={() => setSoundSheetFor(eventKey)}
+            />
+          ))}
         </View>
 
         <Text style={s.sectionHeader} accessibilityRole="header">{t('settings.about')}</Text>
@@ -427,6 +398,15 @@ export default function SettingsScreen({ navigation }: Props) {
           productIds={TIP_PRODUCT_IDS}
         />
       )}
+      <SoundStyleSheet
+        visible={soundSheetFor != null}
+        eventLabel={soundSheetFor ? t(`settings.soundEvents.${soundSheetFor}`) : ''}
+        value={soundSheetFor ? sounds[soundSheetFor] : 'none'}
+        onClose={() => setSoundSheetFor(null)}
+        onPick={(style) => {
+          if (soundSheetFor) updateSound(soundSheetFor, style);
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -470,14 +450,6 @@ function makeStyles(c: Colors) {
       marginBottom: space.s3,
       marginTop: space.s3,
       paddingHorizontal: space.s1,
-    },
-    sectionHint: {
-      ...ty.xs,
-      color: c.fgMuted,
-      fontFamily: fontFamily.sans,
-      marginBottom: space.s3,
-      paddingHorizontal: space.s1,
-      marginTop: -space.s2,
     },
     card: {
       backgroundColor: c.bgElevated,
@@ -543,31 +515,10 @@ function makeStyles(c: Colors) {
       minWidth: 36,
       textAlign: 'center',
     },
-
-    soundRow: { paddingHorizontal: space.s5, paddingVertical: space.s4 },
-    soundRowBorder: { borderTopWidth: hairline, borderTopColor: c.hairline },
-    soundEventLabel: {
-      ...ty.sm,
-      fontFamily: fontFamily.sansMedium,
-      color: c.fg,
-      marginBottom: space.s3,
-    },
     // paddingRight gives the row trailing breathing room so the last chip
     // never ends flush against the screen edge (which read as a clipped,
     // broken option); combined with the visible scroll indicator it reads
     // as an intentionally scrollable list.
-    pillRow: { flexDirection: 'row', gap: space.s2, paddingRight: space.s5 },
-    pill: {
-      paddingHorizontal: space.s4,
-      paddingVertical: space.s2,
-      borderRadius: radius.pill,
-      borderWidth: 1,
-      borderColor: c.hairlineStrong,
-      backgroundColor: c.bg,
-    },
-    pillActive: { backgroundColor: c.fg, borderColor: c.fg },
-    pillText: { ...ty.sm, color: c.fg, fontFamily: fontFamily.sans },
-    pillTextActive: { color: c.bg, fontFamily: fontFamily.sansMedium },
 
     stamp: { alignItems: 'center', paddingVertical: space.s5, gap: space.s3 },
     stampText: {
