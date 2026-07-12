@@ -48,3 +48,7 @@ yarn-error.*
 
 # Google Play service account key (local only, never commit)
 google-play-key.json
+
+# Stryker mutation-testing sandbox/report output
+.stryker-tmp/
+reports/
