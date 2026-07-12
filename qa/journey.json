@@ -1,55 +1,184 @@
 {
-  "$comment": "FWT screenshot traversal, copy-free. Source of truth for qa/flows/mobile.yaml (GENERATED — run scripts/qa/compile-flow.mjs). Screenshot names match qa/screenshots.config.json sources (active→core slot, editor, list). Mirrors the proven hand-written flow.",
+  "$comment": "FWT screenshot traversal, copy-free. Source of truth for qa/flows/mobile.yaml (GENERATED \u2014 run scripts/qa/compile-flow.mjs). Screenshot names match qa/screenshots.config.json sources (active\u2192core slot, editor, list). Mirrors the proven hand-written flow.",
   "appId": "com.joshapproved.freeworkouttimer",
   "clearState": true,
   "diagnosticLaunchShot": true,
   "settleMs": 8000,
   "steps": [
-    { "waitFor": "@app-title", "timeout": 30000 },
-    { "waitFor": "@edit-tabata", "timeout": 15000 },
-    { "screenshot": "list" },
-
-    { "tap": "@edit-tabata" },
-    { "waitFor": "@save-timer", "timeout": 5000 },
-    { "screenshot": "editor" },
-    { "tap": "@back" },
-
-    { "tap": "@start-tabata" },
-    { "waitFor": "@exercise", "timeout": 15000 },
-    { "screenshot": "active" },
-
-    { "tap": "@stop-workout" },
-    { "tap": "@stop-confirm" },
-    { "waitFor": "@app-title", "timeout": 5000 },
-    { "assertNot": "@exercise" },
-    { "tap": "@settings" },
-    { "waitFor": "@back", "timeout": 5000 },
-    { "screenshot": "settings" },
-
-    { "scrollUntilVisible": "@send-feedback" },
-    { "tap": "@send-feedback" },
-    { "waitFor": "@feedback-bug-option", "timeout": 8000 },
-    { "screenshot": "feedback" },
-    { "assert": "@feedback-bug-option" }
+    {
+      "waitFor": "@app-title",
+      "timeout": 30000
+    },
+    {
+      "waitFor": "@edit-tabata",
+      "timeout": 15000
+    },
+    {
+      "screenshot": "list"
+    },
+    {
+      "tap": "@edit-tabata"
+    },
+    {
+      "waitFor": "@save-timer",
+      "timeout": 5000
+    },
+    {
+      "screenshot": "editor"
+    },
+    {
+      "tap": "@back"
+    },
+    {
+      "scrollUntilVisible": "@edit-climbing"
+    },
+    {
+      "tap": "@edit-climbing"
+    },
+    {
+      "waitFor": "@save-timer",
+      "timeout": 10000
+    },
+    {
+      "screenshot": "climbing-editor"
+    },
+    {
+      "tap": "@back"
+    },
+    {
+      "tap": "@start-tabata"
+    },
+    {
+      "waitFor": "@exercise",
+      "timeout": 15000
+    },
+    {
+      "screenshot": "active"
+    },
+    {
+      "tap": "@stop-workout"
+    },
+    {
+      "tap": "@stop-confirm"
+    },
+    {
+      "waitFor": "@app-title",
+      "timeout": 5000
+    },
+    {
+      "assertNot": "@exercise"
+    },
+    {
+      "tap": "@settings"
+    },
+    {
+      "waitFor": "@back",
+      "timeout": 5000
+    },
+    {
+      "screenshot": "settings"
+    },
+    {
+      "assertNot": "@sound-style-chime"
+    },
+    {
+      "scrollUntilVisible": "@sound-work-row"
+    },
+    {
+      "tap": "@sound-work-row"
+    },
+    {
+      "waitFor": "@sound-style-chime",
+      "timeout": 10000
+    },
+    {
+      "screenshot": "sound-style"
+    },
+    {
+      "tap": "@sound-style-bell"
+    },
+    {
+      "tap": "@back"
+    },
+    {
+      "assertNot": "@sound-style-chime"
+    },
+    {
+      "scrollUntilVisible": "@sound-work-row-bell"
+    },
+    {
+      "assert": "@sound-work-row-bell"
+    },
+    {
+      "scrollUntilVisible": "@send-feedback"
+    },
+    {
+      "tap": "@send-feedback"
+    },
+    {
+      "waitFor": "@feedback-bug-option",
+      "timeout": 8000
+    },
+    {
+      "screenshot": "feedback"
+    },
+    {
+      "assert": "@feedback-bug-option"
+    }
   ],
   "survival": {
-    "$comment": "T4 chaos net — state-survival subflow (compiles to qa/flows/state-survival.yaml; full profile + nightly, NOT per-PR). Core mutating action = create a new timer, which persists to disk. Then REAL process death (killApp on Android / stopApp on iOS), then relaunch keeping state. Intent oracle: the created timer is still in the list after the kill. The leading assertNot proves 'Chaos Interval' wasn't seeded.",
+    "$comment": "T4 chaos net \u2014 state-survival subflow (compiles to qa/flows/state-survival.yaml; full profile + nightly, NOT per-PR). Core mutating action = create a new timer, which persists to disk. Then REAL process death (killApp on Android / stopApp on iOS), then relaunch keeping state. Intent oracle: the created timer is still in the list after the kill. The leading assertNot proves 'Chaos Interval' wasn't seeded.",
     "steps": [
-      { "waitFor": "@app-title", "timeout": 30000 },
-      { "waitFor": "@edit-tabata", "timeout": 15000 },
-      { "assertNot": "@survival-timer" },
-      { "tap": "@create-new" },
-      { "waitFor": "@name-input", "timeout": 10000 },
-      { "tap": "@name-input" },
-      { "type": "Chaos Interval" },
-      { "tap": "@save-timer" },
-      { "waitFor": "@app-title", "timeout": 10000 },
-      { "assert": "@survival-timer" },
-      { "wait": 1500 },
-      { "killApp": true },
-      { "relaunch": true },
-      { "waitFor": "@app-title", "timeout": 30000 },
-      { "assert": "@survival-timer" }
+      {
+        "waitFor": "@app-title",
+        "timeout": 30000
+      },
+      {
+        "waitFor": "@edit-tabata",
+        "timeout": 15000
+      },
+      {
+        "assertNot": "@survival-timer"
+      },
+      {
+        "tap": "@create-new"
+      },
+      {
+        "waitFor": "@name-input",
+        "timeout": 10000
+      },
+      {
+        "tap": "@name-input"
+      },
+      {
+        "type": "Chaos Interval"
+      },
+      {
+        "tap": "@save-timer"
+      },
+      {
+        "waitFor": "@app-title",
+        "timeout": 10000
+      },
+      {
+        "assert": "@survival-timer"
+      },
+      {
+        "wait": 1500
+      },
+      {
+        "killApp": true
+      },
+      {
+        "relaunch": true
+      },
+      {
+        "waitFor": "@app-title",
+        "timeout": 30000
+      },
+      {
+        "assert": "@survival-timer"
+      }
     ]
   }
 }

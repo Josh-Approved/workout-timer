@@ -15,11 +15,13 @@
 // See expo/expo#43740. The Xcode-project mod below patches every native
 // target's build settings so the widget always matches the parent.
 
+// Resolved through the `expo` package's re-export (like withGradleJvmArgs) so
+// no @expo/* package needs to be a direct dependency for this to resolve.
 const {
   withInfoPlist,
   withAndroidManifest,
   withXcodeProject,
-} = require('@expo/config-plugins');
+} = require('expo/config-plugins');
 
 function withLiveTimerInfoPlist(config) {
   return withInfoPlist(config, (cfg) => {

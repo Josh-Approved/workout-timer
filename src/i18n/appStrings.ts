@@ -20,7 +20,7 @@ export const APP_STRINGS = {
     feedbackHint: 'Opens your email app to send feedback or report a bug',
   },
   timerList: {
-    title: 'Free workout timer',
+    title: 'Workout timer',
     emptyTitle: 'No timers yet',
     emptyHint: 'Tap + to build your first one.',
     total: 'Total',

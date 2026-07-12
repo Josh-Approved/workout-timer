@@ -15,7 +15,7 @@ appId: com.joshapproved.freeworkouttimer
     timeout: 8000
 - takeScreenshot: qa/captures/${STORE}/00-launch
 - extendedWaitUntil:
-    visible: { text: "Workout Timer" }
+    visible: { text: "Workout timer" }
     timeout: 30000
 - extendedWaitUntil:
     visible: { text: "Edit Standard Tabata" }
@@ -27,6 +27,15 @@ appId: com.joshapproved.freeworkouttimer
     timeout: 5000
 - takeScreenshot: qa/captures/${STORE}/editor
 - tapOn: { text: "Back" }
+- scrollUntilVisible:
+    element: { text: "Edit Climbing Hangboard" }
+    direction: DOWN
+- tapOn: { text: "Edit Climbing Hangboard" }
+- extendedWaitUntil:
+    visible: { text: "Save timer" }
+    timeout: 10000
+- takeScreenshot: qa/captures/${STORE}/climbing-editor
+- tapOn: { text: "Back" }
 - tapOn: { text: "Start Standard Tabata" }
 - extendedWaitUntil:
     visible: { text: "Exercise" }
@@ -35,7 +44,7 @@ appId: com.joshapproved.freeworkouttimer
 - tapOn: { text: "Stop workout" }
 - tapOn: { text: "Stop" }
 - extendedWaitUntil:
-    visible: { text: "Workout Timer" }
+    visible: { text: "Workout timer" }
     timeout: 5000
 - assertNotVisible: { text: "Exercise" }
 - tapOn: { text: "Settings" }
@@ -43,6 +52,22 @@ appId: com.joshapproved.freeworkouttimer
     visible: { text: "Back" }
     timeout: 5000
 - takeScreenshot: qa/captures/${STORE}/settings
+- assertNotVisible: { text: "Ascending Chime" }
+- scrollUntilVisible:
+    element: { text: "Exercise start: Voice" }
+    direction: DOWN
+- tapOn: { text: "Exercise start: Voice" }
+- extendedWaitUntil:
+    visible: { text: "Ascending Chime" }
+    timeout: 10000
+- takeScreenshot: qa/captures/${STORE}/sound-style
+- tapOn: { text: "Bell" }
+- tapOn: { text: "Back" }
+- assertNotVisible: { text: "Ascending Chime" }
+- scrollUntilVisible:
+    element: { text: ".*Exercise start: Bell.*" }
+    direction: DOWN
+- assertVisible: { text: ".*Exercise start: Bell.*" }
 - scrollUntilVisible:
     element: { text: "Send feedback" }
     direction: DOWN

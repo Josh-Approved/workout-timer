@@ -571,7 +571,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
         <ReviewModal
           visible={showReview}
           onDismiss={() => setShowReview(false)}
-          appName="Free workout timer"
+          appName="Workout Timer"
           iosAppStoreId={APP_STORE_ID}
           androidPackageName={ANDROID_PACKAGE_NAME}
         />
@@ -637,7 +637,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       <ReviewModal
         visible={showReview}
         onDismiss={() => setShowReview(false)}
-        appName="Free workout timer"
+        appName="Workout Timer"
         iosAppStoreId={APP_STORE_ID}
         androidPackageName={ANDROID_PACKAGE_NAME}
       />

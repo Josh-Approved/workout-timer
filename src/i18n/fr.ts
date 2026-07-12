@@ -15,7 +15,7 @@ const fr = {
     feedbackHint: 'Ouvre votre app de messagerie pour envoyer un commentaire ou signaler un bug',
   },
   timerList: {
-    title: "Minuteur d'entraînement gratuit",
+    title: "Minuteur d'entraînement",
     emptyTitle: 'Aucun minuteur pour le moment',
     emptyHint: 'Touchez + pour créer le premier.',
     total: 'Total',

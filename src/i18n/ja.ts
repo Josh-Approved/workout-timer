@@ -15,7 +15,7 @@ const ja = {
     feedbackHint: 'メールアプリを開いてフィードバックの送信やバグの報告ができます',
   },
   timerList: {
-    title: '無料ワークアウトタイマー',
+    title: 'ワークアウトタイマー',
     emptyTitle: 'タイマーがまだありません',
     emptyHint: '＋をタップして最初のタイマーを作成します。',
     total: '合計',

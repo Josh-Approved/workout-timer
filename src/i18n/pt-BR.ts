@@ -15,7 +15,7 @@ const pt_BR = {
     feedbackHint: 'Abre seu app de e-mail para enviar feedback ou relatar um erro',
   },
   timerList: {
-    title: 'Timer de treino grátis',
+    title: 'Timer de treino',
     emptyTitle: 'Nenhum timer ainda',
     emptyHint: 'Toque em + para criar o primeiro.',
     total: 'Total',

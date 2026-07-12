@@ -12,7 +12,7 @@ appId: com.joshapproved.freeworkouttimer
 - launchApp:
     clearState: true
 - extendedWaitUntil:
-    visible: { text: "Workout Timer" }
+    visible: { text: "Workout timer" }
     timeout: 30000
 - extendedWaitUntil:
     visible: { text: "Edit Standard Tabata" }
@@ -26,7 +26,7 @@ appId: com.joshapproved.freeworkouttimer
 - inputText: "Chaos Interval"
 - tapOn: { text: "Save timer" }
 - extendedWaitUntil:
-    visible: { text: "Workout Timer" }
+    visible: { text: "Workout timer" }
     timeout: 10000
 - assertVisible: { text: ".*Chaos Interval.*" }
 - waitForAnimationToEnd:
@@ -46,6 +46,6 @@ appId: com.joshapproved.freeworkouttimer
 - launchApp:
     clearState: false
 - extendedWaitUntil:
-    visible: { text: "Workout Timer" }
+    visible: { text: "Workout timer" }
     timeout: 30000
 - assertVisible: { text: ".*Chaos Interval.*" }

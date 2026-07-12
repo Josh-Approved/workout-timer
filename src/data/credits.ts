@@ -9,7 +9,7 @@ export interface CreditEntry {
   url: string;
 }
 
-export const CREDITS_INTRO = "Free Workout Timer is built on the work of these open-source projects.";
+export const CREDITS_INTRO = "Workout Timer is built on the work of these open-source projects.";
 
 export const CREDITS: CreditEntry[] = [
   {
