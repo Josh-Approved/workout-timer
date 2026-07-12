@@ -15,6 +15,14 @@
     "app-title": {
       "text": "Workout Timer",
       "id": null
+    },
+    "send-feedback": {
+      "text": "Send feedback",
+      "id": null
+    },
+    "feedback-bug-option": {
+      "text": "Report a bug. Something is broken or not working right",
+      "id": null
     }
   }
 }

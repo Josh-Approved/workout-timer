@@ -15,7 +15,7 @@ const es = {
     feedbackHint: 'Abre tu app de correo para enviar comentarios o informar de un error',
   },
   timerList: {
-    title: 'Temporizador de entrenamiento gratis',
+    title: 'Temporizador de entrenamiento',
     emptyTitle: 'Aún no hay temporizadores',
     emptyHint: 'Toca + para crear el primero.',
     total: 'Total',

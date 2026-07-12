@@ -20,7 +20,7 @@ export function buildFeedbackEmailUrl(): string {
   const osVersion = String(Platform.Version);
   const model = getDeviceModel();
 
-  const subject = encodeURIComponent('Free Workout Timer Feedback');
+  const subject = encodeURIComponent('Workout Timer Feedback');
 
   const body = encodeURIComponent(
     [
@@ -37,7 +37,7 @@ export function buildFeedbackEmailUrl(): string {
       'It should instead [describe what you expected].',
       '',
       '---',
-      `App: Free Workout Timer v${version}`,
+      `App: Workout Timer v${version}`,
       `Device: ${model} (${platform} ${osVersion})`,
     ].join('\n')
   );

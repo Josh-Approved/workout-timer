@@ -6,7 +6,7 @@
 import { Linking, Platform } from 'react-native';
 import * as Application from 'expo-application';
 
-export const APP_NAME = 'Free Workout Timer - Josh Approved';
+export const APP_NAME = 'Workout Timer - Josh Approved';
 
 export const IOS_APP_STORE_ID = '6767314178';
 export const ANDROID_PACKAGE = 'com.joshapproved.freeworkouttimer';

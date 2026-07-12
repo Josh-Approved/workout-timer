@@ -1,6 +1,6 @@
 # Acknowledgements
 
-Free Workout Timer is built on the work of these open-source projects.
+Workout Timer is built on the work of these open-source projects.
 
 - **React Native** `0.83.6` — MIT — https://reactnative.dev/
 - **Expo** `55.0.18` — MIT — https://github.com/expo/expo/tree/main/packages/expo

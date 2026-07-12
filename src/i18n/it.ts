@@ -15,7 +15,7 @@ const it = {
     feedbackHint: "Apre l'app di posta per inviare un feedback o segnalare un bug",
   },
   timerList: {
-    title: 'Timer per allenamento gratuito',
+    title: 'Timer per allenamento',
     emptyTitle: 'Ancora nessun timer',
     emptyHint: 'Tocca + per crearne il primo.',
     total: 'Totale',

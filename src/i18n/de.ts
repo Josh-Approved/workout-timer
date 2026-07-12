@@ -15,7 +15,7 @@ const de = {
     feedbackHint: 'Öffnet deine E-Mail-App, um Feedback zu senden oder einen Fehler zu melden',
   },
   timerList: {
-    title: 'Kostenloser Workout-Timer',
+    title: 'Workout-Timer',
     emptyTitle: 'Noch keine Timer',
     emptyHint: 'Tippe auf +, um deinen ersten zu erstellen.',
     total: 'Gesamt',

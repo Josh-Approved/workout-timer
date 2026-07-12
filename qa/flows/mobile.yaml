@@ -15,7 +15,7 @@ appId: com.joshapproved.freeworkouttimer
     timeout: 8000
 - takeScreenshot: qa/captures/${STORE}/00-launch
 - extendedWaitUntil:
-    visible: { text: "Workout Timer" }
+    visible: { text: "Workout timer" }
     timeout: 30000
 - extendedWaitUntil:
     visible: { text: "Edit Standard Tabata" }
@@ -44,7 +44,7 @@ appId: com.joshapproved.freeworkouttimer
 - tapOn: { text: "Stop workout" }
 - tapOn: { text: "Stop" }
 - extendedWaitUntil:
-    visible: { text: "Workout Timer" }
+    visible: { text: "Workout timer" }
     timeout: 5000
 - assertNotVisible: { text: "Exercise" }
 - tapOn: { text: "Settings" }
