@@ -5,28 +5,14 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Linking,
   Alert,
   Switch,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Speech from 'expo-speech';
-import * as Application from 'expo-application';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import {
-  ChevronLeft,
-  ChevronRight,
-  HandHeart,
-  Code,
-  Library,
-  Mail,
-  Minus,
-  Plus,
-  Shield,
-  Star,
-} from 'lucide-react-native';
+import { ChevronLeft, Minus, Plus } from 'lucide-react-native';
 import {
   RootStackParamList,
   SoundSettings,
@@ -35,12 +21,11 @@ import {
 } from '../types';
 import { loadSettings, saveSettings } from '../storage/storage';
 import { DEFAULT_SETTINGS } from '../constants/defaultTimers';
-import { TIP_JAR_ENABLED } from '../constants/features';
 import { TIP_PRODUCT_IDS } from '../constants/tipProducts';
 import TipJarSheet from '../components/TipJarSheet';
 import { AudioEngine } from '../audio/AudioEngine';
 import { t } from '../i18n';
-import { Wordmark } from '../components/Wordmark';
+import { AboutSection } from '../components/AboutSection';
 import { LanguageSetting } from '../components/LanguageSetting';
 import { DrilldownRow } from '../components/DrilldownRow';
 import { SoundStyleSheet } from '../components/SoundStyleSheet';
@@ -67,22 +52,6 @@ const VOICE_PREVIEW_PHRASES: Partial<Record<keyof Omit<SoundSettings, 'countdown
   workoutComplete: 'Workout Complete',
   halfwaySound: 'Halfway',
 };
-
-const APP_STORE_ID = '6767314178';
-const ANDROID_PACKAGE_NAME = 'com.joshapproved.freeworkouttimer';
-const GITHUB_REPO_URL = 'https://github.com/Josh-Approved/workout-timer';
-const PRIVACY_URL = `${GITHUB_REPO_URL}/blob/main/PRIVACY.md`;
-
-const reviewUrl =
-  Platform.OS === 'ios'
-    ? `itms-apps://apps.apple.com/app/id${APP_STORE_ID}?action=write-review`
-    : `https://play.google.com/store/apps/details?id=${ANDROID_PACKAGE_NAME}&showAllReviews=true`;
-
-function formatVersion(): string {
-  const version = Application.nativeApplicationVersion ?? '—';
-  const build = Application.nativeBuildVersion;
-  return build ? `${version} (${build})` : version;
-}
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
 
@@ -294,102 +263,11 @@ export default function SettingsScreen({ navigation }: Props) {
         </View>
 
         <Text style={s.sectionHeader} accessibilityRole="header">{t('settings.about')}</Text>
-        <View style={s.card}>
-          {TIP_JAR_ENABLED && (
-            <Pressable
-              style={({ pressed }) => [s.aboutRow, pressed && s.pressed]}
-              onPress={() => setTipVisible(true)}
-              accessibilityLabel={t('about.support')}
-              accessibilityRole="button"
-            >
-              <HandHeart size={20} color={c.fg} strokeWidth={1.5} />
-              <Text style={s.aboutRowLabel}>{t('about.support')}</Text>
-              <ChevronRight size={18} color={c.fgMuted} strokeWidth={1.5} />
-            </Pressable>
-          )}
-          <Pressable
-            style={({ pressed }) => [s.aboutRow, s.aboutRowBorder, pressed && s.pressed]}
-            onPress={() => openFeedback()}
-            accessibilityLabel={t('about.feedback')}
-            accessibilityRole="link"
-            accessibilityHint={t('a11y.feedbackHint')}
-          >
-            <Mail size={20} color={c.fg} strokeWidth={1.5} />
-            <Text style={s.aboutRowLabel}>{t('about.feedback')}</Text>
-            <ChevronRight size={18} color={c.fgMuted} strokeWidth={1.5} />
-          </Pressable>
-          <Pressable
-            style={({ pressed }) => [s.aboutRow, s.aboutRowBorder, pressed && s.pressed]}
-            onPress={() => Linking.openURL(reviewUrl).catch(() => {})}
-            accessibilityLabel={t('about.review')}
-            accessibilityRole="link"
-            accessibilityHint={t('settings.reviewHint')}
-          >
-            <Star size={20} color={c.fg} strokeWidth={1.5} />
-            <Text style={s.aboutRowLabel}>{t('about.review')}</Text>
-            <ChevronRight size={18} color={c.fgMuted} strokeWidth={1.5} />
-          </Pressable>
-          <Pressable
-            style={({ pressed }) => [s.aboutRow, s.aboutRowBorder, pressed && s.pressed]}
-            onPress={() => Linking.openURL(PRIVACY_URL).catch(() => {})}
-            accessibilityLabel={t('about.privacy')}
-            accessibilityRole="link"
-            accessibilityHint={t('settings.privacyHint')}
-          >
-            <Shield size={20} color={c.fg} strokeWidth={1.5} />
-            <Text style={s.aboutRowLabel}>{t('about.privacy')}</Text>
-            <ChevronRight size={18} color={c.fgMuted} strokeWidth={1.5} />
-          </Pressable>
-          <Pressable
-            style={({ pressed }) => [s.aboutRow, s.aboutRowBorder, pressed && s.pressed]}
-            onPress={() => Linking.openURL(GITHUB_REPO_URL).catch(() => {})}
-            accessibilityLabel={t('about.source')}
-            accessibilityRole="link"
-            accessibilityHint={t('settings.sourceHint')}
-          >
-            <Code size={20} color={c.fg} strokeWidth={1.5} />
-            <Text style={s.aboutRowLabel}>{t('about.source')}</Text>
-            <ChevronRight size={18} color={c.fgMuted} strokeWidth={1.5} />
-          </Pressable>
-          <Pressable
-            style={({ pressed }) => [s.aboutRow, s.aboutRowBorder, pressed && s.pressed]}
-            onPress={() => navigation.navigate('Acknowledgements')}
-            accessibilityLabel={t('about.acknowledgements')}
-            accessibilityRole="button"
-            accessibilityHint={t('settings.acknowledgementsHint')}
-          >
-            <Library size={20} color={c.fg} strokeWidth={1.5} />
-            <Text style={s.aboutRowLabel}>{t('about.acknowledgements')}</Text>
-            <ChevronRight size={18} color={c.fgMuted} strokeWidth={1.5} />
-          </Pressable>
-          <View
-            style={[s.aboutRow, s.aboutRowBorder]}
-            accessible
-            accessibilityRole="text"
-            accessibilityLabel={t('settings.versionA11y', { version: formatVersion() })}
-          >
-            <View style={s.aboutRowIconSpacer} importantForAccessibility="no" />
-            <Text style={s.aboutRowLabel} importantForAccessibility="no">{t('about.version')}</Text>
-            <Text style={s.versionValue} importantForAccessibility="no">{formatVersion()}</Text>
-          </View>
-        </View>
-
-        <View style={s.stamp}>
-          <Wordmark />
-          <Text style={s.stampText}>
-            {t('about.oneLiner')}
-          </Text>
-          <Pressable
-            onPress={() => Linking.openURL('https://joshapproved.com').catch(() => {})}
-            hitSlop={8}
-            accessibilityLabel={t('settings.learnMoreA11y')}
-            accessibilityRole="link"
-            accessibilityHint={t('settings.learnMoreHint')}
-            style={({ pressed }) => pressed && s.pressed}
-          >
-            <Text style={s.stampLink}>{t('about.learnMore')}</Text>
-          </Pressable>
-        </View>
+        <AboutSection
+          onSupport={() => setTipVisible(true)}
+          onFeedback={() => openFeedback()}
+          onAcknowledgements={() => navigation.navigate('Acknowledgements')}
+        />
       </ScrollView>
       {tipVisible && (
         <TipJarSheet
@@ -471,32 +349,6 @@ function makeStyles(c: Colors) {
     rowHint: { ...ty.xs, color: c.fgMuted, fontFamily: fontFamily.sans, marginTop: 2 },
     rowValue: { ...ty.sm, color: c.fgMuted, fontFamily: fontFamily.mono },
 
-    aboutRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: space.s4,
-      minHeight: 48,
-      paddingHorizontal: space.s5,
-      paddingVertical: space.s4,
-      backgroundColor: c.bgElevated,
-    },
-    aboutRowBorder: {
-      borderTopWidth: hairline,
-      borderTopColor: c.hairline,
-    },
-    aboutRowLabel: {
-      ...ty.sm,
-      color: c.fg,
-      fontFamily: fontFamily.sansMedium,
-      flex: 1,
-    },
-    aboutRowIconSpacer: { width: 20 },
-    versionValue: {
-      ...ty.sm,
-      color: c.fgMuted,
-      fontFamily: fontFamily.mono,
-    },
-
     stepper: { flexDirection: 'row', alignItems: 'center', gap: space.s2 },
     stepBtn: {
       width: 32,
@@ -514,26 +366,6 @@ function makeStyles(c: Colors) {
       color: c.fg,
       minWidth: 36,
       textAlign: 'center',
-    },
-    // paddingRight gives the row trailing breathing room so the last chip
-    // never ends flush against the screen edge (which read as a clipped,
-    // broken option); combined with the visible scroll indicator it reads
-    // as an intentionally scrollable list.
-
-    stamp: { alignItems: 'center', paddingVertical: space.s5, gap: space.s3 },
-    stampText: {
-      ...ty.xs,
-      color: c.fgMuted,
-      fontFamily: fontFamily.sans,
-      textAlign: 'center',
-      paddingHorizontal: space.s6,
-    },
-    stampLink: {
-      ...ty.xs,
-      color: c.fg,
-      fontFamily: fontFamily.sansMedium,
-      textDecorationLine: 'underline',
-      textDecorationColor: c.hairlineStrong,
     },
   });
 }

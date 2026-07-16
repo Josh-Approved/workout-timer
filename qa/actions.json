@@ -218,63 +218,9 @@
       "note": "Pressable · onPress"
     },
     {
-      "id": "screens/ActiveWorkoutScreen#pressable-425",
-      "label": "Pressable (dynamic label)",
-      "where": "src/screens/ActiveWorkoutScreen.tsx:425",
-      "proof": {
-        "kind": "none"
-      },
-      "note": "Pressable · onPress · dynamic/child-text label"
-    },
-    {
-      "id": "screens/ActiveWorkoutScreen#workout.stopworkout",
-      "label": "workout.stopWorkout",
-      "where": "src/screens/ActiveWorkoutScreen.tsx:434",
-      "proof": {
-        "kind": "none"
-      },
-      "note": "Pressable · onPress"
-    },
-    {
-      "id": "screens/ActiveWorkoutScreen#pressable-443",
-      "label": "Pressable (dynamic label)",
-      "where": "src/screens/ActiveWorkoutScreen.tsx:443",
-      "proof": {
-        "kind": "none"
-      },
-      "note": "Pressable · onPress · dynamic/child-text label"
-    },
-    {
-      "id": "screens/ActiveWorkoutScreen#workout.skip",
-      "label": "workout.skip",
-      "where": "src/screens/ActiveWorkoutScreen.tsx:455",
-      "proof": {
-        "kind": "none"
-      },
-      "note": "Pressable · onPress"
-    },
-    {
-      "id": "screens/ActiveWorkoutScreen#workout.backtotimers",
-      "label": "workout.backToTimers",
-      "where": "src/screens/ActiveWorkoutScreen.tsx:467",
-      "proof": {
-        "kind": "none"
-      },
-      "note": "Pressable · onPress"
-    },
-    {
-      "id": "screens/ActiveWorkoutScreen#alert-common.ok",
-      "label": "common.ok",
-      "where": "src/screens/ActiveWorkoutScreen.tsx:120",
-      "proof": {
-        "kind": "none"
-      },
-      "note": "Alert.alert · button"
-    },
-    {
       "id": "screens/SettingsScreen#common.back",
       "label": "common.back",
-      "where": "src/screens/SettingsScreen.tsx:161",
+      "where": "src/screens/SettingsScreen.tsx:134",
       "proof": {
         "kind": "none"
       },
@@ -283,7 +229,7 @@
     {
       "id": "screens/SettingsScreen#settings.reseta11y",
       "label": "settings.resetA11y",
-      "where": "src/screens/SettingsScreen.tsx:172",
+      "where": "src/screens/SettingsScreen.tsx:145",
       "proof": {
         "kind": "none"
       },
@@ -292,101 +238,11 @@
     {
       "id": "screens/SettingsScreen#settings.voicecues",
       "label": "settings.voiceCues",
-      "where": "src/screens/SettingsScreen.tsx:208",
+      "where": "src/screens/SettingsScreen.tsx:181",
       "proof": {
         "kind": "none"
       },
       "note": "Switch · onValueChange"
-    },
-    {
-      "id": "screens/SettingsScreen#pressable-254",
-      "label": "Pressable (dynamic label)",
-      "where": "src/screens/SettingsScreen.tsx:254",
-      "proof": {
-        "kind": "none"
-      },
-      "note": "Pressable · onPress · dynamic/child-text label"
-    },
-    {
-      "id": "screens/SettingsScreen#pressable-265",
-      "label": "Pressable (dynamic label)",
-      "where": "src/screens/SettingsScreen.tsx:265",
-      "proof": {
-        "kind": "none"
-      },
-      "note": "Pressable · onPress · dynamic/child-text label"
-    },
-    {
-      "id": "screens/SettingsScreen#pressable-300",
-      "label": "Pressable (dynamic label)",
-      "where": "src/screens/SettingsScreen.tsx:300",
-      "proof": {
-        "kind": "none"
-      },
-      "note": "Pressable · onPress · dynamic/child-text label"
-    },
-    {
-      "id": "screens/SettingsScreen#about.support",
-      "label": "about.support",
-      "where": "src/screens/SettingsScreen.tsx:328",
-      "proof": {
-        "kind": "none"
-      },
-      "note": "Pressable · onPress"
-    },
-    {
-      "id": "screens/SettingsScreen#about.feedback",
-      "label": "about.feedback",
-      "where": "src/screens/SettingsScreen.tsx:339",
-      "proof": {
-        "kind": "none"
-      },
-      "note": "Pressable · onPress"
-    },
-    {
-      "id": "screens/SettingsScreen#about.review",
-      "label": "about.review",
-      "where": "src/screens/SettingsScreen.tsx:350",
-      "proof": {
-        "kind": "none"
-      },
-      "note": "Pressable · onPress"
-    },
-    {
-      "id": "screens/SettingsScreen#about.privacy",
-      "label": "about.privacy",
-      "where": "src/screens/SettingsScreen.tsx:361",
-      "proof": {
-        "kind": "none"
-      },
-      "note": "Pressable · onPress"
-    },
-    {
-      "id": "screens/SettingsScreen#about.source",
-      "label": "about.source",
-      "where": "src/screens/SettingsScreen.tsx:372",
-      "proof": {
-        "kind": "none"
-      },
-      "note": "Pressable · onPress"
-    },
-    {
-      "id": "screens/SettingsScreen#about.acknowledgements",
-      "label": "about.acknowledgements",
-      "where": "src/screens/SettingsScreen.tsx:383",
-      "proof": {
-        "kind": "none"
-      },
-      "note": "Pressable · onPress"
-    },
-    {
-      "id": "screens/SettingsScreen#settings.learnmorea11y",
-      "label": "settings.learnMoreA11y",
-      "where": "src/screens/SettingsScreen.tsx:411",
-      "proof": {
-        "kind": "none"
-      },
-      "note": "Pressable · onPress"
     },
     {
       "id": "screens/TimerEditorScreen#common.back",
@@ -459,6 +315,276 @@
         "kind": "none"
       },
       "note": "Pressable · onPress"
+    },
+    {
+      "id": "components/AboutSection#about.support",
+      "label": "about.support",
+      "where": "src/components/AboutSection.tsx:64",
+      "proof": {
+        "kind": "none"
+      },
+      "note": "Pressable · onPress"
+    },
+    {
+      "id": "components/AboutSection#about.feedback",
+      "label": "about.feedback",
+      "where": "src/components/AboutSection.tsx:75",
+      "proof": {
+        "kind": "none"
+      },
+      "note": "Pressable · onPress"
+    },
+    {
+      "id": "components/AboutSection#about.review",
+      "label": "about.review",
+      "where": "src/components/AboutSection.tsx:86",
+      "proof": {
+        "kind": "none"
+      },
+      "note": "Pressable · onPress"
+    },
+    {
+      "id": "components/AboutSection#about.privacy",
+      "label": "about.privacy",
+      "where": "src/components/AboutSection.tsx:97",
+      "proof": {
+        "kind": "none"
+      },
+      "note": "Pressable · onPress"
+    },
+    {
+      "id": "components/AboutSection#about.source",
+      "label": "about.source",
+      "where": "src/components/AboutSection.tsx:108",
+      "proof": {
+        "kind": "none"
+      },
+      "note": "Pressable · onPress"
+    },
+    {
+      "id": "components/AboutSection#about.acknowledgements",
+      "label": "about.acknowledgements",
+      "where": "src/components/AboutSection.tsx:119",
+      "proof": {
+        "kind": "none"
+      },
+      "note": "Pressable · onPress"
+    },
+    {
+      "id": "components/AboutSection#settings.learnmorea11y",
+      "label": "settings.learnMoreA11y",
+      "where": "src/components/AboutSection.tsx:147",
+      "proof": {
+        "kind": "none"
+      },
+      "note": "Pressable · onPress"
+    },
+    {
+      "id": "components/Dialogs#common.closemenu",
+      "label": "common.closeMenu",
+      "where": "src/components/Dialogs.tsx:110",
+      "proof": {
+        "kind": "none"
+      },
+      "note": "Pressable · onPress"
+    },
+    {
+      "id": "components/Dialogs#pressable-116",
+      "label": "Pressable (dynamic label)",
+      "where": "src/components/Dialogs.tsx:116",
+      "proof": {
+        "kind": "none"
+      },
+      "note": "Pressable · onPress · dynamic/child-text label"
+    },
+    {
+      "id": "components/Dialogs#pressable-123",
+      "label": "Pressable (dynamic label)",
+      "where": "src/components/Dialogs.tsx:123",
+      "proof": {
+        "kind": "none"
+      },
+      "note": "Pressable · onPress · dynamic/child-text label"
+    },
+    {
+      "id": "components/Dialogs#common.cancel",
+      "label": "common.cancel",
+      "where": "src/components/Dialogs.tsx:135",
+      "proof": {
+        "kind": "none"
+      },
+      "note": "Pressable · onPress"
+    },
+    {
+      "id": "components/Dialogs#common.cancel-2",
+      "label": "common.cancel",
+      "where": "src/components/Dialogs.tsx:212",
+      "proof": {
+        "kind": "none"
+      },
+      "note": "Pressable · onPress"
+    },
+    {
+      "id": "components/Dialogs#pressable-218",
+      "label": "Pressable (dynamic label)",
+      "where": "src/components/Dialogs.tsx:218",
+      "proof": {
+        "kind": "none"
+      },
+      "note": "Pressable · onPress · dynamic/child-text label"
+    },
+    {
+      "id": "components/Dialogs#textinput-223",
+      "label": "TextInput (dynamic label)",
+      "where": "src/components/Dialogs.tsx:223",
+      "proof": {
+        "kind": "none"
+      },
+      "note": "TextInput · onSubmitEditing · dynamic/child-text label"
+    },
+    {
+      "id": "components/Dialogs#common.cancel-3",
+      "label": "common.cancel",
+      "where": "src/components/Dialogs.tsx:238",
+      "proof": {
+        "kind": "none"
+      },
+      "note": "Pressable · onPress"
+    },
+    {
+      "id": "components/Dialogs#pressable-246",
+      "label": "Pressable (dynamic label)",
+      "where": "src/components/Dialogs.tsx:246",
+      "proof": {
+        "kind": "none"
+      },
+      "note": "Pressable · onPress · dynamic/child-text label"
+    },
+    {
+      "id": "components/Dialogs#common.cancel-4",
+      "label": "common.cancel",
+      "where": "src/components/Dialogs.tsx:311",
+      "proof": {
+        "kind": "none"
+      },
+      "note": "Pressable · onPress"
+    },
+    {
+      "id": "components/Dialogs#pressable-317",
+      "label": "Pressable (dynamic label)",
+      "where": "src/components/Dialogs.tsx:317",
+      "proof": {
+        "kind": "none"
+      },
+      "note": "Pressable · onPress · dynamic/child-text label"
+    },
+    {
+      "id": "components/Dialogs#common.cancel-5",
+      "label": "common.cancel",
+      "where": "src/components/Dialogs.tsx:323",
+      "proof": {
+        "kind": "none"
+      },
+      "note": "Pressable · onPress"
+    },
+    {
+      "id": "components/Dialogs#pressable-331",
+      "label": "Pressable (dynamic label)",
+      "where": "src/components/Dialogs.tsx:331",
+      "proof": {
+        "kind": "none"
+      },
+      "note": "Pressable · onPress · dynamic/child-text label"
+    },
+    {
+      "id": "components/DrilldownRow#pressable-35",
+      "label": "Pressable (dynamic label)",
+      "where": "src/components/DrilldownRow.tsx:35",
+      "proof": {
+        "kind": "none"
+      },
+      "note": "Pressable · onPress · dynamic/child-text label"
+    },
+    {
+      "id": "components/DrilldownSheet#pressable-80",
+      "label": "Pressable (dynamic label)",
+      "where": "src/components/DrilldownSheet.tsx:80",
+      "proof": {
+        "kind": "none"
+      },
+      "note": "Pressable · onPress · dynamic/child-text label"
+    },
+    {
+      "id": "components/WorkoutControls#workout.backtotimers",
+      "label": "workout.backToTimers",
+      "where": "src/components/WorkoutControls.tsx:53",
+      "proof": {
+        "kind": "none"
+      },
+      "note": "Pressable · onPress"
+    },
+    {
+      "id": "components/WorkoutControls#pressable-67",
+      "label": "Pressable (dynamic label)",
+      "where": "src/components/WorkoutControls.tsx:67",
+      "proof": {
+        "kind": "none"
+      },
+      "note": "Pressable · onPress · dynamic/child-text label"
+    },
+    {
+      "id": "components/WorkoutControls#workout.stopworkout",
+      "label": "workout.stopWorkout",
+      "where": "src/components/WorkoutControls.tsx:76",
+      "proof": {
+        "kind": "none"
+      },
+      "note": "Pressable · onPress"
+    },
+    {
+      "id": "components/WorkoutControls#pressable-85",
+      "label": "Pressable (dynamic label)",
+      "where": "src/components/WorkoutControls.tsx:85",
+      "proof": {
+        "kind": "none"
+      },
+      "note": "Pressable · onPress · dynamic/child-text label"
+    },
+    {
+      "id": "components/WorkoutControls#workout.skip",
+      "label": "workout.skip",
+      "where": "src/components/WorkoutControls.tsx:97",
+      "proof": {
+        "kind": "none"
+      },
+      "note": "Pressable · onPress"
+    },
+    {
+      "id": "screens/SettingsScreen#pressable-227",
+      "label": "Pressable (dynamic label)",
+      "where": "src/screens/SettingsScreen.tsx:227",
+      "proof": {
+        "kind": "none"
+      },
+      "note": "Pressable · onPress · dynamic/child-text label"
+    },
+    {
+      "id": "screens/SettingsScreen#pressable-238",
+      "label": "Pressable (dynamic label)",
+      "where": "src/screens/SettingsScreen.tsx:238",
+      "proof": {
+        "kind": "none"
+      },
+      "note": "Pressable · onPress · dynamic/child-text label"
+    },
+    {
+      "id": "screens/useWorkoutPlayback#alert-common.ok",
+      "label": "common.ok",
+      "where": "src/screens/useWorkoutPlayback.ts:84",
+      "proof": {
+        "kind": "none"
+      },
+      "note": "Alert.alert · button"
     }
   ]
 }
