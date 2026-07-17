@@ -214,6 +214,12 @@ describe('formatDurationSpoken — natural-language duration', () => {
   it('drops the seconds clause on a whole number of minutes', () => {
     expect(formatDurationSpoken(120)).toBe('2 minutes');
   });
+
+  it('singularizes the seconds clause when it joins a minutes clause', () => {
+    // The one case where the joined clause's own singular/plural branch shows:
+    // 61s must say "1 second", never "1 seconds" (and never a stray suffix).
+    expect(formatDurationSpoken(61)).toBe('1 minute and 1 second');
+  });
 });
 
 describe('buildPhaseAnnouncement — spoken phase cues', () => {
@@ -231,6 +237,53 @@ describe('buildPhaseAnnouncement — spoken phase cues', () => {
   it('falls back to name + duration for framing phases', () => {
     expect(buildPhaseAnnouncement({ phase: 'warm_up', duration: 60 }, 0, 1)).toBe('Warm up, 1 minute');
     expect(buildPhaseAnnouncement({ phase: 'initial_countdown', duration: 10 }, 0, 1)).toBe('Get ready, 10 seconds');
+  });
+
+  it('announces a rest with its set and cycle context, by name', () => {
+    // Rest is spoken with the same set/cycle context as exercise — and the
+    // name itself must be the word "Rest", not silence.
+    const step: PhaseStep = { phase: 'rest', duration: 10, setNumber: 1, cycleNumber: 2 };
+    expect(buildPhaseAnnouncement(step, 8, 4)).toBe('Rest, set 1 of 8, cycle 2 of 4, 10 seconds');
+  });
+
+  it('announces cool-down and completion by their exact names', () => {
+    expect(buildPhaseAnnouncement({ phase: 'cool_down', duration: 60 }, 0, 1)).toBe('Cool down, 1 minute');
+    expect(buildPhaseAnnouncement({ phase: 'complete', duration: 0 }, 0, 1)).toBe('Workout complete, 0 seconds');
+  });
+
+  // The set-context gate has three conjuncts (exercise/rest phase, a set
+  // number, a positive set count). Each test below knocks out exactly one, so
+  // a gate that opens too eagerly — announcing "set undefined of 3" or
+  // "set 2 of 0" — is caught by the exact-string pins.
+  it('never adds set context to a framing phase, even when set fields are supplied', () => {
+    const step: PhaseStep = { phase: 'warm_up', duration: 30, setNumber: 1, cycleNumber: 1 };
+    expect(buildPhaseAnnouncement(step, 3, 2)).toBe('Warm up, 30 seconds');
+  });
+
+  it('omits set context when the step has no set number', () => {
+    expect(buildPhaseAnnouncement({ phase: 'exercise', duration: 20 }, 3, 1)).toBe('Exercise, 20 seconds');
+  });
+
+  it('omits set context when the cycle has no sets to count', () => {
+    const step: PhaseStep = { phase: 'exercise', duration: 20, setNumber: 2, cycleNumber: 1 };
+    expect(buildPhaseAnnouncement(step, 0, 1)).toBe('Exercise, 20 seconds');
+  });
+
+  it('omits cycle context from a set announcement when the step has no cycle number', () => {
+    const step: PhaseStep = { phase: 'exercise', duration: 30, setNumber: 1 };
+    expect(buildPhaseAnnouncement(step, 2, 3)).toBe('Exercise, set 1 of 2, 30 seconds');
+  });
+
+  // Same treatment for the recovery gate: each conjunct (cycle number present,
+  // more than one cycle) dropped in turn must fall back to the plain phrase,
+  // never "after cycle undefined of 3" / "after cycle 1 of 1".
+  it('announces a plain recovery when the step has no cycle number', () => {
+    expect(buildPhaseAnnouncement({ phase: 'recovery', duration: 45 }, 0, 3)).toBe('Recovery, 45 seconds');
+  });
+
+  it('announces a plain recovery in a single-cycle workout', () => {
+    const step: PhaseStep = { phase: 'recovery', duration: 30, cycleNumber: 1 };
+    expect(buildPhaseAnnouncement(step, 0, 1)).toBe('Recovery, 30 seconds');
   });
 });
 
