@@ -21,33 +21,49 @@ appId: com.joshapproved.freeworkouttimer
     visible: { text: "Edit Standard Tabata" }
     timeout: 15000
 - takeScreenshot: qa/captures/${STORE}/list
-- tapOn: { text: "Edit Standard Tabata" }
+- tapOn:
+    text: "Edit Standard Tabata"
+    retryTapIfNoChange: true
 - extendedWaitUntil:
     visible: { text: "Save timer" }
     timeout: 5000
 - takeScreenshot: qa/captures/${STORE}/editor
-- tapOn: { text: "Back" }
+- tapOn:
+    text: "Back"
+    retryTapIfNoChange: true
 - scrollUntilVisible:
     element: { text: "Edit Climbing Hangboard" }
     direction: DOWN
-- tapOn: { text: "Edit Climbing Hangboard" }
+- tapOn:
+    text: "Edit Climbing Hangboard"
+    retryTapIfNoChange: true
 - extendedWaitUntil:
     visible: { text: "Save timer" }
     timeout: 10000
 - takeScreenshot: qa/captures/${STORE}/climbing-editor
-- tapOn: { text: "Back" }
-- tapOn: { text: "Start Standard Tabata" }
+- tapOn:
+    text: "Back"
+    retryTapIfNoChange: true
+- tapOn:
+    text: "Start Standard Tabata"
+    retryTapIfNoChange: true
 - extendedWaitUntil:
     visible: { text: "Exercise" }
     timeout: 15000
 - takeScreenshot: qa/captures/${STORE}/active
-- tapOn: { text: "Stop workout" }
-- tapOn: { text: "Stop" }
+- tapOn:
+    text: "Stop workout"
+    retryTapIfNoChange: true
+- tapOn:
+    text: "Stop"
+    retryTapIfNoChange: true
 - extendedWaitUntil:
     visible: { text: "Workout timer" }
     timeout: 5000
 - assertNotVisible: { text: "Exercise" }
-- tapOn: { text: "Settings" }
+- tapOn:
+    text: "Settings"
+    retryTapIfNoChange: true
 - extendedWaitUntil:
     visible: { text: "Back" }
     timeout: 5000
@@ -56,13 +72,19 @@ appId: com.joshapproved.freeworkouttimer
 - scrollUntilVisible:
     element: { text: "Exercise start: Voice" }
     direction: DOWN
-- tapOn: { text: "Exercise start: Voice" }
+- tapOn:
+    text: "Exercise start: Voice"
+    retryTapIfNoChange: true
 - extendedWaitUntil:
     visible: { text: "Ascending Chime" }
     timeout: 10000
 - takeScreenshot: qa/captures/${STORE}/sound-style
-- tapOn: { text: "Bell" }
-- tapOn: { text: "Back" }
+- tapOn:
+    text: "Bell"
+    retryTapIfNoChange: true
+- tapOn:
+    text: "Back"
+    retryTapIfNoChange: true
 - assertNotVisible: { text: "Ascending Chime" }
 - scrollUntilVisible:
     element: { text: ".*Exercise start: Bell.*" }
@@ -71,7 +93,9 @@ appId: com.joshapproved.freeworkouttimer
 - scrollUntilVisible:
     element: { text: "Send feedback" }
     direction: DOWN
-- tapOn: { text: "Send feedback" }
+- tapOn:
+    text: "Send feedback"
+    retryTapIfNoChange: true
 - extendedWaitUntil:
     visible: { text: "Report a bug.*" }
     timeout: 8000

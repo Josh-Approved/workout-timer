@@ -18,13 +18,19 @@ appId: com.joshapproved.freeworkouttimer
     visible: { text: "Edit Standard Tabata" }
     timeout: 15000
 - assertNotVisible: { text: ".*Chaos Interval.*" }
-- tapOn: { text: "Create new timer" }
+- tapOn:
+    text: "Create new timer"
+    retryTapIfNoChange: true
 - extendedWaitUntil:
     visible: { text: "Timer name" }
     timeout: 10000
-- tapOn: { text: "Timer name" }
+- tapOn:
+    text: "Timer name"
+    retryTapIfNoChange: true
 - inputText: "Chaos Interval"
-- tapOn: { text: "Save timer" }
+- tapOn:
+    text: "Save timer"
+    retryTapIfNoChange: true
 - extendedWaitUntil:
     visible: { text: "Workout timer" }
     timeout: 10000
