@@ -1,16 +1,36 @@
 /**
  * Canonical, app-agnostic — synced by `sync.mjs drilldown`; do not fork.
  *
- * The focused editor a DrilldownRow opens — one dimension, one screen. A
- * slide-up full-height sheet with the standard header, so deep option sets
- * get room to breathe instead of crowding the hub inline. Also exports
- * SheetOption, the standard single-select row (label + check) used by the
- * pickers that live in these sheets.
+ * The focused editor a DrilldownRow opens — one dimension, one pane. The pane
+ * is SELF-CONTAINED in the presenting screen: it slides in from the right and
+ * covers the screen while the hub stays mounted beneath, so it behaves
+ * identically whether the screen is a plain push or a modal/bottom-sheet
+ * presentation. A full-screen Modal must never open on top of a sheet
+ * (UX guideline, Josh 2026-07-18) — that's why this is a pane, not a Modal.
+ *
+ * Placement contract: render it at the SCREEN ROOT — a sibling of the scroll
+ * content, directly under the screen's SafeAreaView — never inside a
+ * ScrollView (it fills its nearest positioned ancestor). While a pane is
+ * open, give the hub content `accessibilityElementsHidden` +
+ * `importantForAccessibility="no-hide-descendants"` so screen readers stay
+ * contained. Android hardware back closes the pane.
+ *
+ * Also exports SheetOption — the standard row for LONG or rich lists
+ * (leading elements, detail lines, unbounded sets). Short single-select
+ * option sets use OptionChips instead (OptionChips.tsx).
  */
 
-import React, { useEffect, useState } from 'react';
-import { View, Text, Pressable, Modal, AccessibilityInfo, StyleSheet } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  View,
+  Text,
+  Pressable,
+  Animated,
+  BackHandler,
+  useWindowDimensions,
+  AccessibilityInfo,
+  StyleSheet,
+} from 'react-native';
 import { Check } from 'lucide-react-native';
 import { ScreenHeader } from './ScreenHeader';
 import {
@@ -36,6 +56,10 @@ type Props = {
 export function DrilldownSheet({ visible, title, onClose, right, children }: Props) {
   const { c } = useTheme();
   const s = makeStyles(c);
+  const { width } = useWindowDimensions();
+  /** Stays mounted through the exit slide; 0 = in place, 1 = offscreen right. */
+  const [rendered, setRendered] = useState(visible);
+  const x = useRef(new Animated.Value(visible ? 0 : 1)).current;
   const [reduceMotion, setReduceMotion] = useState(false);
 
   useEffect(() => {
@@ -44,22 +68,56 @@ export function DrilldownSheet({ visible, title, onClose, right, children }: Pro
     return () => sub.remove();
   }, []);
 
+  useEffect(() => {
+    if (visible) {
+      setRendered(true);
+      if (reduceMotion) {
+        x.setValue(0);
+        return;
+      }
+      Animated.timing(x, { toValue: 0, duration: 240, useNativeDriver: true }).start();
+    } else {
+      if (reduceMotion) {
+        x.setValue(1);
+        setRendered(false);
+        return;
+      }
+      Animated.timing(x, { toValue: 1, duration: 200, useNativeDriver: true }).start(
+        ({ finished }) => {
+          if (finished) setRendered(false);
+        }
+      );
+    }
+  }, [visible, reduceMotion, x]);
+
+  // Hardware back closes the pane, not the screen (parity with the old
+  // Modal's onRequestClose).
+  useEffect(() => {
+    if (!visible) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      onClose();
+      return true;
+    });
+    return () => sub.remove();
+  }, [visible, onClose]);
+
+  if (!rendered) return null;
+
   return (
-    <Modal
-      visible={visible}
-      animationType={reduceMotion ? 'none' : 'slide'}
-      onRequestClose={onClose}
-      statusBarTranslucent
-      presentationStyle="overFullScreen"
-      transparent
+    <Animated.View
+      style={[
+        s.pane,
+        {
+          transform: [
+            { translateX: x.interpolate({ inputRange: [0, 1], outputRange: [0, width] }) },
+          ],
+        },
+      ]}
+      accessibilityViewIsModal
     >
-      <SafeAreaProvider>
-        <SafeAreaView style={s.sheet} edges={['top', 'bottom', 'left', 'right']}>
-          <ScreenHeader title={title} onBack={onClose} right={right} />
-          {children}
-        </SafeAreaView>
-      </SafeAreaProvider>
-    </Modal>
+      <ScreenHeader title={title} onBack={onClose} right={right} />
+      {children}
+    </Animated.View>
   );
 }
 
@@ -97,7 +155,16 @@ export function SheetOption({ label, selected, onPress, leading, detail }: Optio
 function makeStyles(c: Colors) {
   return StyleSheet.create({
     pressed: { opacity: 0.6 },
-    sheet: { flex: 1, backgroundColor: c.bg },
+    pane: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: c.bg,
+      zIndex: 10,
+      elevation: 10,
+    },
     option: {
       ...boundedContent,
       flexDirection: 'row',
