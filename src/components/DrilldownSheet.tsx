@@ -29,6 +29,7 @@ import {
   BackHandler,
   useWindowDimensions,
   AccessibilityInfo,
+  findNodeHandle,
   StyleSheet,
 } from 'react-native';
 import { Check } from 'lucide-react-native';
@@ -90,6 +91,20 @@ export function DrilldownSheet({ visible, title, onClose, right, children }: Pro
     }
   }, [visible, reduceMotion, x]);
 
+  // A native Modal moves screen-reader focus to the top of its content on
+  // present; a custom pane must do that by hand or VoiceOver/TalkBack focus
+  // lands on an arbitrary mid-pane element (defect home-maintenance-20260719-1).
+  // Focus the title once the slide-in settles.
+  const titleRef = useRef<Text>(null);
+  useEffect(() => {
+    if (!visible) return;
+    const id = setTimeout(() => {
+      const tag = findNodeHandle(titleRef.current);
+      if (tag != null) AccessibilityInfo.setAccessibilityFocus(tag);
+    }, 280);
+    return () => clearTimeout(id);
+  }, [visible]);
+
   // Hardware back closes the pane, not the screen (parity with the old
   // Modal's onRequestClose).
   useEffect(() => {
@@ -115,7 +130,7 @@ export function DrilldownSheet({ visible, title, onClose, right, children }: Pro
       ]}
       accessibilityViewIsModal
     >
-      <ScreenHeader title={title} onBack={onClose} right={right} />
+      <ScreenHeader title={title} onBack={onClose} right={right} titleRef={titleRef} />
       {children}
     </Animated.View>
   );
