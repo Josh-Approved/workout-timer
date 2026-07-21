@@ -66,6 +66,9 @@ function makeStyles(c: Colors) {
       flex: 1,
       textAlign: 'right',
     },
-    valueMuted: { color: c.fgSubtle },
+    // fgSubtle fails AA as text (canon: fgSubtle is decorative-only, never a
+    // text color) — the placeholder/"Not set" state stays visually distinct
+    // via italics instead of a lighter, less-legible color.
+    valueMuted: { color: c.fgMuted, fontStyle: 'italic' },
   });
 }

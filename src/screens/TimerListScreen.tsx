@@ -255,7 +255,7 @@ function makeStyles(c: Colors) {
     },
     cardDuration: {
       ...ty.xs,
-      color: c.fgSubtle,
+      color: c.fgMuted,
       fontFamily: fontFamily.mono,
     },
     playBtn: {
