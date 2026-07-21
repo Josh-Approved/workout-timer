@@ -1,0 +1,24 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Persimmon outlined stopwatch on paper (shipped design, commits b89995d/230bab0).
+       NOTE: this icon predates the accent-background contract — it is INVERTED
+       (paper bg + accent-outlined glyph) and grandfathered to match the live
+       store icon. Geometry recovered verbatim from the retired sharp-based
+       scripts/build-icon.mjs at 230bab0: cx=512, cy=551 (equal top/bottom ink
+       padding), r=320, stroke=56, hand at ~2 o'clock (60deg, 0.68r). -->
+  <rect id="bg" x="0" y="0" width="1024" height="1024" fill="#FAFAF7"/>
+  <g id="glyph">
+    <!-- crown button + stem -->
+    <rect x="442" y="125" width="140" height="56" rx="20" fill="#B85040"/>
+    <rect x="492" y="181" width="40" height="50" fill="#B85040"/>
+    <!-- face -->
+    <circle cx="512" cy="551" r="320" fill="#FAFAF7" stroke="#B85040" stroke-width="56"/>
+    <!-- cardinal ticks -->
+    <line x1="512" y1="283" x2="512" y2="319" stroke="#B85040" stroke-width="22" stroke-linecap="round"/>
+    <line x1="512" y1="819" x2="512" y2="783" stroke="#B85040" stroke-width="22" stroke-linecap="round"/>
+    <line x1="244" y1="551" x2="280" y2="551" stroke="#B85040" stroke-width="22" stroke-linecap="round"/>
+    <line x1="780" y1="551" x2="744" y2="551" stroke="#B85040" stroke-width="22" stroke-linecap="round"/>
+    <!-- hand at ~2 o'clock + center pivot -->
+    <line x1="512" y1="551" x2="700.4471278634938" y2="442.2" stroke="#B85040" stroke-width="38" stroke-linecap="round"/>
+    <circle cx="512" cy="551" r="32" fill="#B85040"/>
+  </g>
+</svg>
