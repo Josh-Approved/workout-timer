@@ -52,3 +52,6 @@ google-play-key.json
 # Stryker mutation-testing sandbox/report output
 .stryker-tmp/
 reports/
+
+# Stryker incremental cache (local mutation-testing artifact)
+stryker-incremental.json
