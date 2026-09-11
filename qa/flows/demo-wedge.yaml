@@ -15,12 +15,12 @@ appId: com.joshapproved.freeworkouttimer
     timeout: 4000
 - extendedWaitUntil:
     visible:
-      text: "Edit Standard Tabata"
+      text: "Standard Tabata, edit"
     timeout: 20000
 - waitForAnimationToEnd:
     timeout: 1200
 - tapOn:
-    text: "Edit Standard Tabata"
+    text: "Standard Tabata, edit"
 - extendedWaitUntil:
     visible:
       text: "Save timer"

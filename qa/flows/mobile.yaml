@@ -18,11 +18,11 @@ appId: com.joshapproved.freeworkouttimer
     visible: { text: "Workout timer" }
     timeout: 30000
 - extendedWaitUntil:
-    visible: { text: "Edit Standard Tabata" }
+    visible: { text: "Standard Tabata, edit" }
     timeout: 15000
 - takeScreenshot: qa/captures/${STORE}/list
 - tapOn:
-    text: "Edit Standard Tabata"
+    text: "Standard Tabata, edit"
     retryTapIfNoChange: true
 - extendedWaitUntil:
     visible: { text: "Save timer" }
@@ -32,10 +32,10 @@ appId: com.joshapproved.freeworkouttimer
     text: "Back"
     retryTapIfNoChange: true
 - scrollUntilVisible:
-    element: { text: "Edit Climbing Hangboard" }
+    element: { text: "Climbing Hangboard, edit" }
     direction: DOWN
 - tapOn:
-    text: "Edit Climbing Hangboard"
+    text: "Climbing Hangboard, edit"
     retryTapIfNoChange: true
 - extendedWaitUntil:
     visible: { text: "Save timer" }

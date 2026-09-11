@@ -131,7 +131,7 @@
     }
   ],
   "survival": {
-    "$comment": "T4 chaos net — state-survival subflow (compiles to qa/flows/state-survival.yaml; full profile + nightly, NOT per-PR). Core mutating action = create a new timer, which persists to disk. Then REAL process death (killApp on Android / stopApp on iOS), then relaunch keeping state. Intent oracle: the created timer is still in the list after the kill. The leading assertNot proves 'Chaos Interval' wasn't seeded.",
+    "$comment": "T4 chaos net — state-survival subflow (compiles to qa/flows/state-survival.yaml; full profile + nightly, NOT per-PR). Core mutating action = create a new timer, which persists to disk. Then REAL process death (killApp on Android / stopApp on iOS), then relaunch keeping state. Intent oracle: the created timer is still in the list after the kill. The leading assertNot proves 'Chaos Interval' wasn't seeded, and needs no scroll because nothing by that name exists anywhere yet; @edit-tabata is the FIRST seeded row, so it is above the fold on every device. BOTH asserts scrollUntilVisible FIRST (2026-09-10, defect workout-timer-20260719-1): storage APPENDS a new timer, so 'Chaos Interval' lands as the 5th card, below the fold on a phone — a bare `assert visible` failed on the freshly-created timer BEFORE the app was ever killed, and the harness read an off-screen row as lost state. The rule this encodes, from the same bug in packing-list and tally: no waitFor and no assert may name an anchor a later step has to scroll to.",
     "steps": [
       {
         "waitFor": "@app-title",
@@ -165,6 +165,9 @@
         "timeout": 10000
       },
       {
+        "scrollUntilVisible": "@survival-timer"
+      },
+      {
         "assert": "@survival-timer"
       },
       {
@@ -181,12 +184,15 @@
         "timeout": 30000
       },
       {
+        "scrollUntilVisible": "@survival-timer"
+      },
+      {
         "assert": "@survival-timer"
       }
     ]
   },
   "upgrade": {
-    "$comment": "T5 upgrade harness — cross-version subflow (compiles to qa/flows/upgrade-write.yaml + upgrade-assert.yaml; run by scripts/qa/upgrade-test.mjs against qa/released/<platform>, full profile + nightly, NOT per-PR). The bug class: install a HEAD build over months-old data and silently lose it. 'write' runs on the LAST-RELEASED binary (QA seed + create a timer named Legacy Interval, a name absent from the seed); the harness then installs HEAD OVER it (never uninstall) and runs 'assert', which proves BOTH a seeded timer (Standard Tabata) AND the written one survived. If HEAD reads the persisted store differently than the released build wrote it, Legacy Interval is gone and the assert fails. Neither flow may clear state — persistence across the install is the whole point.",
+    "$comment": "T5 upgrade harness — cross-version subflow (compiles to qa/flows/upgrade-write.yaml + upgrade-assert.yaml; run by scripts/qa/upgrade-test.mjs against qa/released/<platform>, full profile + nightly, NOT per-PR). The bug class: install a HEAD build over months-old data and silently lose it. 'write' runs on the LAST-RELEASED binary (QA seed + create a timer named Legacy Interval, a name absent from the seed); the harness then installs HEAD OVER it (never uninstall) and runs 'assert', which proves BOTH a seeded timer (Standard Tabata) AND the written one survived. If HEAD reads the persisted store differently than the released build wrote it, Legacy Interval is gone and the assert fails. Neither flow may clear state — persistence across the install is the whole point. Both @upgrade-timer asserts scrollUntilVisible FIRST, for the same reason as the survival block: a created timer is APPENDED, so it sits below the fold on a phone and a bare assert reads an off-screen row as lost data.",
     "write": {
       "steps": [
         {
@@ -221,6 +227,9 @@
           "timeout": 10000
         },
         {
+          "scrollUntilVisible": "@upgrade-timer"
+        },
+        {
           "assert": "@upgrade-timer"
         },
         {
@@ -240,6 +249,9 @@
         },
         {
           "assert": "@edit-tabata"
+        },
+        {
+          "scrollUntilVisible": "@upgrade-timer"
         },
         {
           "assert": "@upgrade-timer"

@@ -19,7 +19,7 @@ const es = {
     emptyTitle: 'Aún no hay temporizadores',
     emptyHint: 'Toca + para crear el primero.',
     total: 'Total',
-    editTimer: 'Editar {name}',
+    editTimer: '{name}, editar',
     editTimerHint: 'Abre el editor. Usa el rotor de acciones para mover este temporizador hacia arriba o abajo.',
     startTimer: 'Iniciar {name}',
     startTimerHint: 'Comienza el entrenamiento',

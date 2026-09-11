@@ -19,7 +19,7 @@ const fr = {
     emptyTitle: 'Aucun minuteur pour le moment',
     emptyHint: 'Touchez + pour créer le premier.',
     total: 'Total',
-    editTimer: 'Modifier {name}',
+    editTimer: '{name}, modifier',
     editTimerHint: "Ouvre l'éditeur. Utilisez le rotor d'actions pour déplacer ce minuteur vers le haut ou le bas.",
     startTimer: 'Démarrer {name}',
     startTimerHint: "Lance l'entraînement",

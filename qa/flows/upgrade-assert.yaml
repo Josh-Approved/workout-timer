@@ -15,7 +15,10 @@ appId: com.joshapproved.freeworkouttimer
     visible: { text: "Workout timer" }
     timeout: 30000
 - extendedWaitUntil:
-    visible: { text: "Edit Standard Tabata" }
+    visible: { text: "Standard Tabata, edit" }
     timeout: 15000
-- assertVisible: { text: "Edit Standard Tabata" }
+- assertVisible: { text: "Standard Tabata, edit" }
+- scrollUntilVisible:
+    element: { text: ".*Legacy Interval.*" }
+    direction: DOWN
 - assertVisible: { text: ".*Legacy Interval.*" }

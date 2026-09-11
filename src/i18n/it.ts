@@ -19,7 +19,7 @@ const it = {
     emptyTitle: 'Ancora nessun timer',
     emptyHint: 'Tocca + per crearne il primo.',
     total: 'Totale',
-    editTimer: 'Modifica {name}',
+    editTimer: '{name}, modifica',
     editTimerHint: "Apre l'editor. Usa il rotore azioni per spostare questo timer su o giù.",
     startTimer: 'Avvia {name}',
     startTimerHint: "Avvia l'allenamento",

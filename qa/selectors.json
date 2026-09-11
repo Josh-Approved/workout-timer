@@ -6,8 +6,8 @@
       "note": "TimerList header title (i18n app.title, sentence case) — was 'Workout Timer'/'Free workout timer' before the retired-'Free' cleanup; asserting ONE title on both platforms is the parity regression guard"
     },
     "edit-tabata": {
-      "text": "Edit Standard Tabata",
-      "note": "edit affordance on the seeded Standard Tabata timer"
+      "text": "Standard Tabata, edit",
+      "note": "edit affordance on the seeded Standard Tabata timer. Text = the row's a11y label, which leads with the timer name (was 'Edit Standard Tabata' until 2026-09-10, defect workout-timer-20260809-1: Voice Control matches the accessible name against the words a user can SEE, and the row prints the name first)"
     },
     "save-timer": {
       "text": "Save timer"
@@ -73,8 +73,8 @@
       "note": "the settings row after the pick — the Tier-2 outcome proof the spoke wrote through"
     },
     "edit-climbing": {
-      "text": "Edit Climbing Hangboard",
-      "note": "edit button on the seeded climbing timer (fixtures qa-hangboard) — sources the store climbing screenshot slot"
+      "text": "Climbing Hangboard, edit",
+      "note": "edit button on the seeded climbing timer (fixtures qa-hangboard) — sources the store climbing screenshot slot. Name-first for the same reason as @edit-tabata (was 'Edit Climbing Hangboard')"
     }
   }
 }

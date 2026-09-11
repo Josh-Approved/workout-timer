@@ -24,7 +24,12 @@ export const APP_STRINGS = {
     emptyTitle: 'No timers yet',
     emptyHint: 'Tap + to build your first one.',
     total: 'Total',
-    editTimer: 'Edit {name}',
+    // Voice Control activates a control by its accessible NAME, so the label has
+    // to START with the words printed on the row — and the row starts with the
+    // timer's name. "Edit {name}" put the verb first, so saying the name a user
+    // can actually read matched nothing. Name first, action after the comma, in
+    // every locale (de/ja already read that way because they are verb-final).
+    editTimer: '{name}, edit',
     editTimerHint: 'Opens the editor. Use the actions rotor to move this timer up or down.',
     startTimer: 'Start {name}',
     startTimerHint: 'Begins the workout',

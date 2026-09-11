@@ -19,7 +19,7 @@ const pt_BR = {
     emptyTitle: 'Nenhum timer ainda',
     emptyHint: 'Toque em + para criar o primeiro.',
     total: 'Total',
-    editTimer: 'Editar {name}',
+    editTimer: '{name}, editar',
     editTimerHint: 'Abre o editor. Use o rotor de ações para mover este timer para cima ou para baixo.',
     startTimer: 'Iniciar {name}',
     startTimerHint: 'Começa o treino',
