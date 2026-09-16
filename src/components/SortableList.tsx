@@ -6,10 +6,7 @@
 import React, { useCallback } from 'react';
 import type { LayoutChangeEvent, StyleProp, ViewStyle } from 'react-native';
 import { useAnimatedScrollHandler } from 'react-native-reanimated';
-import {
-  GestureDetector,
-  type ComposedGesture,
-} from 'react-native-gesture-handler';
+import type { PanGesture } from 'react-native-gesture-handler';
 import ReorderableList, {
   reorderItems,
   useReorderableDrag,
@@ -44,10 +41,13 @@ export type SortableListProps<T> = {
   /** iOS: bounce at the bottom even when content fits, so the pull-to-reveal
    *  gesture is reachable on a short list. No-op on Android. */
   alwaysBounceVertical?: boolean;
-  /** Pull-to-reveal gesture (Android over-pull) — wraps the list when set. It
-   *  recognises simultaneously with the list's scroll AND its reorder drag, so
-   *  long-press-to-reorder is unaffected. */
-  gesture?: ComposedGesture;
+  /** Pull-to-reveal over-pull (Android) — `listPanGesture` from
+   *  usePullRevealFooter. The list adopts it as its own reorder pan, so the
+   *  over-pull shares the list's single native scroll handler. Never wrap this
+   *  list in a GestureDetector carrying a `Gesture.Native()`: that attaches a
+   *  second native handler to the same scroll view and Android stops scrolling
+   *  (defect workout-timer-20260912-1). */
+  panGesture?: PanGesture;
   /** onLayout for the list viewport; feeds at-bottom detection. */
   onScrollViewLayout?: (e: LayoutChangeEvent) => void;
   /** onContentSizeChange for the list; feeds at-bottom detection on short lists. */
@@ -67,7 +67,7 @@ export function SortableList<T>({
   moveDownLabel = 'Move down',
   onScroll,
   alwaysBounceVertical,
-  gesture,
+  panGesture,
   onScrollViewLayout,
   onContentSizeChange,
 }: SortableListProps<T>) {
@@ -102,7 +102,7 @@ export function SortableList<T>({
     [moveBy, renderItem, moveUpLabel, moveDownLabel]
   );
 
-  const list = (
+  return (
     <ReorderableList
       data={items}
       keyExtractor={keyExtractor}
@@ -117,11 +117,9 @@ export function SortableList<T>({
       overScrollMode={alwaysBounceVertical ? 'never' : 'auto'}
       onLayout={onScrollViewLayout}
       onContentSizeChange={onContentSizeChange}
+      panGesture={panGesture}
     />
   );
-  // Wrap in the pull-to-reveal gesture when wired (Android over-pull). It's
-  // simultaneous with the list's scroll + reorder drag, so neither is blocked.
-  return gesture ? <GestureDetector gesture={gesture}>{list}</GestureDetector> : list;
 }
 
 type SortableCellProps<T> = {

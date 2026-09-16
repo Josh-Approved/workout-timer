@@ -44,7 +44,7 @@ export default function TimerListScreen({ navigation }: Props) {
   const {
     pullToReveal,
     reveal,
-    gesture,
+    listPanGesture,
     onScroll,
     onScrollViewLayout,
     onContentSizeChange,
@@ -89,7 +89,7 @@ export default function TimerListScreen({ navigation }: Props) {
         contentContainerStyle={s.list}
         onScroll={pullToReveal ? onScroll : undefined}
         alwaysBounceVertical={pullToReveal}
-        gesture={gesture}
+        panGesture={listPanGesture}
         onScrollViewLayout={onScrollViewLayout}
         onContentSizeChange={onContentSizeChange}
         ListFooterComponent={
