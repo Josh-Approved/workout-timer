@@ -21,6 +21,7 @@ import {
 import { TIP_JAR_ENABLED } from '../constants/features';
 import { t } from '../i18n';
 import { Wordmark } from './Wordmark';
+import { MoreFromJA } from './MoreFromJA';
 import {
   useTheme,
   fontFamily,
@@ -138,6 +139,7 @@ export function AboutSection({ onSupport, onFeedback, onAcknowledgements }: Prop
           <Text style={s.versionValue} importantForAccessibility="no">{formatVersion()}</Text>
         </View>
       </View>
+      <MoreFromJA excludeSlug="workout-timer" />
 
       <View style={s.stamp}>
         <Wordmark />

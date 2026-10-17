@@ -253,12 +253,13 @@ export default function SettingsScreen({ navigation }: Props) {
               lives in the SoundStyleSheet, where every option fits full-width
               instead of a horizontally-clipped pill strip. */}
           {SOUND_EVENT_KEYS.map((eventKey) => (
-            <DrilldownRow
-              key={eventKey}
-              label={t(`settings.soundEvents.${eventKey}`)}
-              value={SOUND_STYLE_LABELS[sounds[eventKey]]}
-              onPress={() => setSoundSheetFor(eventKey)}
-            />
+            <View key={eventKey} style={s.drilldownRow}>
+              <DrilldownRow
+                label={t(`settings.soundEvents.${eventKey}`)}
+                value={SOUND_STYLE_LABELS[sounds[eventKey]]}
+                onPress={() => setSoundSheetFor(eventKey)}
+              />
+            </View>
           ))}
         </View>
 
@@ -329,6 +330,9 @@ function makeStyles(c: Colors) {
       marginTop: space.s3,
       paddingHorizontal: space.s1,
     },
+    // The canonical DrilldownRow carries no side padding of its own (the hub
+    // decides the inset), so each row gets the card's inner gutter here.
+    drilldownRow: { paddingHorizontal: space.s6 },
     card: {
       backgroundColor: c.bgElevated,
       borderRadius: radius.md,
