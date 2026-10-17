@@ -5,7 +5,7 @@ import * as ScreenOrientation from 'expo-screen-orientation';
 import { Check } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList, WorkoutPhase } from '../types';
-import { formatTime, formatDurationSpoken } from '../utils/workout';
+import { formatTime, formatDurationSpoken, FOR_TIME_OPEN_SECONDS } from '../utils/workout';
 import {
   backTargetIndex,
   elapsedSeconds as pbElapsedSeconds,
@@ -21,6 +21,8 @@ import {
 import { WorkoutControls } from '../components/WorkoutControls';
 import { WorkoutProgressBar } from '../components/WorkoutProgressBar';
 import { WorkoutInfoPanels } from '../components/WorkoutInfoPanels';
+import { RoundCounter } from '../components/RoundCounter';
+import { onSuccessMoment } from '../storage/reviewPrompt';
 import { t } from '../i18n';
 
 import {
@@ -51,6 +53,13 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     handleBack,
     handleSkip,
     handleStop,
+    handleFinish,
+    kind,
+    openEnded,
+    rounds,
+    countRound,
+    undoRound,
+    finalElapsed,
   } = useWorkoutPlayback(timerId, () => navigation.goBack());
 
   useEffect(() => {
@@ -63,6 +72,21 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
   const currentStep = steps[displayState.stepIndex] ?? null;
   const phase: WorkoutPhase =
     displayState.mode === 'complete' ? 'complete' : currentStep?.phase ?? 'exercise';
+  const isComplete = displayState.mode === 'complete';
+  // A finished workout is this app's success moment (canon § Review prompt):
+  // when an eligible session's review ask is being held, the shell presents it
+  // here — after the completion cue, never at launch. Fires once per completion
+  // (the mode only flips to 'complete' once); the call is a no-op otherwise.
+  useEffect(() => {
+    if (isComplete) onSuccessMoment();
+  }, [isComplete]);
+  // A named interval (custom sequence) is shown by its own name.
+  const phaseText =
+    !isComplete && currentStep?.label ? currentStep.label : phaseLabel(phase);
+  const isSequence = kind === 'sequence';
+  const withRounds = kind === 'amrap' || kind === 'for_time';
+  const countUp = !isComplete && currentStep?.countUp === true;
+  const isLastStep = displayState.stepIndex >= steps.length - 1;
 
   const totalSetsInCycle = currentStep != null ? getTotalSets(steps, currentStep) : 0;
 
@@ -70,25 +94,53 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     ? `${currentStep.setNumber} / ${totalSetsInCycle}`
     : '—';
   const setA11yLabel = currentStep?.setNumber != null
-    ? t('workout.setA11y', { current: currentStep.setNumber, total: totalSetsInCycle })
+    ? t(isSequence ? 'workout.intervalA11y' : 'workout.setA11y', { current: currentStep.setNumber, total: totalSetsInCycle })
     : t('workout.setA11yNone');
 
   const cycleDisplay = maxCycles > 0
     ? `${currentStep?.cycleNumber ?? '—'} / ${maxCycles}`
     : '1 / 1';
   const cycleA11yLabel = maxCycles > 1 && currentStep?.cycleNumber != null
-    ? t('workout.cycleA11y', { current: currentStep.cycleNumber, total: maxCycles })
-    : t('workout.cycleA11yDefault');
+    ? t(isSequence ? 'workout.roundA11y' : 'workout.cycleA11y', { current: currentStep.cycleNumber, total: maxCycles })
+    : isSequence
+      ? t('workout.roundA11y', { current: 1, total: 1 })
+      : t('workout.cycleA11yDefault');
 
-  const timerA11yLabel = displayState.mode === 'complete'
+  // Count-up (For Time): the big number is time elapsed in the block.
+  const stepElapsed = currentStep ? currentStep.duration - displayState.timeRemaining : 0;
+  const bigTime = countUp ? stepElapsed : displayState.timeRemaining;
+  const timerA11yLabel = isComplete
     ? t('workout.complete')
-    : t('workout.remainingA11y', { time: formatDurationSpoken(displayState.timeRemaining) });
+    : countUp
+      ? t('workout.elapsedA11y', { time: formatDurationSpoken(stepElapsed) })
+      : t('workout.remainingA11y', { time: formatDurationSpoken(displayState.timeRemaining) });
 
   const elapsedSeconds = pbElapsedSeconds(steps, displayState);
   const progressFraction = pbProgressFraction(totalDuration, elapsedSeconds);
 
   const totalRemaining = pbTotalRemaining(totalDuration, elapsedSeconds);
   const totalA11yLabel = t('workout.totalRemainingA11y', { time: formatDurationSpoken(totalRemaining) });
+  // For Time with a cap shows the cap under the clock; without one, "No cap".
+  const capSeconds = kind === 'for_time' && currentStep?.countUp ? currentStep.duration : 0;
+  const capText = openEnded
+    ? t('workout.noCap')
+    : capSeconds > 0 && capSeconds < FOR_TIME_OPEN_SECONDS
+      ? `${t('workout.timeCap')} · ${formatTime(capSeconds)}`
+      : '';
+  const capA11y = openEnded
+    ? t('workout.noCapA11y')
+    : t('workout.timeCapA11y', { time: formatDurationSpoken(capSeconds) });
+  // The final readout for a count-up workout: the time it was finished at.
+  const finalTime = isComplete && kind === 'for_time' && finalElapsed != null ? finalElapsed : null;
+  // The clock is one merged accessibility element, so the cap line and the
+  // final time are folded into its spoken label rather than lost beneath it.
+  const clockA11yLabel = [
+    timerA11yLabel,
+    !isComplete && kind === 'for_time' && capText ? capA11y : null,
+    finalTime != null ? t('workout.yourTimeA11y', { time: formatDurationSpoken(finalTime) }) : null,
+  ]
+    .filter(Boolean)
+    .join('. ');
 
   // Label tracks what the back control will actually do right now, so VoiceOver
   // announces "Previous interval" only while it would step back.
@@ -104,11 +156,11 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     <View
       style={s.timerContainer}
       accessible
-      accessibilityLabel={timerA11yLabel}
+      accessibilityLabel={clockA11yLabel}
       accessibilityRole="text"
       accessibilityLiveRegion="none"
     >
-      {displayState.mode === 'complete' ? (
+      {isComplete ? (
         <View style={s.completeRow} importantForAccessibility="no">
           <Check size={isLandscape ? 56 : 44} color={c.accent} strokeWidth={2} />
           <Text style={s.completeText}>{t('common.done')}</Text>
@@ -120,11 +172,44 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
           adjustsFontSizeToFit
           numberOfLines={1}
         >
-          {formatTime(displayState.timeRemaining)}
+          {formatTime(bigTime)}
         </Text>
       )}
+      {!isComplete && kind === 'for_time' && capText ? (
+        <Text style={s.capText} importantForAccessibility="no">{capText}</Text>
+      ) : null}
+      {finalTime != null ? (
+        <Text style={s.capText} importantForAccessibility="no">
+          {t('workout.yourTime')} · {formatTime(finalTime)}
+        </Text>
+      ) : null}
     </View>
   );
+
+  // The readout under the clock: set/cycle panels for interval timers and
+  // sequences, the tap-to-count round counter for AMRAP / For Time.
+  const readout = (layout: 'portrait' | 'landscape') =>
+    withRounds ? (
+      <RoundCounter
+        rounds={rounds}
+        isLandscape={layout === 'landscape'}
+        complete={isComplete}
+        onCount={countRound}
+        onUndo={undoRound}
+      />
+    ) : (
+      <WorkoutInfoPanels
+        layout={layout}
+        setLabel={isSequence ? t('workout.interval') : undefined}
+        cycleLabel={isSequence ? t('workout.round') : undefined}
+        setDisplay={setDisplay}
+        setA11yLabel={setA11yLabel}
+        cycleDisplay={cycleDisplay}
+        cycleA11yLabel={cycleA11yLabel}
+        totalDisplay={formatTime(totalRemaining)}
+        totalA11yLabel={totalA11yLabel}
+      />
+    );
 
   const controls = (
     <WorkoutControls
@@ -135,12 +220,16 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       onBack={handleBack}
       onStop={handleStop}
       onTogglePause={togglePause}
-      onSkip={handleSkip}
+      onSkip={withRounds && isLastStep ? handleFinish : handleSkip}
       onDone={() => navigation.goBack()}
+      skipFinishes={withRounds && isLastStep}
     />
   );
 
-  const progressBar = (
+  // An uncapped For Time has no whole to make progress against.
+  const progressBar = openEnded ? (
+    <View style={s.progressSpacer} />
+  ) : (
     <WorkoutProgressBar
       steps={steps}
       displayState={displayState}
@@ -165,26 +254,18 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
             <View
               style={s.phaseRow}
               accessible
-              accessibilityLabel={phaseLabel(phase)}
+              accessibilityLabel={phaseText}
               accessibilityRole="text"
             >
-              <Text style={s.phaseLabel} importantForAccessibility="no">
-                {phaseLabel(phase)}
+              <Text style={s.phaseLabel} importantForAccessibility="no" numberOfLines={2}>
+                {phaseText}
               </Text>
             </View>
             {timerDisplay}
           </View>
 
           <View style={s.rightCol}>
-            <WorkoutInfoPanels
-              layout="landscape"
-              setDisplay={setDisplay}
-              setA11yLabel={setA11yLabel}
-              cycleDisplay={cycleDisplay}
-              cycleA11yLabel={cycleA11yLabel}
-              totalDisplay={formatTime(totalRemaining)}
-              totalA11yLabel={totalA11yLabel}
-            />
+            {readout('landscape')}
             {controls}
           </View>
         </View>
@@ -199,25 +280,17 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       <View
         style={s.phaseRow}
         accessible
-        accessibilityLabel={phaseLabel(phase)}
+        accessibilityLabel={phaseText}
         accessibilityRole="text"
       >
-        <Text style={s.phaseLabel} importantForAccessibility="no">
-          {phaseLabel(phase)}
+        <Text style={s.phaseLabel} importantForAccessibility="no" numberOfLines={2}>
+          {phaseText}
         </Text>
       </View>
 
       {timerDisplay}
 
-      <WorkoutInfoPanels
-        layout="portrait"
-        setDisplay={setDisplay}
-        setA11yLabel={setA11yLabel}
-        cycleDisplay={cycleDisplay}
-        cycleA11yLabel={cycleA11yLabel}
-        totalDisplay={formatTime(totalRemaining)}
-        totalA11yLabel={totalA11yLabel}
-      />
+      {readout('portrait')}
 
       {progressBar}
 
@@ -252,6 +325,20 @@ function makeStyles(c: Colors, isLandscape: boolean) {
       fontFamily: fontFamily.sansSemibold,
       color: c.fg,
       letterSpacing: tracking.tight,
+      textAlign: 'center',
+      paddingHorizontal: space.s6,
+    },
+    capText: {
+      ...ts.sm,
+      fontFamily: fontFamily.mono,
+      color: c.fgMuted,
+      fontVariant: ['tabular-nums'],
+      marginTop: space.s2,
+    },
+    progressSpacer: {
+      alignSelf: 'stretch',
+      height: 14,
+      marginBottom: isLandscape ? space.s4 : space.s6,
     },
     timerContainer: {
       alignItems: 'center',

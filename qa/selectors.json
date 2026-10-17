@@ -75,6 +75,14 @@
     "edit-climbing": {
       "text": "Climbing Hangboard, edit",
       "note": "edit button on the seeded climbing timer (fixtures qa-hangboard) — sources the store climbing screenshot slot. Name-first for the same reason as @edit-tabata (was 'Edit Climbing Hangboard')"
+    },
+    "edit-sequence": {
+      "text": "Kettlebell Circuit, edit",
+      "note": "edit button on the seeded custom-sequence timer (fixtures qa-sequence, 2026-10-17) — opens the sequence editor with its named interval list. Name-first like @edit-tabata."
+    },
+    "sequence-interval": {
+      "text": "Goblet squats, edit",
+      "note": "a named interval row inside the sequence editor (fixtures qa-sequence) — proves the editor rendered the interval list, not the classic sliders"
     }
   }
 }

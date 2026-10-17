@@ -21,6 +21,9 @@ public struct LiveTimerAttributes: ActivityAttributes {
         public var label: String
         public var start: Date
         public var end: Date
+        // A stopwatch phase: the widget counts up from `start` instead of
+        // down to `end`. Optional in the payload so older states decode.
+        public var countsUp: Bool?
     }
 
     public var appName: String

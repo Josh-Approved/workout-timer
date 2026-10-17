@@ -65,4 +65,48 @@ export const QA_TIMERS: TimerConfig[] = [
     createdAt: T0,
     updatedAt: T0,
   },
+  // A custom sequence, so the list and sequence-editor captures show named
+  // intervals (the 2026-10-17 competitive-review gap). Kept last so the
+  // anchored Standard Tabata / Climbing Hangboard positions don't move.
+  {
+    id: 'qa-sequence',
+    name: 'Kettlebell Circuit',
+    kind: 'sequence',
+    initialCountdown: 10,
+    warmUp: 30,
+    exercise: 0,
+    rest: 0,
+    sets: 1,
+    recovery: 0,
+    cycles: 1,
+    coolDown: 60,
+    repeats: 3,
+    intervals: [
+      { id: 'qa-seq-swings', name: 'Swings', duration: 30, kind: 'work' },
+      { id: 'qa-seq-rest-1', name: 'Rest', duration: 15, kind: 'rest' },
+      { id: 'qa-seq-goblet', name: 'Goblet squats', duration: 30, kind: 'work' },
+      { id: 'qa-seq-rest-2', name: 'Rest', duration: 15, kind: 'rest' },
+      { id: 'qa-seq-carry', name: 'Farmer carry', duration: 45, kind: 'work' },
+      { id: 'qa-seq-rest-3', name: 'Rest', duration: 45, kind: 'rest' },
+    ],
+    createdAt: T0,
+    updatedAt: T0,
+  },
+  // AMRAP: a 12-minute block with the round counter.
+  {
+    id: 'qa-amrap',
+    name: '12 Minute AMRAP',
+    kind: 'amrap',
+    initialCountdown: 10,
+    warmUp: 0,
+    exercise: 0,
+    rest: 0,
+    sets: 1,
+    recovery: 0,
+    cycles: 1,
+    coolDown: 0,
+    timeCap: 720,
+    createdAt: T0,
+    updatedAt: T0,
+  },
 ];

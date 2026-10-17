@@ -12,9 +12,9 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { Alert } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
-import { PhaseStep, SoundSettings, WorkoutPhase } from '../types';
+import { PhaseStep, SoundSettings, WorkoutPhase, TimerKind, timerKind } from '../types';
 import { loadTimers, loadSettings } from '../storage/storage';
-import { buildWorkoutSequence, getTotalDuration } from '../utils/workout';
+import { buildWorkoutSequence, getTotalDuration, isOpenEnded } from '../utils/workout';
 import {
   type PlaybackState,
   initialPlayback,
@@ -29,6 +29,7 @@ import {
   playComplete,
   getMaxCycles,
   speakAndReactivate,
+  fireRoundCounted,
 } from '../audio/workoutCues';
 import { t } from '../i18n';
 import {
@@ -62,6 +63,13 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
   const halfwayFiredRef = useRef(false);
   const sessionIdRef = useRef<string>(`fwt-${Date.now()}`);
   const timerNameRef = useRef<string>('Workout');
+  const kindRef = useRef<TimerKind>('intervals');
+  const openEndedRef = useRef(false);
+  // The round counter (AMRAP / For Time) and the time a count-up workout was
+  // finished at — both survive into the complete state for the final readout.
+  const roundsRef = useRef(0);
+  const [rounds, setRounds] = useState(0);
+  const finalElapsedRef = useRef<number | null>(null);
 
   const stateRef = useRef<DisplayState>({ mode: 'phase', stepIndex: 0, timeRemaining: 0 });
   const [displayState, setDisplayState] = useState<DisplayState>(stateRef.current);
@@ -89,6 +97,8 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
       maxCyclesRef.current = getMaxCycles(steps);
       speechModeRef.current = settings.audioAccessibilityMode;
       timerNameRef.current = timer.name || 'Workout';
+      kindRef.current = timerKind(timer);
+      openEndedRef.current = isOpenEnded(timer);
 
       if (steps.length === 0) return;
 
@@ -150,13 +160,7 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
     }
 
     if (event === 'complete') {
-      playComplete(sounds, speechModeRef.current);
-      stateRef.current = next;
-      setDisplayState(next);
-      stopInterval();
-      isRunningRef.current = false;
-      setIsRunning(false);
-      endLiveTimer(sessionIdRef.current).catch(() => {});
+      finishWorkout(next, s);
       return;
     }
 
@@ -174,6 +178,23 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
     // updateLiveTimer for explicit user actions (skip / restart /
     // pause / resume).
   }, []);
+
+  /**
+   * Land in the complete state from position `from`. For a count-up step the
+   * elapsed time at that moment is kept as the final time (reaching the cap
+   * counts the whole cap).
+   */
+  const finishWorkout = (next: DisplayState, from: DisplayState) => {
+    const cur = stepsRef.current[from.stepIndex];
+    if (cur?.countUp) finalElapsedRef.current = cur.duration - from.timeRemaining;
+    playComplete(soundsRef.current!, speechModeRef.current);
+    stateRef.current = next;
+    setDisplayState(next);
+    stopInterval();
+    isRunningRef.current = false;
+    setIsRunning(false);
+    endLiveTimer(sessionIdRef.current).catch(() => {});
+  };
 
   const startInterval = useCallback(() => {
     if (intervalRef.current) return;
@@ -214,12 +235,19 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
       const s = stateRef.current;
       const steps = stepsRef.current;
       const remaining = s.timeRemaining;
-      if (steps[s.stepIndex] && remaining > 0) {
+      const cur = steps[s.stepIndex];
+      if (cur && remaining > 0) {
+        // A count-up step resumes by back-dating its start so the stopwatch
+        // on the Lock Screen / notification continues from the paused time;
+        // a countdown resumes by shortening the active phase to what's left.
+        const elapsed = cur.duration - remaining;
         startLiveTimer({
           sessionId: sessionIdRef.current,
           title: timerNameRef.current,
-          phases: phasesFrom(steps, s.stepIndex, remaining),
-          phaseStartMs: Date.now(),
+          phases: cur.countUp
+            ? phasesFrom(steps, s.stepIndex)
+            : phasesFrom(steps, s.stepIndex, remaining),
+          phaseStartMs: cur.countUp ? Date.now() - elapsed * 1000 : Date.now(),
           actions: ['pause', 'skip'],
         }).catch(() => {});
       }
@@ -263,17 +291,50 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
     const { next, event } = skipPlayback(steps, s);
 
     if (event === 'complete') {
-      playComplete(soundsRef.current!, speechModeRef.current);
-      stateRef.current = next;
-      setDisplayState(next);
-      stopInterval();
-      isRunningRef.current = false;
-      setIsRunning(false);
-      endLiveTimer(sessionIdRef.current).catch(() => {});
+      finishWorkout(next, s);
       return;
     }
 
     goToStep(next.stepIndex);
+  };
+
+  /**
+   * Finish an AMRAP / For Time early (or stop the For Time clock). Asks first,
+   * because one stray tap would end a timed effort with no way back — but the
+   * state captured is the moment of the tap, so the recorded time is the
+   * athlete's, not the dialog's.
+   */
+  const handleFinish = () => {
+    if (displayState.mode === 'complete') return;
+    const at = stateRef.current;
+    const steps = stepsRef.current;
+    Alert.alert(t('workout.finish'), t('workout.finishBody'), [
+      { text: t('workout.keepGoing'), style: 'cancel' },
+      {
+        text: t('workout.finishShort'),
+        onPress: () => {
+          if (stateRef.current.mode === 'complete') return;
+          const next = { mode: 'complete' as const, stepIndex: steps.length - 1, timeRemaining: 0 };
+          finishWorkout(next, at);
+        },
+      },
+    ]);
+  };
+
+  // The round counter (AMRAP / For Time). A tap is the one eyes-free action
+  // in those modes, so it clicks and buzzes; undo is quieter.
+  const countRound = () => {
+    if (displayState.mode === 'complete') return;
+    roundsRef.current += 1;
+    setRounds(roundsRef.current);
+    fireRoundCounted(roundsRef.current, speechModeRef.current);
+  };
+
+  const undoRound = () => {
+    if (displayState.mode === 'complete' || roundsRef.current === 0) return;
+    roundsRef.current -= 1;
+    setRounds(roundsRef.current);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
   };
 
   const handleStop = () => {
@@ -312,6 +373,13 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
     handleBack,
     handleSkip,
     handleStop,
+    handleFinish,
+    kind: kindRef.current,
+    openEnded: openEndedRef.current,
+    rounds,
+    countRound,
+    undoRound,
+    finalElapsed: finalElapsedRef.current,
   };
 }
 
@@ -329,11 +397,13 @@ function phasesFrom(
   for (let i = idx; i < steps.length; i++) {
     out.push({
       id: `step-${i}`,
-      label: phaseLabel(steps[i].phase),
+      // A named interval shows its own name on the Lock Screen / notification.
+      label: steps[i].label ?? phaseLabel(steps[i].phase),
       durationSeconds:
         i === idx && activeOverrideSeconds != null
           ? activeOverrideSeconds
           : steps[i].duration,
+      ...(steps[i].countUp ? { countsUp: true } : {}),
     });
   }
   return out;

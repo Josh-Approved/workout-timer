@@ -1,5 +1,5 @@
 {
-  "$comment": "FWT screenshot traversal, copy-free. Source of truth for qa/flows/mobile.yaml (GENERATED — run scripts/qa/compile-flow.mjs). Screenshot names match qa/screenshots.config.json sources (active→core slot, editor, list). Mirrors the proven hand-written flow. NOTE: returning from the climbing editor leaves the list scrolled DOWN (scroll position is restored, as a user expects), so the first timer's start control can sit above the fold on a phone at large text — scroll back UP before tapping it. Without that step the iPhone f1.3 cells failed: on the SE the control was off-tree (tap not found), on the 6.9\" its bounds were partly above the screen (y=-57) and Maestro tapped the status bar instead.",
+  "$comment": "FWT screenshot traversal, copy-free. Source of truth for qa/flows/mobile.yaml (GENERATED — run scripts/qa/compile-flow.mjs). Screenshot names match qa/screenshots.config.json sources (active→core slot, editor, list). Mirrors the proven hand-written flow. NOTE: returning from the climbing editor leaves the list scrolled DOWN (scroll position is restored, as a user expects), so the first timer's start control can sit above the fold on a phone at large text — scroll back UP before tapping it. Without that step the iPhone f1.3 cells failed: on the SE the control was off-tree (tap not found), on the 6.9\" its bounds were partly above the screen (y=-57) and Maestro tapped the status bar instead. 2026-10-17: after the climbing editor, the flow opens the seeded custom sequence (Kettlebell Circuit) and asserts a named interval row before capturing sequence-editor.",
   "appId": "com.joshapproved.freeworkouttimer",
   "clearState": true,
   "diagnosticLaunchShot": true,
@@ -41,6 +41,25 @@
     },
     {
       "screenshot": "climbing-editor"
+    },
+    {
+      "tap": "@back"
+    },
+    {
+      "scrollUntilVisible": "@edit-sequence"
+    },
+    {
+      "tap": "@edit-sequence"
+    },
+    {
+      "waitFor": "@save-timer",
+      "timeout": 10000
+    },
+    {
+      "assert": "@sequence-interval"
+    },
+    {
+      "screenshot": "sequence-editor"
     },
     {
       "tap": "@back"

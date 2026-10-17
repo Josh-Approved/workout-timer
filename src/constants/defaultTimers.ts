@@ -2,6 +2,17 @@ import { TimerConfig, AppSettings, SoundSettings } from '../types';
 
 const now = Date.now();
 
+/** Blank fields shared by the non-interval kinds (sequence / AMRAP / For Time). */
+const NO_INTERVAL_FIELDS = {
+  warmUp: 0,
+  exercise: 0,
+  rest: 0,
+  sets: 1,
+  recovery: 0,
+  cycles: 1,
+  coolDown: 0,
+};
+
 export const DEFAULT_TIMERS: TimerConfig[] = [
   {
     id: 'default_tabata',
@@ -56,6 +67,29 @@ export const DEFAULT_TIMERS: TimerConfig[] = [
     recovery: 60,
     cycles: 3,
     coolDown: 120,
+    createdAt: now,
+    updatedAt: now,
+  },
+  // One custom-sequence template, so the shape is discoverable from the list
+  // without reading a help screen: a bodyweight circuit with named intervals,
+  // played twice.
+  {
+    id: 'default_sequence_circuit',
+    name: 'Bodyweight Circuit',
+    kind: 'sequence',
+    initialCountdown: 15,
+    ...NO_INTERVAL_FIELDS,
+    warmUp: 60,
+    coolDown: 60,
+    repeats: 2,
+    intervals: [
+      { id: 'seq_squats', name: 'Squats', duration: 40, kind: 'work' },
+      { id: 'seq_rest_1', name: 'Rest', duration: 20, kind: 'rest' },
+      { id: 'seq_pushups', name: 'Push-ups', duration: 40, kind: 'work' },
+      { id: 'seq_rest_2', name: 'Rest', duration: 20, kind: 'rest' },
+      { id: 'seq_plank', name: 'Plank', duration: 40, kind: 'work' },
+      { id: 'seq_rest_3', name: 'Rest', duration: 60, kind: 'rest' },
+    ],
     createdAt: now,
     updatedAt: now,
   },

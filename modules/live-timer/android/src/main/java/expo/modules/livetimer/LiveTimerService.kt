@@ -122,13 +122,15 @@ class LiveTimerService : Service() {
             .setOnlyAlertOnce(true)
             .setShowWhen(true)
             .setUsesChronometer(true)
-            .setChronometerCountDown(true)
+            // A stopwatch phase (For Time) counts up from its start; every
+            // other phase counts down to its end.
+            .setChronometerCountDown(!session.activePhase.countsUp)
             // Chronometer base must be a wall-clock timestamp: the framework
             // converts `when` (System.currentTimeMillis timebase) into the
             // Chronometer's elapsedRealtime base itself. phaseEndMs is already
             // wall-clock, so pass it directly — feeding an elapsedRealtime value
             // here double-applies the offset and shows a garbage countdown.
-            .setWhen(session.phaseEndMs)
+            .setWhen(if (session.activePhase.countsUp) session.phaseStartMs else session.phaseEndMs)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setCategory(NotificationCompat.CATEGORY_STOPWATCH)

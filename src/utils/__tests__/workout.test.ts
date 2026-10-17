@@ -341,3 +341,183 @@ describe('generateId — unique local id', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Custom sequences, AMRAP and For Time (added 2026-10-17). The three new
+// shapes share the engine with the interval timer, so what they expand to is
+// the whole contract: the exact step list, its labels, and its total.
+// ---------------------------------------------------------------------------
+
+import {
+  FOR_TIME_OPEN_SECONDS,
+  isOpenEnded,
+  hasRoundCounter,
+  newSequenceInterval,
+} from '../workout';
+import type { SequenceInterval } from '../../types';
+
+function sequenceTimer(
+  intervals: SequenceInterval[],
+  p: Partial<TimerConfig> = {},
+): TimerConfig {
+  return timer({ kind: 'sequence', exercise: 0, sets: 1, cycles: 1, intervals, repeats: 1, ...p });
+}
+
+const iv = (name: string, duration: number, kind: 'work' | 'rest' = 'work'): SequenceInterval => ({
+  id: `iv-${name}-${duration}`,
+  name,
+  duration,
+  kind,
+});
+
+describe('buildWorkoutSequence — custom sequence expansion', () => {
+  it('plays the list in order, one step per interval, named and kinded', () => {
+    const steps = buildWorkoutSequence(
+      sequenceTimer([iv('Push-ups', 30), iv('Rest', 15, 'rest'), iv('Squats', 45)]),
+    );
+    expect(steps).toEqual([
+      { phase: 'exercise', duration: 30, setNumber: 1, cycleNumber: 1, inSequence: true, label: 'Push-ups' },
+      { phase: 'rest', duration: 15, setNumber: 2, cycleNumber: 1, inSequence: true, label: 'Rest' },
+      { phase: 'exercise', duration: 45, setNumber: 3, cycleNumber: 1, inSequence: true, label: 'Squats' },
+    ]);
+  });
+
+  it('repeats the whole list `repeats` times, numbering each round', () => {
+    const steps = buildWorkoutSequence(
+      sequenceTimer([iv('A', 10), iv('B', 5, 'rest')], { repeats: 3 }),
+    );
+    expect(steps.map((s) => [s.label, s.cycleNumber, s.setNumber])).toEqual([
+      ['A', 1, 1], ['B', 1, 2],
+      ['A', 2, 1], ['B', 2, 2],
+      ['A', 3, 1], ['B', 3, 2],
+    ]);
+    // A trailing rest the user built is played — nothing is dropped.
+    expect(steps[steps.length - 1].phase).toBe('rest');
+  });
+
+  it('frames the list with countdown, warm-up and cool-down when set', () => {
+    const steps = buildWorkoutSequence(
+      sequenceTimer([iv('A', 10)], { initialCountdown: 5, warmUp: 20, coolDown: 30, repeats: 2 }),
+    );
+    expect(phases(steps)).toEqual(['initial_countdown', 'warm_up', 'exercise', 'exercise', 'cool_down']);
+    // Framing phases are not part of the list: no label, no position.
+    expect(steps[0].label).toBeUndefined();
+    expect(steps[0].setNumber).toBeUndefined();
+  });
+
+  it('skips zero-length intervals and keeps numbering contiguous', () => {
+    const steps = buildWorkoutSequence(sequenceTimer([iv('A', 10), iv('Gone', 0), iv('C', 10)]));
+    expect(steps.map((s) => [s.label, s.setNumber])).toEqual([['A', 1], ['C', 2]]);
+  });
+
+  it('leaves an unnamed interval unlabelled so the phase word shows instead', () => {
+    const steps = buildWorkoutSequence(sequenceTimer([iv('   ', 10, 'rest')]));
+    expect(steps[0].phase).toBe('rest');
+    expect(steps[0].label).toBeUndefined();
+  });
+
+  it('an empty list (or repeats < 1) yields only the framing phases', () => {
+    expect(buildWorkoutSequence(sequenceTimer([], { coolDown: 30 })).map((s) => s.phase)).toEqual(['cool_down']);
+    expect(buildWorkoutSequence(sequenceTimer([iv('A', 10)], { repeats: 0 }))).toHaveLength(1);
+  });
+
+  it('totals the played list', () => {
+    const t = sequenceTimer([iv('A', 30), iv('B', 15, 'rest')], { repeats: 2, warmUp: 10 });
+    expect(getTotalDuration(t)).toBe(10 + 2 * (30 + 15));
+  });
+});
+
+describe('buildWorkoutSequence — AMRAP', () => {
+  it('is the countdown then one AMRAP block of the time cap', () => {
+    const steps = buildWorkoutSequence(timer({ kind: 'amrap', initialCountdown: 10, timeCap: 600 }));
+    expect(steps).toEqual([
+      { phase: 'initial_countdown', duration: 10 },
+      { phase: 'amrap', duration: 600 },
+    ]);
+    expect(getTotalDuration(timer({ kind: 'amrap', timeCap: 600 }))).toBe(600);
+  });
+
+  it('ignores the interval fields entirely', () => {
+    const steps = buildWorkoutSequence(
+      timer({ kind: 'amrap', timeCap: 300, exercise: 20, rest: 10, sets: 8, cycles: 4, warmUp: 60, coolDown: 60 }),
+    );
+    expect(phases(steps)).toEqual(['amrap']);
+  });
+
+  it('produces no block without a cap (the editor refuses to save one)', () => {
+    expect(buildWorkoutSequence(timer({ kind: 'amrap', timeCap: 0 }))).toEqual([]);
+  });
+});
+
+describe('buildWorkoutSequence — For Time', () => {
+  it('is one count-up block to the cap when a cap is set', () => {
+    const steps = buildWorkoutSequence(timer({ kind: 'for_time', timeCap: 900, initialCountdown: 0 }));
+    expect(steps).toEqual([{ phase: 'for_time', duration: 900, countUp: true }]);
+    expect(isOpenEnded(timer({ kind: 'for_time', timeCap: 900 }))).toBe(false);
+  });
+
+  it('is an open-ended count-up block without a cap', () => {
+    const t = timer({ kind: 'for_time', timeCap: 0, initialCountdown: 5 });
+    const steps = buildWorkoutSequence(t);
+    expect(phases(steps)).toEqual(['initial_countdown', 'for_time']);
+    expect(steps[1]).toEqual({ phase: 'for_time', duration: FOR_TIME_OPEN_SECONDS, countUp: true });
+    expect(isOpenEnded(t)).toBe(true);
+    expect(isOpenEnded(timer({ kind: 'for_time' }))).toBe(true);
+  });
+
+  it('only AMRAP and For Time carry the round counter', () => {
+    expect(hasRoundCounter({ kind: 'amrap' })).toBe(true);
+    expect(hasRoundCounter({ kind: 'for_time' })).toBe(true);
+    expect(hasRoundCounter({ kind: 'sequence' })).toBe(false);
+    expect(hasRoundCounter({})).toBe(false);
+  });
+});
+
+describe('legacy timers (no kind) still build the interval shape', () => {
+  it('treats a missing kind as intervals', () => {
+    const legacy = timer({ exercise: 20, rest: 10, sets: 2 });
+    delete (legacy as Partial<TimerConfig>).kind;
+    expect(phases(buildWorkoutSequence(legacy))).toEqual(['exercise', 'rest', 'exercise']);
+  });
+});
+
+describe('buildPhaseAnnouncement — named intervals and the new modes', () => {
+  it('speaks a named interval by its name, with its round when the list repeats', () => {
+    const step: PhaseStep = { phase: 'exercise', duration: 30, setNumber: 2, cycleNumber: 1, inSequence: true, label: 'Push-ups' };
+    expect(buildPhaseAnnouncement(step, 3, 1)).toBe('Push-ups, 30 seconds');
+    expect(buildPhaseAnnouncement(step, 3, 2)).toBe('Push-ups, round 1 of 2, 30 seconds');
+  });
+
+  it('a named rest is spoken by its name too, never as "Rest, set n"', () => {
+    const step: PhaseStep = { phase: 'rest', duration: 15, setNumber: 2, cycleNumber: 1, inSequence: true, label: 'Shake out' };
+    expect(buildPhaseAnnouncement(step, 3, 1)).toBe('Shake out, 15 seconds');
+  });
+
+  it('announces AMRAP with its cap and For Time with or without one', () => {
+    expect(buildPhaseAnnouncement({ phase: 'amrap', duration: 600 }, 0, 1)).toBe('AMRAP, 10 minutes');
+    expect(buildPhaseAnnouncement({ phase: 'for_time', duration: 900, countUp: true }, 0, 1)).toBe('For time, 15 minutes cap');
+    expect(buildPhaseAnnouncement({ phase: 'for_time', duration: FOR_TIME_OPEN_SECONDS, countUp: true }, 0, 1)).toBe('For time');
+  });
+});
+
+describe('getTimerSummary — the new kinds', () => {
+  it('summarizes a sequence by its interval count and rounds', () => {
+    expect(getTimerSummary(sequenceTimer([iv('A', 10), iv('B', 10)]))).toBe('2 intervals');
+    expect(getTimerSummary(sequenceTimer([iv('A', 10)], { repeats: 3 }))).toBe('1 interval · 3 rounds');
+  });
+
+  it('summarizes AMRAP and For Time by their cap', () => {
+    expect(getTimerSummary(timer({ kind: 'amrap', timeCap: 720 }))).toBe('AMRAP · 12 min');
+    expect(getTimerSummary(timer({ kind: 'for_time', timeCap: 1200 }))).toBe('For time · 20 min cap');
+    expect(getTimerSummary(timer({ kind: 'for_time', timeCap: 0 }))).toBe('For time · no cap');
+  });
+});
+
+describe('newSequenceInterval', () => {
+  it('mints a fresh id per interval', () => {
+    const a = newSequenceInterval('Work', 30, 'work');
+    const b = newSequenceInterval('Work', 30, 'work');
+    expect(a.id).not.toBe(b.id);
+    expect(a).toMatchObject({ name: 'Work', duration: 30, kind: 'work' });
+  });
+});

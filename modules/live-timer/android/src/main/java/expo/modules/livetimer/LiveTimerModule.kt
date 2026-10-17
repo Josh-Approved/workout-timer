@@ -86,6 +86,7 @@ class LiveTimerModule : Module() {
                 id = p["id"] as? String ?: "",
                 label = p["label"] as? String ?: "",
                 durationSeconds = (p["durationSeconds"] as? Number)?.toLong() ?: 0L,
+                countsUp = (p["countsUp"] as? Boolean) ?: false,
             )
         }
         if (phases.isEmpty()) return null
@@ -102,6 +103,7 @@ class LiveTimerModule : Module() {
                     id = p["id"] as? String ?: "",
                     label = p["label"] as? String ?: "",
                     durationSeconds = (p["durationSeconds"] as? Number)?.toLong() ?: 0L,
+                    countsUp = (p["countsUp"] as? Boolean) ?: false,
                 )
             }
         } ?: current.phases

@@ -4,6 +4,7 @@ import { DEFAULT_TIMERS, DEFAULT_SETTINGS } from '../constants/defaultTimers';
 import { QA_MODE } from '../qa/qaMode';
 import { QA_TIMERS } from '../qa/fixtures';
 import { logEvent, logError } from '../feedback/log';
+import { migrateTimersPayload, packTimers, TIMERS_VERSION } from './timersMigration';
 
 const TIMERS_KEY = '@fwt/timers';
 const SETTINGS_KEY = '@fwt/settings';
@@ -15,9 +16,19 @@ export async function loadTimers(): Promise<TimerConfig[]> {
   try {
     const json = await AsyncStorage.getItem(TIMERS_KEY);
     if (json) {
-      const timers = JSON.parse(json) as TimerConfig[];
-      logEvent('timers', 'loaded', { count: Array.isArray(timers) ? timers.length : 0 });
-      return timers;
+      const { timers, from, changed } = migrateTimersPayload(JSON.parse(json));
+      if (from != null) {
+        if (changed) {
+          // The one place a user's timers change shape. Logged so "my timers
+          // look different after the update" has a trail.
+          logEvent('timers', 'migrated stored payload', { from, to: TIMERS_VERSION, count: timers.length });
+          await saveTimers(timers);
+        }
+        logEvent('timers', 'loaded', { count: timers.length });
+        return timers;
+      }
+      logError('timers', new Error('unrecognized timers payload'), { during: 'load', fellBackTo: 'defaults' });
+      return initialTimers();
     }
     const seeds = initialTimers();
     logEvent('timers', 'seeded defaults (nothing stored yet)', { count: seeds.length });
@@ -33,7 +44,7 @@ export async function loadTimers(): Promise<TimerConfig[]> {
 }
 
 export async function saveTimers(timers: TimerConfig[]): Promise<void> {
-  await AsyncStorage.setItem(TIMERS_KEY, JSON.stringify(timers));
+  await AsyncStorage.setItem(TIMERS_KEY, JSON.stringify(packTimers(timers)));
 }
 
 export async function saveTimer(timer: TimerConfig): Promise<TimerConfig[]> {
@@ -53,6 +64,45 @@ export async function deleteTimer(id: string): Promise<TimerConfig[]> {
   const updated = timers.filter((t) => t.id !== id);
   await saveTimers(updated);
   return updated;
+}
+
+/**
+ * Copy a saved timer. The copy gets `newId`, `newName`, fresh timestamps and
+ * its own interval ids, and lands directly under the original in the list.
+ * Returns the copy, or null when the source no longer exists.
+ */
+export async function duplicateTimer(
+  id: string,
+  newId: string,
+  newName: string,
+  intervalId: () => string,
+): Promise<TimerConfig | null> {
+  const timers = await loadTimers();
+  const idx = timers.findIndex((t) => t.id === id);
+  if (idx < 0) return null;
+  const copy = cloneTimer(timers[idx], newId, newName, intervalId);
+  timers.splice(idx + 1, 0, copy);
+  await saveTimers(timers);
+  logEvent('timers', 'duplicated', { kind: copy.kind ?? 'intervals' });
+  return copy;
+}
+
+/** Pure copy of a timer under a new identity. Exported for tests. */
+export function cloneTimer(
+  source: TimerConfig,
+  newId: string,
+  newName: string,
+  intervalId: () => string,
+): TimerConfig {
+  const now = Date.now();
+  return {
+    ...source,
+    id: newId,
+    name: newName,
+    intervals: source.intervals?.map((iv) => ({ ...iv, id: intervalId() })),
+    createdAt: now,
+    updatedAt: now,
+  };
 }
 
 export async function loadSettings(): Promise<AppSettings> {

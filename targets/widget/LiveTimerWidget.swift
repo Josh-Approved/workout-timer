@@ -40,7 +40,7 @@ struct LiveTimerWidget: Widget {
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     if let active {
-                        Text(timerInterval: active.start...active.end, countsDown: true)
+                        Text(timerInterval: active.start...active.end, countsDown: !(active.countsUp ?? false))
                             .monospacedDigit()
                             .font(.title2.weight(.semibold))
                             .multilineTextAlignment(.trailing)
@@ -65,7 +65,7 @@ struct LiveTimerWidget: Widget {
                 Image(systemName: "timer")
             } compactTrailing: {
                 if let active {
-                    Text(timerInterval: active.start...active.end, countsDown: true)
+                    Text(timerInterval: active.start...active.end, countsDown: !(active.countsUp ?? false))
                         .monospacedDigit()
                         .frame(maxWidth: 56)
                         .id(active.id)
@@ -108,7 +108,7 @@ private struct LockScreenView: View {
                     // .id(active.id) forces SwiftUI to recreate the view when
                     // the active phase changes. Without it, WidgetKit can keep
                     // showing the previous interval.
-                    Text(timerInterval: active.start...active.end, countsDown: true)
+                    Text(timerInterval: active.start...active.end, countsDown: !(active.countsUp ?? false))
                         .monospacedDigit()
                         .font(.system(size: 40, weight: .semibold))
                         .foregroundStyle(textPrimary)

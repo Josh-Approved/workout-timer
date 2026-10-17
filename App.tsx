@@ -32,10 +32,13 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 // Store identity for the canonical review prompt. Module scope on purpose — the
 // shell's session effect keys off this prop, so a fresh object every render
 // would re-run it. The shell owns the whole trigger (canon § Review prompt).
+// waitForSuccessMoment: an eligible session asks at the first finished workout
+// (useWorkoutPlayback calls onSuccessMoment() on completion), not at launch.
 const REVIEW = {
   appName: 'Workout Timer',
   iosAppStoreId: IOS_APP_STORE_ID,
   androidPackageName: ANDROID_PACKAGE,
+  waitForSuccessMoment: true,
 };
 
 export default function App() {

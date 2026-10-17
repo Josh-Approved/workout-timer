@@ -10,6 +10,9 @@ export type LiveTimerPhase = {
   // Phase length in seconds. The system renders the countdown itself —
   // the app does not tick this value down by hand.
   durationSeconds: number;
+  // Count UP from the phase start instead of down to its end (a stopwatch
+  // phase, e.g. For Time). Defaults to false (countdown).
+  countsUp?: boolean;
 };
 
 export type LiveTimerActionId = 'pause' | 'resume' | 'skip' | 'stop';

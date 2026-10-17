@@ -21,6 +21,8 @@ const VOICE_PHASE_PHRASES: Partial<Record<WorkoutPhase, string>> = {
   rest: 'Rest',
   recovery: 'Recovery',
   cool_down: 'Cool Down',
+  amrap: 'AMRAP',
+  for_time: 'For Time',
 };
 
 export function speakAndReactivate(phrase: string): void {
@@ -54,6 +56,8 @@ export function firePhaseStart(
     recovery: 'recoveryStart',
     cool_down: 'coolDownStart',
     initial_countdown: 'warmUpStart',
+    amrap: 'workStart',
+    for_time: 'workStart',
   };
   const key = styleMap[step.phase];
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
@@ -67,11 +71,24 @@ export function firePhaseStart(
   if (style === 'voice' && speechMode) {
     speakAndReactivate(buildPhaseAnnouncement(step, totalSetsInCycle, maxCycles));
   } else {
-    playSoundOrVoice(style, VOICE_PHASE_PHRASES[step.phase] ?? '');
+    // A named interval (custom sequence) is announced by its own name — that
+    // is the whole point of naming it. Unnamed steps keep the phase word.
+    playSoundOrVoice(style, step.label ?? VOICE_PHASE_PHRASES[step.phase] ?? '');
     if (speechMode) {
       speakAndReactivate(buildPhaseAnnouncement(step, totalSetsInCycle, maxCycles));
     }
   }
+}
+
+/**
+ * The round counter's tap feedback (AMRAP / For Time): a click + haptic so a
+ * tap registers eyes-free, and the new count spoken when voice cues are on.
+ */
+export function fireRoundCounted(round: number, speechMode: boolean): void {
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+  AccessibilityInfo.announceForAccessibility(t('workout.roundsA11y', { count: round }));
+  if (speechMode) speakAndReactivate(`Round ${round}`);
+  else AudioEngine.playSound('click').catch(() => {});
 }
 
 export function playComplete(sounds: SoundSettings, speechMode: boolean): void {
@@ -87,8 +104,18 @@ export function playComplete(sounds: SoundSettings, speechMode: boolean): void {
   }
 }
 
+/**
+ * How many positions the current step's cycle has: work sets for an interval
+ * timer; every interval (work and rest alike) for a custom sequence, whose
+ * steps all carry a position.
+ */
 export function getTotalSets(steps: PhaseStep[], current: PhaseStep): number {
   if (current.cycleNumber == null) return 0;
+  if (current.inSequence) {
+    return steps.filter(
+      (s) => s.setNumber != null && s.cycleNumber === current.cycleNumber
+    ).length;
+  }
   return steps.filter(
     (s) => s.phase === 'exercise' && s.cycleNumber === current.cycleNumber
   ).length;

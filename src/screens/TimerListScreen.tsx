@@ -10,8 +10,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ChevronRight, GripVertical, Play, Plus, Settings as SettingsIcon, Timer } from 'lucide-react-native';
 import { RootStackParamList, TimerConfig } from '../types';
-import { loadTimers, saveTimers } from '../storage/storage';
-import { getTimerSummary, getTotalDuration, formatTime } from '../utils/workout';
+import { loadTimers, saveTimers, duplicateTimer } from '../storage/storage';
+import { getTimerSummary, getTotalDuration, formatTime, generateId, isOpenEnded } from '../utils/workout';
 import { t } from '../i18n';
 import { TIP_JAR_ENABLED } from '../constants/features';
 import { TIP_PRODUCT_IDS } from '../constants/tipProducts';
@@ -62,6 +62,23 @@ export default function TimerListScreen({ navigation }: Props) {
     setTimers(next);
     saveTimers(next).catch(() => {});
   }, []);
+
+  // Duplicate (a screen-reader rotor action on the row, and the editor's
+  // button): the copy lands under the original and opens for editing.
+  const handleDuplicate = useCallback(
+    async (item: TimerConfig) => {
+      const copy = await duplicateTimer(
+        item.id,
+        generateId(),
+        t('timerList.copyName', { name: item.name }),
+        generateId,
+      );
+      if (!copy) return;
+      setTimers(await loadTimers());
+      navigation.navigate('TimerEditor', { timerId: copy.id });
+    },
+    [navigation],
+  );
 
   return (
     <SafeAreaView style={s.container}>
@@ -129,15 +146,23 @@ export default function TimerListScreen({ navigation }: Props) {
               accessibilityLabel={t('timerList.editTimer', { name: item.name })}
               accessibilityRole="button"
               accessibilityHint={t('timerList.editTimerHint')}
-              accessibilityActions={accessibilityProps.accessibilityActions}
-              onAccessibilityAction={accessibilityProps.onAccessibilityAction}
+              accessibilityActions={[
+                ...accessibilityProps.accessibilityActions,
+                { name: 'duplicate', label: t('timerList.duplicate') },
+              ]}
+              onAccessibilityAction={(event) => {
+                if (event.nativeEvent.actionName === 'duplicate') handleDuplicate(item);
+                else accessibilityProps.onAccessibilityAction(event);
+              }}
             >
               <View style={s.cardInfo} importantForAccessibility="no">
                 <Text style={s.cardName}>{item.name}</Text>
                 <Text style={s.cardSummary}>{getTimerSummary(item)}</Text>
-                <Text style={s.cardDuration}>
-                  {t('timerList.total')} · {formatTime(getTotalDuration(item))}
-                </Text>
+                {!isOpenEnded(item) ? (
+                  <Text style={s.cardDuration}>
+                    {t('timerList.total')} · {formatTime(getTotalDuration(item))}
+                  </Text>
+                ) : null}
               </View>
               <ChevronRight
                 size={20}

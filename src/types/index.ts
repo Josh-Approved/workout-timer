@@ -1,6 +1,29 @@
+/**
+ * Which kind of timer a saved TimerConfig is. `intervals` is the classic
+ * one-tap Tabata/HIIT shape (and the default for every timer saved before the
+ * field existed); the other three were added 2026-10-17.
+ */
+export type TimerKind = 'intervals' | 'sequence' | 'amrap' | 'for_time';
+
+export const ALL_TIMER_KINDS: TimerKind[] = ['intervals', 'sequence', 'amrap', 'for_time'];
+
+/** One user-built interval inside a custom sequence. */
+export type IntervalKind = 'work' | 'rest';
+
+export interface SequenceInterval {
+  id: string;
+  /** Spoken and shown in place of the generic phase name. */
+  name: string;
+  /** Seconds. */
+  duration: number;
+  kind: IntervalKind;
+}
+
 export interface TimerConfig {
   id: string;
   name: string;
+  /** Absent on timers saved before 2026-10 — read it through `timerKind()`. */
+  kind?: TimerKind;
   initialCountdown: number;
   warmUp: number;
   exercise: number;
@@ -9,8 +32,19 @@ export interface TimerConfig {
   recovery: number;
   cycles: number;
   coolDown: number;
+  /** Custom sequence only: the ordered list the user built. */
+  intervals?: SequenceInterval[];
+  /** Custom sequence only: how many times the whole list plays (>= 1). */
+  repeats?: number;
+  /** AMRAP: the countdown length. For Time: the optional cap (0 = none). Seconds. */
+  timeCap?: number;
   createdAt: number;
   updatedAt: number;
+}
+
+/** The effective kind of a timer, defaulting legacy records to `intervals`. */
+export function timerKind(timer: Pick<TimerConfig, 'kind'>): TimerKind {
+  return timer.kind ?? 'intervals';
 }
 
 export type SoundStyle =
@@ -74,6 +108,8 @@ export type WorkoutPhase =
   | 'rest'
   | 'recovery'
   | 'cool_down'
+  | 'amrap'
+  | 'for_time'
   | 'complete';
 
 export interface PhaseStep {
@@ -81,11 +117,19 @@ export interface PhaseStep {
   duration: number;
   setNumber?: number;
   cycleNumber?: number;
+  /** A user-given interval name (custom sequences). Shown on screen, on the
+   *  Lock Screen / notification, and spoken in place of the phase name. */
+  label?: string;
+  /** Count-up step (For Time): the screen shows elapsed time, not remaining. */
+  countUp?: boolean;
+  /** Built from a custom sequence: `setNumber` is the position in the list
+   *  (work and rest alike) and `cycleNumber` the round. */
+  inSequence?: boolean;
 }
 
 export type RootStackParamList = {
   TimerList: undefined;
-  TimerEditor: { timerId?: string };
+  TimerEditor: { timerId?: string; kind?: TimerKind };
   ActiveWorkout: { timerId: string };
   Settings: undefined;
   Acknowledgements: undefined;

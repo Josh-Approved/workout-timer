@@ -7,6 +7,9 @@ data class LiveTimerPhase(
     val id: String,
     val label: String,
     val durationSeconds: Long,
+    // A stopwatch phase: the notification chronometer counts up from the
+    // phase start instead of down to its end.
+    val countsUp: Boolean = false,
 )
 
 data class LiveTimerSession(

@@ -22,6 +22,10 @@ import {
 
 type Props = {
   layout: 'portrait' | 'landscape';
+  /** Column headings — "Set" / "Cycle" for an interval timer, "Interval" /
+   *  "Round" for a custom sequence. Default to the interval-timer words. */
+  setLabel?: string;
+  cycleLabel?: string;
   setDisplay: string;
   setA11yLabel: string;
   cycleDisplay: string;
@@ -32,6 +36,8 @@ type Props = {
 
 export function WorkoutInfoPanels({
   layout,
+  setLabel,
+  cycleLabel,
   setDisplay,
   setA11yLabel,
   cycleDisplay,
@@ -42,6 +48,8 @@ export function WorkoutInfoPanels({
   const { c } = useTheme();
   const isLandscape = layout === 'landscape';
   const s = makeStyles(c, isLandscape);
+  const setHeading = setLabel ?? t('workout.set');
+  const cycleHeading = cycleLabel ?? t('workout.cycle');
 
   if (isLandscape) {
     return (
@@ -52,7 +60,7 @@ export function WorkoutInfoPanels({
           accessibilityLabel={setA11yLabel}
           accessibilityRole="text"
         >
-          <Text style={s.infoLabel} importantForAccessibility="no">{t('workout.set')}</Text>
+          <Text style={s.infoLabel} importantForAccessibility="no">{setHeading}</Text>
           <Text style={s.infoValue} importantForAccessibility="no">{setDisplay}</Text>
         </View>
         <View
@@ -61,7 +69,7 @@ export function WorkoutInfoPanels({
           accessibilityLabel={cycleA11yLabel}
           accessibilityRole="text"
         >
-          <Text style={s.infoLabel} importantForAccessibility="no">{t('workout.cycle')}</Text>
+          <Text style={s.infoLabel} importantForAccessibility="no">{cycleHeading}</Text>
           <Text style={s.infoValue} importantForAccessibility="no">{cycleDisplay}</Text>
         </View>
         <View
@@ -85,7 +93,7 @@ export function WorkoutInfoPanels({
         accessibilityLabel={setA11yLabel}
         accessibilityRole="text"
       >
-        <Text style={s.infoLabel} importantForAccessibility="no">{t('workout.set')}</Text>
+        <Text style={s.infoLabel} importantForAccessibility="no">{setHeading}</Text>
         <Text style={s.infoValue} importantForAccessibility="no">{setDisplay}</Text>
       </View>
       <View
@@ -94,7 +102,7 @@ export function WorkoutInfoPanels({
         accessibilityLabel={cycleA11yLabel}
         accessibilityRole="text"
       >
-        <Text style={s.infoLabel} importantForAccessibility="no">{t('workout.cycle')}</Text>
+        <Text style={s.infoLabel} importantForAccessibility="no">{cycleHeading}</Text>
         <Text style={s.infoValue} importantForAccessibility="no">{cycleDisplay}</Text>
       </View>
       <View

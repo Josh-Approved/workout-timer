@@ -246,11 +246,13 @@ public class LiveTimerModule: Module {
             let duration = (raw["durationSeconds"] as? Double)
                 ?? Double((raw["durationSeconds"] as? Int) ?? 0)
             let end = cursor.addingTimeInterval(duration)
+            let countsUp = (raw["countsUp"] as? Bool) ?? false
             out.append(LiveTimerAttributes.ScheduledPhase(
                 id: id,
                 label: label,
                 start: cursor,
-                end: end
+                end: end,
+                countsUp: countsUp
             ))
             cursor = end
         }

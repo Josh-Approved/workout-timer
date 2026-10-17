@@ -45,6 +45,20 @@ appId: com.joshapproved.freeworkouttimer
     text: "Back"
     retryTapIfNoChange: true
 - scrollUntilVisible:
+    element: { text: "Kettlebell Circuit, edit" }
+    direction: DOWN
+- tapOn:
+    text: "Kettlebell Circuit, edit"
+    retryTapIfNoChange: true
+- extendedWaitUntil:
+    visible: { text: "Save timer" }
+    timeout: 10000
+- assertVisible: { text: "Goblet squats, edit" }
+- takeScreenshot: qa/captures/${STORE}/sequence-editor
+- tapOn:
+    text: "Back"
+    retryTapIfNoChange: true
+- scrollUntilVisible:
     element: { text: "Start Standard Tabata" }
     direction: UP
 - tapOn:

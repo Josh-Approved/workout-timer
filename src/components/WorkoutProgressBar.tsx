@@ -37,7 +37,7 @@ export function WorkoutProgressBar({ steps, displayState, progressFraction, isLa
           else if (i === displayState.stepIndex && step.duration > 0) {
             segFill = (step.duration - displayState.timeRemaining) / step.duration;
           }
-          const isWork = step.phase === 'exercise';
+          const isWork = step.phase === 'exercise' || step.phase === 'amrap' || step.phase === 'for_time';
           return (
             <View
               key={i}
