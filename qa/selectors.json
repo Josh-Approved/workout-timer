@@ -81,8 +81,32 @@
       "note": "edit button on the seeded custom-sequence timer (fixtures qa-sequence, 2026-10-17) — opens the sequence editor with its named interval list. Name-first like @edit-tabata."
     },
     "sequence-interval": {
-      "text": "Goblet squats, edit",
-      "note": "a named interval row inside the sequence editor (fixtures qa-sequence) — proves the editor rendered the interval list, not the classic sliders"
+      "text": "Swings",
+      "note": "a named interval row inside the sequence editor (fixtures qa-sequence) — proves the editor rendered the interval list, not the classic sliders. The FIRST interval, not the third: on a 16:9 Android phone the third row sits below the fold and the assert failed (2026-10-17)"
+    },
+    "start-hangboard": {
+      "text": "Start Climbing Hangboard",
+      "note": "start control on the seeded climbing timer (fixtures qa-hangboard: 7s on / 3s off) — the store-preview journey runs it because its intervals flip every few seconds on their own, so the video shows real phase changes without a Skip tap"
+    },
+    "start-sequence": {
+      "text": "Start Kettlebell Circuit",
+      "note": "start control on the seeded custom sequence (fixtures qa-sequence) — the store-preview journey shows a named interval running as the phase"
+    },
+    "skip": {
+      "text": "Skip to next interval",
+      "note": "the running-workout Skip control (i18n workout.skip). The preview journey uses it only to cut the get-ready / warm-up phases short; a retried (double) tap there still lands on a work phase, so it is safe"
+    },
+    "phase-get-ready": {
+      "text": "Get ready",
+      "note": "the initial-countdown phase label (i18n workout.phase.initial_countdown) — proves the workout screen is up before the preview journey skips the countdown"
+    },
+    "phase-rest": {
+      "text": "Rest",
+      "note": "the rest phase label (i18n workout.phase.rest), full-match — the preview journey waits for a real work→rest flip on the hangboard timer"
+    },
+    "phase-swings": {
+      "text": "Swings",
+      "note": "a named interval shown AS the phase while the Kettlebell Circuit sequence runs (fixtures qa-sequence) — the preview journey's proof that sequences speak their interval names"
     }
   }
 }

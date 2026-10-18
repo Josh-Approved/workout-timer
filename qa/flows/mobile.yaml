@@ -53,7 +53,7 @@ appId: com.joshapproved.freeworkouttimer
 - extendedWaitUntil:
     visible: { text: "Save timer" }
     timeout: 10000
-- assertVisible: { text: "Goblet squats, edit" }
+- assertVisible: { text: "Swings" }
 - takeScreenshot: qa/captures/${STORE}/sequence-editor
 - tapOn:
     text: "Back"

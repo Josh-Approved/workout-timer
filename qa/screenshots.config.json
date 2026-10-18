@@ -1,28 +1,133 @@
 {
   "style": "signature",
   "motif": "dots",
-  "_note": "Android tablet (7\"/10\") screenshots intentionally omitted: FWT is portrait by design on Android (ScreenOrientation locks PORTRAIT_UP except during an active workout), so tablet shots can only duplicate the phone layout. Play shows the phone screenshots to tablet users, which matches the real layout. Apple/iPad is unaffected (its store separates iPhone/iPad by device tab).",
+  "_note": "Slot spine v2 (Josh, 2026-10-17): 1 hero in light mode, 2-3 the top ASO features (custom sequences, the editor), 4 the Josh Approved card, then features in descending priority, an accessibility showcase (large text, captured with capture.mjs --font-scale 1.3 --cell store-<store>-large-text) and the dark-mode shot last (--appearance dark --cell store-<store>-dark). Captions are benefits, not labels. Android tablet (7\"/10\") screenshots intentionally omitted: FWT is portrait by design on Android (ScreenOrientation locks PORTRAIT_UP except during an active workout), so tablet shots can only duplicate the phone layout. Play shows the phone screenshots to tablet users, which matches the real layout. Apple/iPad is unaffected (its store separates iPhone/iPad by device tab).",
   "stores": {
     "ios": [
-      { "id": "core",          "source": "ios/active.png", "caption": "A workout timer. Set intervals, hit start." },
-      { "id": "josh-approved", "kind": "card" },
-      { "id": "editor",        "source": "ios/editor.png", "caption": "Build any interval set in seconds." },
-      { "id": "list",          "source": "ios/list.png",   "caption": "Save your timers. Reuse them in one tap." },
-      { "id": "climbing",      "source": "ios/climbing-editor.png", "generate": "climbing-editor", "caption": "Climbers: time hangboard repeaters. 7s on, 3s off." }
+      {
+        "id": "core",
+        "source": "ios/active.png",
+        "caption": "A workout timer. Set intervals, hit start."
+      },
+      {
+        "id": "sequence",
+        "source": "ios/sequence-editor.png",
+        "caption": "Name every interval. Build full circuits."
+      },
+      {
+        "id": "editor",
+        "source": "ios/editor.png",
+        "caption": "Build any interval set in seconds."
+      },
+      {
+        "id": "josh-approved",
+        "kind": "card"
+      },
+      {
+        "id": "list",
+        "source": "ios/list.png",
+        "caption": "Save your timers. Reuse them in one tap."
+      },
+      {
+        "id": "climbing",
+        "source": "ios/climbing-editor.png",
+        "caption": "Climbers: time hangboard repeaters. 7s on, 3s off."
+      },
+      {
+        "id": "large-text",
+        "source": "matrix/store-ios-large-text/editor.png",
+        "caption": "Readable at any text size."
+      },
+      {
+        "id": "dark",
+        "source": "matrix/store-ios-dark/active.png",
+        "theme": "dark",
+        "caption": "Easy on the eyes after dark."
+      }
     ],
     "android": [
-      { "id": "core",          "source": "android/active.png", "caption": "A workout timer. Set intervals, hit start." },
-      { "id": "josh-approved", "kind": "card" },
-      { "id": "editor",        "source": "android/editor.png", "caption": "Build any interval set in seconds." },
-      { "id": "list",          "source": "android/list.png",   "caption": "Save your timers. Reuse them in one tap." },
-      { "id": "climbing",      "source": "android/climbing-editor.png", "generate": "climbing-editor", "caption": "Climbers: time hangboard repeaters. 7s on, 3s off." }
+      {
+        "id": "core",
+        "source": "android/active.png",
+        "caption": "A workout timer. Set intervals, hit start."
+      },
+      {
+        "id": "sequence",
+        "source": "android/sequence-editor.png",
+        "caption": "Name every interval. Build full circuits."
+      },
+      {
+        "id": "editor",
+        "source": "android/editor.png",
+        "caption": "Build any interval set in seconds."
+      },
+      {
+        "id": "josh-approved",
+        "kind": "card"
+      },
+      {
+        "id": "list",
+        "source": "android/list.png",
+        "caption": "Save your timers. Reuse them in one tap."
+      },
+      {
+        "id": "climbing",
+        "source": "android/climbing-editor.png",
+        "caption": "Climbers: time hangboard repeaters. 7s on, 3s off."
+      },
+      {
+        "id": "large-text",
+        "source": "matrix/store-android-large-text/editor.png",
+        "caption": "Readable at any text size."
+      },
+      {
+        "id": "dark",
+        "source": "matrix/store-android-dark/active.png",
+        "theme": "dark",
+        "caption": "Easy on the eyes after dark."
+      }
     ],
     "ipad": [
-      { "id": "core",          "source": "ipad/active.png", "caption": "A workout timer. Set intervals, hit start." },
-      { "id": "josh-approved", "kind": "card" },
-      { "id": "editor",        "source": "ipad/editor.png", "caption": "Build any interval set in seconds." },
-      { "id": "list",          "source": "ipad/list.png",   "caption": "Save your timers. Reuse them in one tap." },
-      { "id": "climbing",      "source": "ipad/climbing-editor.png", "generate": "climbing-editor", "caption": "Climbers: time hangboard repeaters. 7s on, 3s off." }
+      {
+        "id": "core",
+        "source": "ipad/active.png",
+        "caption": "A workout timer. Set intervals, hit start."
+      },
+      {
+        "id": "sequence",
+        "source": "ipad/sequence-editor.png",
+        "caption": "Name every interval. Build full circuits."
+      },
+      {
+        "id": "editor",
+        "source": "ipad/editor.png",
+        "caption": "Build any interval set in seconds."
+      },
+      {
+        "id": "josh-approved",
+        "kind": "card"
+      },
+      {
+        "id": "list",
+        "source": "ipad/list.png",
+        "caption": "Save your timers. Reuse them in one tap."
+      },
+      {
+        "id": "climbing",
+        "source": "ipad/climbing-editor.png",
+        "caption": "Climbers: time hangboard repeaters. 7s on, 3s off."
+      },
+      {
+        "id": "large-text",
+        "source": "matrix/store-ipad-large-text/editor.png",
+        "caption": "Readable at any text size."
+      },
+      {
+        "id": "dark",
+        "source": "matrix/store-ipad-dark/active.png",
+        "theme": "dark",
+        "caption": "Easy on the eyes after dark."
+      }
     ]
   }
 }
