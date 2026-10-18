@@ -1,0 +1,85 @@
+{
+  "$comment": "Store preview video settings for demo-capture.mjs --preview (factory). Times are OUTPUT seconds (after trim + speed). Captions follow the 2026-10-17 caption standard: benefit wording, sentence case, 8 words max, no price/promo words, light mode. `stores.<key>` overrides the top level per surface. Tuned 2026-10-17 against the recorded raws (qa/captures/.preview-<store>/raw.mp4): settle drops the app's own splash after the auto-detected launch; Android's launcher wallpaper is not auto-detected, so its trimStart is explicit (the list is on screen from ~21.5 s raw, after a brief empty-state flash); Maestro taps are slower on iPad and Android, hence the higher speeds there. Re-record = re-tune these numbers from a --keep-intermediate run.",
+  "speed": 1.3,
+  "settle": 3.0,
+  "poster": 7.5,
+  "captions": [
+    {
+      "from": 0.3,
+      "to": 1.8,
+      "text": "Save your timers. Start in one tap."
+    },
+    {
+      "from": 2.2,
+      "to": 11.1,
+      "text": "Clear cues at every phase change."
+    },
+    {
+      "from": 11.6,
+      "to": 17.1,
+      "text": "Climbing, boxing, Tabata: any interval shape."
+    },
+    {
+      "from": 17.6,
+      "to": 22.0,
+      "text": "Name each interval in a custom sequence."
+    }
+  ],
+  "stores": {
+    "ipad": {
+      "speed": 1.4,
+      "settle": 4.8,
+      "poster": 10,
+      "captions": [
+        {
+          "from": 0.3,
+          "to": 2.6,
+          "text": "Save your timers. Start in one tap."
+        },
+        {
+          "from": 3.2,
+          "to": 15.5,
+          "text": "Clear cues at every phase change."
+        },
+        {
+          "from": 16,
+          "to": 21.8,
+          "text": "Climbing, boxing, Tabata: any interval shape."
+        },
+        {
+          "from": 22.3,
+          "to": 28.5,
+          "text": "Name each interval in a custom sequence."
+        }
+      ]
+    },
+    "android": {
+      "speed": 1.85,
+      "trimStart": 21.5,
+      "trimEnd": 76.8,
+      "poster": 9,
+      "captions": [
+        {
+          "from": 0.3,
+          "to": 2.0,
+          "text": "Save your timers. Start in one tap."
+        },
+        {
+          "from": 2.4,
+          "to": 14.5,
+          "text": "Clear cues at every phase change."
+        },
+        {
+          "from": 15,
+          "to": 22.5,
+          "text": "Climbing, boxing, Tabata: any interval shape."
+        },
+        {
+          "from": 23,
+          "to": 29.5,
+          "text": "Name each interval in a custom sequence."
+        }
+      ]
+    }
+  }
+}

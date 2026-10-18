@@ -1,0 +1,51 @@
+{
+  "generatedBy": "demo-capture.mjs --preview",
+  "app": "workout-timer",
+  "store": "ipad",
+  "shelf": "iPad 13\"",
+  "previewType": "IPAD_PRO_3GEN_129",
+  "w": 1200,
+  "h": 1600,
+  "fps": 30,
+  "duration": 29.133333,
+  "bytes": 1158119,
+  "poster": {
+    "seconds": 10,
+    "timeCode": "00:00:10:00",
+    "file": "preview.poster.png"
+  },
+  "captions": [
+    {
+      "from": 0.3,
+      "to": 2.6,
+      "text": "Save your timers. Start in one tap."
+    },
+    {
+      "from": 3.2,
+      "to": 15.5,
+      "text": "Clear cues at every phase change."
+    },
+    {
+      "from": 16,
+      "to": 21.8,
+      "text": "Climbing, boxing, Tabata: any interval shape."
+    },
+    {
+      "from": 22.3,
+      "to": 28.5,
+      "text": "Name each interval in a custom sequence."
+    }
+  ],
+  "speed": 1.4,
+  "trimStart": 0,
+  "trimEnd": 0,
+  "captionBand": {
+    "x": 0,
+    "y": 106,
+    "w": 1200,
+    "h": 124,
+    "size": 48,
+    "budget": 1032
+  },
+  "spec": "developer.apple.com/help/app-store-connect/reference/app-preview-specifications (2026-10-17)"
+}

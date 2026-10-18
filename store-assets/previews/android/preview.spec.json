@@ -1,0 +1,63 @@
+{
+  "generatedBy": "demo-capture.mjs --preview",
+  "app": "workout-timer",
+  "store": "android",
+  "shelf": "YouTube (Google Play promo video link)",
+  "previewType": null,
+  "w": 1920,
+  "h": 1080,
+  "fps": 30,
+  "duration": 29.933333,
+  "bytes": 3086466,
+  "poster": {
+    "seconds": 9,
+    "timeCode": "00:00:09:00",
+    "file": "preview.poster.png"
+  },
+  "captions": [
+    {
+      "from": 0.3,
+      "to": 2,
+      "text": "Save your timers. Start in one tap."
+    },
+    {
+      "from": 2.4,
+      "to": 14.5,
+      "text": "Clear cues at every phase change."
+    },
+    {
+      "from": 15,
+      "to": 22.5,
+      "text": "Climbing, boxing, Tabata: any interval shape."
+    },
+    {
+      "from": 23,
+      "to": 29.5,
+      "text": "Name each interval in a custom sequence."
+    }
+  ],
+  "speed": 1.85,
+  "trimStart": 21.5,
+  "trimEnd": 76.8,
+  "landscape": {
+    "deviceRect": {
+      "x": 992,
+      "y": 56,
+      "w": 550,
+      "h": 968,
+      "r": 46
+    },
+    "hole": {
+      "x": 998,
+      "y": 62,
+      "w": 538,
+      "h": 956,
+      "r": 40
+    },
+    "captionRegion": {
+      "x": 116,
+      "w": 800
+    }
+  },
+  "spec": "developer.apple.com/help/app-store-connect/reference/app-preview-specifications (2026-10-17)"
+}

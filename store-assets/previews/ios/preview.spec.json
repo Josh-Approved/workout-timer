@@ -1,0 +1,51 @@
+{
+  "generatedBy": "demo-capture.mjs --preview",
+  "app": "workout-timer",
+  "store": "ios",
+  "shelf": "iPhone 6.9\"/6.7\"/6.5\" (Dynamic Island, large)",
+  "previewType": "IPHONE_67",
+  "w": 886,
+  "h": 1920,
+  "fps": 30,
+  "duration": 22.233008,
+  "bytes": 1735934,
+  "poster": {
+    "seconds": 7.5,
+    "timeCode": "00:00:07:15",
+    "file": "preview.poster.png"
+  },
+  "captions": [
+    {
+      "from": 0.3,
+      "to": 1.8,
+      "text": "Save your timers. Start in one tap."
+    },
+    {
+      "from": 2.2,
+      "to": 11.1,
+      "text": "Clear cues at every phase change."
+    },
+    {
+      "from": 11.6,
+      "to": 17.1,
+      "text": "Climbing, boxing, Tabata: any interval shape."
+    },
+    {
+      "from": 17.6,
+      "to": 22,
+      "text": "Name each interval in a custom sequence."
+    }
+  ],
+  "speed": 1.3,
+  "trimStart": 0,
+  "trimEnd": 0,
+  "captionBand": {
+    "x": 0,
+    "y": 242,
+    "w": 886,
+    "h": 114,
+    "size": 44,
+    "budget": 762
+  },
+  "spec": "developer.apple.com/help/app-store-connect/reference/app-preview-specifications (2026-10-17)"
+}

@@ -277,5 +277,102 @@
         }
       ]
     }
+  },
+  "preview": {
+    "$comment": "STORE PREVIEW VIDEO journey (2026-10-17) — compiled by the factory's demo-capture.mjs --preview into qa/flows/preview.yaml (never by compile-flow's default run, which only emits mobile.yaml/survival/upgrade). Human-paced: the holds are what the viewer sees. Runs the seeded Climbing Hangboard because its 7s-on / 3s-off intervals flip on their own (real phase changes, no Skip), then the Kettlebell Circuit sequence so a named interval shows as the phase. Skip is only used to cut the get-ready / warm-up phases; a retried tap there still lands on a work phase. Captions and the poster second live in qa/previews.config.json.",
+    "clearState": true,
+    "steps": [
+      {
+        "waitFor": "@app-title",
+        "timeout": 30000
+      },
+      {
+        "waitFor": "@start-tabata",
+        "timeout": 15000
+      },
+      {
+        "wait": 2500
+      },
+      {
+        "scrollUntilVisible": "@start-hangboard"
+      },
+      {
+        "tap": "@start-hangboard"
+      },
+      {
+        "waitFor": "@phase-get-ready",
+        "timeout": 15000
+      },
+      {
+        "wait": 1500
+      },
+      {
+        "tap": "@skip"
+      },
+      {
+        "waitFor": "@exercise",
+        "timeout": 10000
+      },
+      {
+        "waitFor": "@phase-rest",
+        "timeout": 15000
+      },
+      {
+        "waitFor": "@exercise",
+        "timeout": 10000
+      },
+      {
+        "wait": 3500
+      },
+      {
+        "tap": "@stop-workout"
+      },
+      {
+        "tap": "@stop-confirm"
+      },
+      {
+        "waitFor": "@app-title",
+        "timeout": 5000
+      },
+      {
+        "scrollUntilVisible": "@start-sequence"
+      },
+      {
+        "tap": "@start-sequence"
+      },
+      {
+        "waitFor": "@phase-get-ready",
+        "timeout": 15000
+      },
+      {
+        "wait": 1200
+      },
+      {
+        "tap": "@skip"
+      },
+      {
+        "wait": 1200
+      },
+      {
+        "tap": "@skip"
+      },
+      {
+        "waitFor": "@phase-swings",
+        "timeout": 10000
+      },
+      {
+        "wait": 4000
+      },
+      {
+        "tap": "@skip"
+      },
+      {
+        "waitFor": "@phase-rest",
+        "timeout": 10000
+      },
+      {
+        "wait": 2500
+      }
+    ]
   }
 }
