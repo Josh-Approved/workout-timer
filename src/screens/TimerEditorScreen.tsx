@@ -17,7 +17,7 @@ import { RootStackParamList, TimerConfig, TimerKind, SequenceInterval } from '..
 import { loadTimers, saveTimer, deleteTimer, duplicateTimer } from '../storage/storage';
 import { generateId, newSequenceInterval } from '../utils/workout';
 import { t } from '../i18n';
-import { SliderField } from '../components/SliderField';
+import { SliderField, FINE_SECONDS_BELOW } from '../components/SliderField';
 import { OptionChips } from '../components/OptionChips';
 import {
   SequenceIntervalsList,
@@ -332,10 +332,11 @@ export default function TimerEditorScreen({ route, navigation }: Props) {
                     label={t('editor.exercise')}
                     hint={t('editor.exerciseHint')}
                     value={form.exercise}
-                    onChange={(v) => set('exercise', Math.max(5, v))}
-                    min={5}
+                    onChange={(v) => set('exercise', Math.max(1, v))}
+                    min={1}
                     max={600}
                     step={5}
+                    fineBelow={FINE_SECONDS_BELOW}
                     isTime
                     colors={c}
                   />
@@ -347,6 +348,7 @@ export default function TimerEditorScreen({ route, navigation }: Props) {
                     min={0}
                     max={600}
                     step={5}
+                    fineBelow={FINE_SECONDS_BELOW}
                     isTime
                     colors={c}
                   />

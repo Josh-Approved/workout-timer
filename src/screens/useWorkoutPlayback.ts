@@ -103,6 +103,15 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
       if (steps.length === 0) return;
 
       const maxCycles = getMaxCycles(steps);
+      AudioEngine.prepare([
+        settings.sounds.warmUpStart,
+        settings.sounds.workStart,
+        settings.sounds.restStart,
+        settings.sounds.recoveryStart,
+        settings.sounds.coolDownStart,
+        settings.sounds.workoutComplete,
+        settings.sounds.halfwaySound,
+      ]);
       firePhaseStart(steps[0], settings.sounds, steps, maxCycles, settings.audioAccessibilityMode);
       const initial: DisplayState = initialPlayback(steps);
       stateRef.current = initial;

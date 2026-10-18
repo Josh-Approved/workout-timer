@@ -2,15 +2,9 @@ import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import Slider from '@react-native-community/slider';
 import ValueEditorModal from './ValueEditorModal';
-import { t } from '../i18n';
-import {
-  fontFamily,
-  space,
-  radius,
-  type as ty,
-  hairline,
-  Colors,
-} from '../theme';
+import { FINE_SECONDS_BELOW, tickToValue, valueToTick } from './sliderTicks';
+
+export { FINE_SECONDS_BELOW } from './sliderTicks';
 
 export interface SliderFieldProps {
   label: string;
@@ -20,9 +14,26 @@ export interface SliderFieldProps {
   min?: number;
   max: number;
   step?: number;
+  /**
+   * Below this value the slider moves one unit at a time instead of `step`,
+   * so short holds (a 3 s rest, a 7 s hang, a 2 s PT contraction) are
+   * reachable by dragging and not only by typing. Above it the coarse step
+   * keeps long intervals quick to set. Omit for a uniform `step`.
+   */
+  fineBelow?: number;
   isTime?: boolean;
   colors: Colors;
 }
+
+import { t } from '../i18n';
+import {
+  fontFamily,
+  space,
+  radius,
+  type as ty,
+  hairline,
+  Colors,
+} from '../theme';
 
 export function formatSliderValue(
   value: number,
@@ -52,10 +63,14 @@ export function SliderField({
   min = 0,
   max,
   step = 5,
+  fineBelow,
   isTime = false,
   colors: c,
 }: SliderFieldProps) {
   const sf = sliderFieldStyles(c);
+  const toTick = (v: number) => valueToTick(v, min, step, fineBelow);
+  const fromTick = (t: number) => Math.min(max, Math.max(min, tickToValue(t, min, step, fineBelow)));
+  const maxTick = toTick(max);
   const { display, unit } = formatSliderValue(value, isTime);
   const spokenValue = spokenSliderValue(value, isTime);
   const [editing, setEditing] = useState(false);
@@ -74,10 +89,10 @@ export function SliderField({
       ]}
       onAccessibilityAction={(event) => {
         if (event.nativeEvent.actionName === 'increment') {
-          onChange(Math.min(max, value + step));
+          onChange(fromTick(Math.min(maxTick, toTick(value) + 1)));
         }
         if (event.nativeEvent.actionName === 'decrement') {
-          onChange(Math.max(min, value - step));
+          onChange(fromTick(Math.max(0, toTick(value) - 1)));
         }
         if (event.nativeEvent.actionName === 'activate') {
           setEditing(true);
@@ -111,11 +126,11 @@ export function SliderField({
       />
       <Slider
         style={sf.slider}
-        minimumValue={min}
-        maximumValue={max}
-        step={step}
-        value={value}
-        onValueChange={(v) => onChange(Math.round(v))}
+        minimumValue={0}
+        maximumValue={maxTick}
+        step={1}
+        value={toTick(value)}
+        onValueChange={(tick) => onChange(fromTick(tick))}
         minimumTrackTintColor={c.fg}
         maximumTrackTintColor={c.hairlineStrong}
         thumbTintColor={c.fg}

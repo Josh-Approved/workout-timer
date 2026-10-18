@@ -14,7 +14,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { ChevronRight, Plus } from 'lucide-react-native';
 import { SequenceInterval, IntervalKind } from '../types';
-import { formatSliderValue, spokenSliderValue, SliderField } from './SliderField';
+import { formatSliderValue, spokenSliderValue, SliderField, FINE_SECONDS_BELOW } from './SliderField';
 import { OptionChips } from './OptionChips';
 import { DrilldownSheet } from './DrilldownSheet';
 import { t } from '../i18n';
@@ -156,10 +156,11 @@ export function SequenceIntervalPane({ interval, index, count, onChange, onMove,
               label={t('editor.intervalDuration')}
               hint={t('editor.intervalDurationHint')}
               value={iv.duration}
-              onChange={(v) => onChange({ ...iv, duration: Math.max(5, v) })}
-              min={5}
+              onChange={(v) => onChange({ ...iv, duration: Math.max(1, v) })}
+              min={1}
               max={600}
               step={5}
+              fineBelow={FINE_SECONDS_BELOW}
               isTime
               colors={c}
             />

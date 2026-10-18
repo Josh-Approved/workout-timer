@@ -1,6 +1,24 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { SoundStyle } from '../types';
+import { logEvent, logWarn, logError } from '../feedback/log';
+
+/**
+ * How long a cue may take to report it finished before we call it lost. The
+ * longest tone is half a second; four seconds leaves room for a slow decoder
+ * without letting a stuck player hide (or leak) for a whole workout.
+ */
+const CUE_WATCHDOG_MS = 4000;
+
+/**
+ * Silence appended after the last tone of every cue. Android's media output
+ * runs through a deep buffer with real latency (largest on Samsung phones),
+ * and the player reports a sub-second clip "finished" while the tail of it is
+ * still in that buffer; anything the engine then does to the player (release,
+ * seek) discards it. A third of a second of zeros means the audible part has
+ * drained before the player ever reaches the end of the file.
+ */
+const TAIL_SILENCE_SECONDS = 0.35;
 
 interface ToneSpec {
   frequency: number;
@@ -59,6 +77,8 @@ function generateSequenceWav(tones: ToneSpec[], sampleRate = 44100): Uint8Array 
     totalSamples += Math.floor(sampleRate * t.duration);
     if (t.delayAfter > 0) totalSamples += Math.floor(sampleRate * t.delayAfter);
   }
+  const tailSamples = Math.floor(sampleRate * TAIL_SILENCE_SECONDS);
+  totalSamples += tailSamples;
 
   const numBytes = totalSamples * 2;
   const buffer = new ArrayBuffer(44 + numBytes);
@@ -115,6 +135,7 @@ function generateSequenceWav(tones: ToneSpec[], sampleRate = 44100): Uint8Array 
       byteOffset += 2;
     }
   }
+  // Tail silence: the buffer is zero-filled already, nothing to write.
 
   return new Uint8Array(buffer);
 }
@@ -157,12 +178,21 @@ class AudioEngineClass {
 
   async initialize(): Promise<void> {
     if (this.initialized) return;
+    const started = Date.now();
+    // The audio mode and the tone files are independent: a mode call the OS
+    // rejects must not take every cue down with it (it used to — one try block
+    // around both, swallowed, and the engine stayed empty and silent with
+    // nothing in the diagnostic log to say so).
     try {
       await setAudioModeAsync({
         playsInSilentMode: true,
         interruptionMode: 'mixWithOthers',
         shouldPlayInBackground: true,
       } as any);
+    } catch (err) {
+      logWarn('audio', 'audio mode not applied', { error: String(err) });
+    }
+    try {
       const cacheDir = FileSystem.cacheDirectory ?? '';
       await this.cache('tick', TICK_SPEC, cacheDir);
       for (const [style, tones] of Object.entries(SOUND_DEFINITIONS)) {
@@ -170,16 +200,18 @@ class AudioEngineClass {
       }
       await this.cacheSilence(cacheDir);
       this.initialized = true;
-    } catch {
-      // Audio init failed; app still works silently
+      logEvent('audio', 'ready', { styles: this.uris.size, ms: Date.now() - started });
+    } catch (err) {
+      // Nothing cached: the app still works, silently — and now says so.
+      logError('audio', err, { during: 'initialize', cached: this.uris.size });
     }
   }
 
   private async cache(key: string, tones: ToneSpec[], cacheDir: string): Promise<void> {
     // Bump the version segment whenever generateSequenceWav changes so that
     // existing users regenerate their cached tones instead of replaying stale
-    // ones.
-    const uri = `${cacheDir}fwt_v2_${key}.wav`;
+    // ones. v3: trailing silence (TAIL_SILENCE_SECONDS).
+    const uri = `${cacheDir}fwt_v3_${key}.wav`;
     const info = await FileSystem.getInfoAsync(uri);
     if (!info.exists) {
       const wav = generateSequenceWav(tones);
@@ -192,7 +224,7 @@ class AudioEngineClass {
   }
 
   private async cacheSilence(cacheDir: string): Promise<void> {
-    const uri = `${cacheDir}fwt_v2_silence.wav`;
+    const uri = `${cacheDir}fwt_v3_silence.wav`;
     const info = await FileSystem.getInfoAsync(uri);
     if (!info.exists) {
       const wav = generateSilenceWav(1);
@@ -243,28 +275,104 @@ class AudioEngineClass {
   }
 
   async playSound(style: SoundStyle): Promise<void> {
-    if (style === 'none') return;
-    const uri = this.uris.get(style);
-    if (uri) this.play(uri);
+    if (style === 'none' || style === 'voice') return;
+    this.play(style);
   }
 
   async playTick(): Promise<void> {
-    const uri = this.uris.get('tick');
-    if (uri) this.play(uri);
+    this.play('tick');
   }
 
-  private play(uri: string): void {
+  /** Cues that reported they finished this session — proof in the log that
+   *  the sound path works at all, logged once so a workout doesn't flood it. */
+  private cuesFinished = 0;
+
+  /**
+   * One long-lived player per cue, created on first use and replayed from the
+   * start after that. The previous engine made a fresh player for every cue
+   * and released it the moment it reported finished; on Android that report
+   * arrives while the tone is still in the output buffer, so releasing the
+   * player threw the sound away (defect workout-timer-20261018-1: every
+   * non-voice cue silent on a Galaxy S24, down to a click on the emulator).
+   * Keeping the player means nothing is ever torn down mid-tone.
+   */
+  private players: Map<string, ReturnType<typeof createAudioPlayer>> = new Map();
+  /** The watchdog for the cue currently playing on each player. */
+  private watchdogs: Map<string, ReturnType<typeof setTimeout>> = new Map();
+
+  /** Create the players a workout will need before it starts, so the first
+   *  cue of the session is not also the first time its player is built. */
+  prepare(styles: SoundStyle[]): void {
+    for (const style of styles) {
+      if (style === 'none' || style === 'voice') continue;
+      this.playerFor(style);
+    }
+    this.playerFor('tick');
+  }
+
+  private playerFor(key: string): ReturnType<typeof createAudioPlayer> | null {
+    const existing = this.players.get(key);
+    if (existing) return existing;
+    const uri = this.uris.get(key);
+    if (!uri) return null;
     try {
       const player = createAudioPlayer({ uri });
-      const subscription = player.addListener('playbackStatusUpdate', (status) => {
+      player.addListener('playbackStatusUpdate', (status) => {
+        const failure = (status as { error?: string | null }).error;
+        if (failure) {
+          this.settle(key);
+          logWarn('audio', 'cue failed', { style: key, error: String(failure) });
+          return;
+        }
         if (status.didJustFinish) {
-          subscription.remove();
-          player.remove();
+          this.settle(key);
+          if (this.cuesFinished++ === 0) logEvent('audio', 'first cue finished', { style: key });
         }
       });
-      player.play();
-    } catch {
-      // Silently ignore audio playback errors
+      this.players.set(key, player);
+      return player;
+    } catch (err) {
+      logWarn('audio', 'cue player not created', { style: key, error: String(err) });
+      return null;
+    }
+  }
+
+  private settle(key: string): void {
+    const timer = this.watchdogs.get(key);
+    if (timer) clearTimeout(timer);
+    this.watchdogs.delete(key);
+  }
+
+  private play(key: string): void {
+    if (!this.uris.get(key)) {
+      // The one line the customer's log was missing: an attempt with nothing
+      // to play. Collapses to ×N in the report, so it costs one line.
+      logWarn('audio', 'cue skipped, no tone loaded', { style: key, ready: this.initialized });
+      return;
+    }
+    const player = this.playerFor(key);
+    if (!player) return;
+    this.settle(key);
+    this.watchdogs.set(
+      key,
+      setTimeout(() => {
+        this.watchdogs.delete(key);
+        logWarn('audio', 'cue never finished', { style: key });
+      }, CUE_WATCHDOG_MS),
+    );
+    try {
+      // A player that has reached the end stays there until it is rewound;
+      // the seek is also what restarts a cue that is still playing.
+      player
+        .seekTo(0)
+        .then(() => player.play())
+        .catch((err) => {
+          this.settle(key);
+          logWarn('audio', 'cue failed', { style: key, error: String(err) });
+        });
+    } catch (err) {
+      this.settle(key);
+      logWarn('audio', 'cue failed', { style: key, error: String(err) });
     }
   }
 }
