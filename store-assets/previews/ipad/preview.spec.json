@@ -8,7 +8,7 @@
   "h": 1600,
   "fps": 30,
   "duration": 29.133333,
-  "bytes": 1158119,
+  "bytes": 1158332,
   "poster": {
     "seconds": 10,
     "timeCode": "00:00:10:00",
@@ -41,7 +41,7 @@
   "trimEnd": 0,
   "captionBand": {
     "x": 0,
-    "y": 106,
+    "y": 290,
     "w": 1200,
     "h": 124,
     "size": 48,
