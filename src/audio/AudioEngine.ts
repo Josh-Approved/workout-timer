@@ -154,6 +154,20 @@ class AudioEngineClass {
   private uris: Map<string, string> = new Map();
   private initialized = false;
   private keepAlivePlayer: ReturnType<typeof createAudioPlayer> | null = null;
+  // Player gain, 0–1. Scales this app's cues under the phone's own volume, so
+  // a user can sit cues below their music without touching the system slider.
+  private volume = 1;
+
+  /** Set cue loudness from the stored 0–100 percent setting. */
+  setVolume(percent: number): void {
+    const v = Number.isFinite(percent) ? percent / 100 : 1;
+    this.volume = Math.min(1, Math.max(0, v));
+  }
+
+  /** Current cue loudness, 0–1 — shared with spoken cues (expo-speech). */
+  getVolume(): number {
+    return this.volume;
+  }
 
   async initialize(): Promise<void> {
     if (this.initialized) return;
@@ -254,8 +268,10 @@ class AudioEngineClass {
   }
 
   private play(uri: string): void {
+    if (this.volume === 0) return;
     try {
       const player = createAudioPlayer({ uri });
+      player.volume = this.volume;
       const subscription = player.addListener('playbackStatusUpdate', (status) => {
         if (status.didJustFinish) {
           subscription.remove();

@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, Text, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ScreenOrientation from 'expo-screen-orientation';
-import { Check } from 'lucide-react-native';
+import { Check, RotateCcw } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList, WorkoutPhase } from '../types';
 import { formatTime, formatDurationSpoken } from '../utils/workout';
@@ -27,6 +27,8 @@ import {
   useTheme,
   fontFamily,
   space,
+  radius,
+  target,
   type as ts,
   tracking,
   Colors,
@@ -51,6 +53,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     handleBack,
     handleSkip,
     handleStop,
+    restart,
   } = useWorkoutPlayback(timerId, () => navigation.goBack());
 
   useEffect(() => {
@@ -100,7 +103,32 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
 
   const s = makeStyles(c, isLandscape);
 
-  const timerDisplay = (
+  // Once complete, the "Done" readout and the restart button are siblings —
+  // a button nested inside an `accessible` container is unreachable by
+  // VoiceOver/TalkBack, so only the readout carries the grouped label.
+  const timerDisplay = displayState.mode === 'complete' ? (
+    <View style={s.timerContainer}>
+      <View
+        style={s.completeRow}
+        accessible
+        accessibilityLabel={timerA11yLabel}
+        accessibilityRole="text"
+      >
+        <Check size={isLandscape ? 56 : 44} color={c.accent} strokeWidth={2} />
+        <Text style={s.completeText} importantForAccessibility="no">{t('common.done')}</Text>
+      </View>
+      <Pressable
+        style={({ pressed }) => [s.restartBtn, pressed && s.pressed]}
+        onPress={restart}
+        accessibilityRole="button"
+        accessibilityLabel={t('workout.restartWorkout')}
+        accessibilityHint={t('workout.restartWorkoutHint')}
+      >
+        <RotateCcw size={18} color={c.fg} strokeWidth={1.75} />
+        <Text style={s.restartText} importantForAccessibility="no">{t('workout.restartWorkout')}</Text>
+      </Pressable>
+    </View>
+  ) : (
     <View
       style={s.timerContainer}
       accessible
@@ -108,21 +136,14 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       accessibilityRole="text"
       accessibilityLiveRegion="none"
     >
-      {displayState.mode === 'complete' ? (
-        <View style={s.completeRow} importantForAccessibility="no">
-          <Check size={isLandscape ? 56 : 44} color={c.accent} strokeWidth={2} />
-          <Text style={s.completeText}>{t('common.done')}</Text>
-        </View>
-      ) : (
-        <Text
-          style={s.timer}
-          importantForAccessibility="no"
-          adjustsFontSizeToFit
-          numberOfLines={1}
-        >
-          {formatTime(displayState.timeRemaining)}
-        </Text>
-      )}
+      <Text
+        style={s.timer}
+        importantForAccessibility="no"
+        adjustsFontSizeToFit
+        numberOfLines={1}
+      >
+        {formatTime(displayState.timeRemaining)}
+      </Text>
     </View>
   );
 
@@ -273,6 +294,25 @@ function makeStyles(c: Colors, isLandscape: boolean) {
       color: c.fg,
       letterSpacing: tracking.tight,
     },
+    restartBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space.s3,
+      minHeight: target.min,
+      marginTop: space.s6,
+      paddingHorizontal: space.s6,
+      paddingVertical: space.s3,
+      borderRadius: radius.pill,
+      borderWidth: 1,
+      borderColor: c.hairlineStrong,
+      backgroundColor: c.bgElevated,
+    },
+    restartText: {
+      ...ts.base,
+      fontFamily: fontFamily.sansMedium,
+      color: c.fg,
+    },
+    pressed: { opacity: 0.7 },
 
     landscapeTopRow: {
       flex: 1,

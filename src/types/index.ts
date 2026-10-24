@@ -60,7 +60,13 @@ export interface SoundSettings {
   workoutComplete: SoundStyle;
   halfwaySound: SoundStyle;
   countdownDuration: number;
+  /** This app's cue loudness, 0–100 percent of the phone's own volume. Applies
+   *  to tones and spoken cues alike; other apps' audio is never touched. */
+  volume: number;
 }
+
+/** The per-event cue keys (each holds a SoundStyle). */
+export type SoundEventKey = Exclude<keyof SoundSettings, 'countdownDuration' | 'volume'>;
 
 export interface AppSettings {
   sounds: SoundSettings;

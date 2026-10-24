@@ -85,6 +85,7 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
       const steps = buildWorkoutSequence(timer);
       stepsRef.current = steps;
       soundsRef.current = settings.sounds;
+      AudioEngine.setVolume(settings.sounds.volume);
       totalDurationRef.current = getTotalDuration(timer);
       maxCyclesRef.current = getMaxCycles(steps);
       speechModeRef.current = settings.audioAccessibilityMode;
@@ -276,6 +277,29 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
     goToStep(next.stepIndex);
   };
 
+  // Run the same workout again from the top, straight from the complete
+  // screen. Keep-awake and the silent keep-alive are still held (they're only
+  // released on unmount), so this is the load path's start sequence again.
+  const restart = () => {
+    const steps = stepsRef.current;
+    if (steps.length === 0) return;
+    firePhaseStart(steps[0], soundsRef.current!, steps, maxCyclesRef.current, speechModeRef.current);
+    halfwayFiredRef.current = false;
+    const initial: DisplayState = initialPlayback(steps);
+    stateRef.current = initial;
+    setDisplayState(initial);
+    isRunningRef.current = true;
+    setIsRunning(true);
+    startInterval();
+    startLiveTimer({
+      sessionId: sessionIdRef.current,
+      title: timerNameRef.current,
+      phases: phasesFrom(steps, 0),
+      phaseStartMs: Date.now(),
+      actions: ['pause', 'skip'],
+    }).catch(() => {});
+  };
+
   const handleStop = () => {
     Alert.alert(t('workout.stopWorkout'), t('workout.stopBody'), [
       { text: t('workout.keepGoing'), style: 'cancel' },
@@ -312,6 +336,7 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
     handleBack,
     handleSkip,
     handleStop,
+    restart,
   };
 }
 

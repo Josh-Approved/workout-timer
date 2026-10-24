@@ -9,25 +9,20 @@ import {
   Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as Speech from 'expo-speech';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ChevronLeft, Minus, Plus } from 'lucide-react-native';
-import {
-  RootStackParamList,
-  SoundSettings,
-  SoundStyle,
-  SOUND_STYLE_LABELS,
-} from '../types';
+import { RootStackParamList, SoundEventKey, SoundSettings, SoundStyle } from '../types';
 import { loadSettings, saveSettings } from '../storage/storage';
 import { DEFAULT_SETTINGS } from '../constants/defaultTimers';
 import { TIP_PRODUCT_IDS } from '../constants/tipProducts';
 import TipJarSheet from '../components/TipJarSheet';
 import { AudioEngine } from '../audio/AudioEngine';
+import { previewCue } from '../audio/cuePreview';
 import { t } from '../i18n';
 import { AboutSection } from '../components/AboutSection';
 import { LanguageSetting } from '../components/LanguageSetting';
-import { DrilldownRow } from '../components/DrilldownRow';
+import { SoundsCard } from '../components/SoundsCard';
 import { SoundStyleSheet } from '../components/SoundStyleSheet';
 import {
   useTheme,
@@ -43,31 +38,7 @@ import {
 import { boundedContent } from '../theme';
 import { useFeedback } from '../feedback/FeedbackProvider';
 
-const VOICE_PREVIEW_PHRASES: Partial<Record<keyof Omit<SoundSettings, 'countdownDuration'>, string>> = {
-  warmUpStart: 'Warm Up',
-  workStart: 'Exercise',
-  restStart: 'Rest',
-  recoveryStart: 'Recovery',
-  coolDownStart: 'Cool Down',
-  workoutComplete: 'Workout Complete',
-  halfwaySound: 'Halfway',
-};
-
 type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
-
-type SoundEventKey = keyof Omit<SoundSettings, 'countdownDuration'>;
-
-// Keys only — the visible label is resolved at render via t() so it stays
-// translatable (canon § Translations: never resolve copy in a module constant).
-const SOUND_EVENT_KEYS: SoundEventKey[] = [
-  'warmUpStart',
-  'workStart',
-  'restStart',
-  'recoveryStart',
-  'coolDownStart',
-  'workoutComplete',
-  'halfwaySound',
-];
 
 export default function SettingsScreen({ navigation }: Props) {
   const { c } = useTheme();
@@ -86,20 +57,24 @@ export default function SettingsScreen({ navigation }: Props) {
       loadSettings().then((settings) => {
         setSounds(settings.sounds);
         setAudioMode(settings.audioAccessibilityMode);
+        AudioEngine.setVolume(settings.sounds.volume);
       });
     }, [])
   );
 
-  const updateSound = async (key: keyof Omit<SoundSettings, 'countdownDuration'>, value: SoundStyle) => {
+  const updateSound = async (key: SoundEventKey, value: SoundStyle) => {
     const updated = { ...sounds, [key]: value };
     setSounds(updated);
     await saveSettings({ sounds: updated, audioAccessibilityMode: audioMode });
-    if (value === 'voice') {
-      const phrase = VOICE_PREVIEW_PHRASES[key];
-      if (phrase) Speech.speak(phrase, { language: 'en-US' });
-    } else if (value !== 'none') {
-      AudioEngine.playSound(value).catch(() => {});
-    }
+    previewCue(key, value);
+  };
+
+  // Applies at once — the engine reads it on the next cue.
+  const updateVolume = async (value: number) => {
+    const updated = { ...sounds, volume: value };
+    setSounds(updated);
+    AudioEngine.setVolume(value);
+    await saveSettings({ sounds: updated, audioAccessibilityMode: audioMode });
   };
 
   const updateCountdownDuration = async (value: number) => {
@@ -122,6 +97,7 @@ export default function SettingsScreen({ navigation }: Props) {
         onPress: async () => {
           setSounds(DEFAULT_SETTINGS.sounds);
           setAudioMode(DEFAULT_SETTINGS.audioAccessibilityMode);
+          AudioEngine.setVolume(DEFAULT_SETTINGS.sounds.volume);
           await saveSettings(DEFAULT_SETTINGS);
         },
       },
@@ -248,19 +224,11 @@ export default function SettingsScreen({ navigation }: Props) {
         </View>
 
         <Text style={s.sectionHeader} accessibilityRole="header">{t('settings.sounds')}</Text>
-        <View style={s.card}>
-          {/* One summary row per event (hub-and-spoke) — the full style list
-              lives in the SoundStyleSheet, where every option fits full-width
-              instead of a horizontally-clipped pill strip. */}
-          {SOUND_EVENT_KEYS.map((eventKey) => (
-            <DrilldownRow
-              key={eventKey}
-              label={t(`settings.soundEvents.${eventKey}`)}
-              value={SOUND_STYLE_LABELS[sounds[eventKey]]}
-              onPress={() => setSoundSheetFor(eventKey)}
-            />
-          ))}
-        </View>
+        <SoundsCard
+          sounds={sounds}
+          onVolumeChange={updateVolume}
+          onOpenEvent={setSoundSheetFor}
+        />
 
         <Text style={s.sectionHeader} accessibilityRole="header">{t('settings.about')}</Text>
         <AboutSection

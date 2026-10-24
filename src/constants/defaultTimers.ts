@@ -71,6 +71,7 @@ export const DEFAULT_SOUND_SETTINGS: SoundSettings = {
   // Halfway-through-interval cue on by default, using the unobtrusive Click.
   halfwaySound: 'click',
   countdownDuration: 3,
+  volume: 100,
 };
 
 export const DEFAULT_SETTINGS: AppSettings = {
