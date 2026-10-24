@@ -3,6 +3,13 @@
 // Usage:
 //   node scripts/render-screenshots.mjs <app-name> [--store ios|android|chrome|ipad] [--shot <id>]
 //   node scripts/render-screenshots.mjs <app-name> --contact-sheet [--store ios]
+//   node scripts/render-screenshots.mjs <app-name> --store ios --skip-matrix
+//
+// --skip-matrix: leave out slots sourced from the device matrix (`matrix/...`,
+// e.g. the large-text and dark-mode cells `capture.mjs --cell` writes). A
+// single-store run (the per-PR CI job) never captures those cells, so without
+// this flag it would always report them missing and exit 2. Store pushes run
+// without it, so a real submission still refuses an incomplete set.
 //
 // Reads <app>/qa/screenshots.config.json. For each shot, drives the user's
 // installed Chrome in headless mode against templates/screenshots/frame.html
@@ -203,6 +210,7 @@ const onlyStore = storeFlagIdx >= 0 ? args[storeFlagIdx + 1] : null;
 const shotFlagIdx = args.indexOf('--shot');
 const onlyShot = shotFlagIdx >= 0 ? args[shotFlagIdx + 1] : null;
 const contactSheet = args.includes('--contact-sheet');
+const skipMatrix = args.includes('--skip-matrix');
 // --out <dir>     write framed PNGs under <dir>/<surface.dir>/ instead of
 //                 <app>/store-assets/screenshots/ (preview renders that must NOT
 //                 mutate an app's committed store assets).
@@ -337,6 +345,10 @@ for (const storeKey of stores) {
 
     shots.forEach((shot, i) => {
       if (onlyShot && shot.id !== onlyShot) return;
+      if (skipMatrix && typeof shot.source === 'string' && shot.source.startsWith('matrix/')) {
+        console.log(`  [skip] ${shot.id}: device-matrix slot — not captured by a single-store run`);
+        return;
+      }
       total++;
 
       // Two shot kinds: an app screen framed in device chrome (default), or a
