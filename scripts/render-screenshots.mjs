@@ -66,6 +66,24 @@ const SURFACES = {
 // Read a PNG's intrinsic pixel size straight from the IHDR chunk — zero deps.
 // PNG layout: 8-byte signature, then a length(4)+"IHDR"(4) chunk header, then
 // width(4) + height(4), big-endian, starting at byte 16.
+// One headless-Chrome capture, retried: on the macOS CI runner Chrome
+// intermittently exits 2 before writing the PNG (3 of 6 shots in one run on
+// 2026-10-24) and succeeds on the next try. A shot only fails after
+// CHROME_ATTEMPTS straight misses, so a real rendering error still surfaces.
+const CHROME_ATTEMPTS = 3;
+function captureWithChrome(chromePath, chromeArgs, outPath) {
+  let result;
+  for (let attempt = 1; attempt <= CHROME_ATTEMPTS; attempt++) {
+    fs.rmSync(outPath, { force: true });
+    result = spawnSync(chromePath, chromeArgs, { stdio: 'pipe' });
+    if (result.status === 0 && fs.existsSync(outPath)) return { ok: true, result };
+    if (attempt < CHROME_ATTEMPTS) {
+      console.warn(`  [retry] ${path.basename(outPath)}: chrome exited ${result.status} (attempt ${attempt}/${CHROME_ATTEMPTS})`);
+    }
+  }
+  return { ok: false, result };
+}
+
 function pngSize(file) {
   const fd = fs.openSync(file, 'r');
   try {
@@ -168,7 +186,7 @@ function buildContactSheets(appDir, only, screensRootOverride) {
     fs.writeFileSync(htmlPath, html);
     const outPath = path.join(path.dirname(screensRoot), `contact-sheet-${dir}.png`);
 
-    const result = spawnSync(chromePath, [
+    const { ok, result } = captureWithChrome(chromePath, [
       '--headless=new',
       '--disable-gpu',
       '--hide-scrollbars',
@@ -178,10 +196,10 @@ function buildContactSheets(appDir, only, screensRootOverride) {
       `--screenshot=${outPath}`,
       '--virtual-time-budget=4000',
       pathToFileURL(htmlPath).href,
-    ], { stdio: 'pipe' });
+    ], outPath);
     fs.rmSync(htmlPath, { force: true });
 
-    if (result.status !== 0 || !fs.existsSync(outPath)) {
+    if (!ok) {
       console.warn(`  [fail] ${dir}: chrome exited ${result.status}`);
       if (result.stderr) console.warn(result.stderr.toString().split('\n').slice(0, 5).join('\n'));
       continue;
@@ -393,7 +411,7 @@ for (const storeKey of stores) {
       const fileName = `${seq}-${surface.label}-${shot.id}.png`;
       const outPath = path.join(outDir, fileName);
 
-      const result = spawnSync(chromePath, [
+      const { ok, result } = captureWithChrome(chromePath, [
         '--headless=new',
         '--disable-gpu',
         '--hide-scrollbars',
@@ -404,9 +422,9 @@ for (const storeKey of stores) {
         // Wait long enough for fonts + image to load, then capture.
         '--virtual-time-budget=4000',
         url,
-      ], { stdio: 'pipe' });
+      ], outPath);
 
-      if (result.status !== 0 || !fs.existsSync(outPath)) {
+      if (!ok) {
         console.warn(`  [fail] ${shot.id}: chrome exited ${result.status}`);
         if (result.stderr) console.warn(result.stderr.toString().split('\n').slice(0, 5).join('\n'));
         return;
