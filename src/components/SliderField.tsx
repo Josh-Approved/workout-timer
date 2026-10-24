@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import Slider from '@react-native-community/slider';
 import ValueEditorModal from './ValueEditorModal';
 import { FINE_SECONDS_BELOW, tickToValue, valueToTick } from './sliderTicks';
@@ -22,6 +22,12 @@ export interface SliderFieldProps {
    */
   fineBelow?: number;
   isTime?: boolean;
+  /** Unit shown after a plain (non-time) value, e.g. "%". */
+  unit?: string;
+  /** Screen-reader reading of the value when the bare number isn't enough. */
+  spokenValue?: string;
+  /** Row container overrides — e.g. drop the top divider as a card's first row. */
+  style?: StyleProp<ViewStyle>;
   colors: Colors;
 }
 
@@ -65,19 +71,24 @@ export function SliderField({
   step = 5,
   fineBelow,
   isTime = false,
+  unit: unitOverride,
+  spokenValue: spokenOverride,
+  style,
   colors: c,
 }: SliderFieldProps) {
   const sf = sliderFieldStyles(c);
   const toTick = (v: number) => valueToTick(v, min, step, fineBelow);
   const fromTick = (t: number) => Math.min(max, Math.max(min, tickToValue(t, min, step, fineBelow)));
   const maxTick = toTick(max);
-  const { display, unit } = formatSliderValue(value, isTime);
-  const spokenValue = spokenSliderValue(value, isTime);
+  const formatted = formatSliderValue(value, isTime);
+  const display = formatted.display;
+  const unit = unitOverride ?? formatted.unit;
+  const spokenValue = spokenOverride ?? spokenSliderValue(value, isTime);
   const [editing, setEditing] = useState(false);
 
   return (
     <View
-      style={sf.row}
+      style={[sf.row, style]}
       accessible
       accessibilityRole="adjustable"
       accessibilityLabel={`${label}, ${spokenValue}`}

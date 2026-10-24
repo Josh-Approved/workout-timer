@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ScreenOrientation from 'expo-screen-orientation';
-import { Check } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList, WorkoutPhase } from '../types';
 import { formatTime, formatDurationSpoken, FOR_TIME_OPEN_SECONDS } from '../utils/workout';
@@ -22,6 +21,7 @@ import { WorkoutControls } from '../components/WorkoutControls';
 import { WorkoutProgressBar } from '../components/WorkoutProgressBar';
 import { WorkoutInfoPanels } from '../components/WorkoutInfoPanels';
 import { RoundCounter } from '../components/RoundCounter';
+import { WorkoutComplete } from '../components/WorkoutComplete';
 import { onSuccessMoment } from '../storage/reviewPrompt';
 import { t } from '../i18n';
 
@@ -54,6 +54,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     handleSkip,
     handleStop,
     handleFinish,
+    restart,
     kind,
     openEnded,
     rounds,
@@ -152,7 +153,16 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
 
   const s = makeStyles(c, isLandscape);
 
-  const timerDisplay = (
+  const timerDisplay = isComplete ? (
+    <View style={s.timerContainer}>
+      <WorkoutComplete
+        isLandscape={isLandscape}
+        a11yLabel={clockA11yLabel}
+        finalTime={finalTime}
+        onRestart={restart}
+      />
+    </View>
+  ) : (
     <View
       style={s.timerContainer}
       accessible
@@ -160,28 +170,16 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       accessibilityRole="text"
       accessibilityLiveRegion="none"
     >
-      {isComplete ? (
-        <View style={s.completeRow} importantForAccessibility="no">
-          <Check size={isLandscape ? 56 : 44} color={c.accent} strokeWidth={2} />
-          <Text style={s.completeText}>{t('common.done')}</Text>
-        </View>
-      ) : (
-        <Text
-          style={s.timer}
-          importantForAccessibility="no"
-          adjustsFontSizeToFit
-          numberOfLines={1}
-        >
-          {formatTime(bigTime)}
-        </Text>
-      )}
-      {!isComplete && kind === 'for_time' && capText ? (
+      <Text
+        style={s.timer}
+        importantForAccessibility="no"
+        adjustsFontSizeToFit
+        numberOfLines={1}
+      >
+        {formatTime(bigTime)}
+      </Text>
+      {kind === 'for_time' && capText ? (
         <Text style={s.capText} importantForAccessibility="no">{capText}</Text>
-      ) : null}
-      {finalTime != null ? (
-        <Text style={s.capText} importantForAccessibility="no">
-          {t('workout.yourTime')} · {formatTime(finalTime)}
-        </Text>
       ) : null}
     </View>
   );
@@ -352,13 +350,6 @@ function makeStyles(c: Colors, isLandscape: boolean) {
       color: c.fg,
       fontVariant: ['tabular-nums'],
       letterSpacing: -2,
-    },
-    completeRow: { flexDirection: 'row', alignItems: 'center', gap: space.s4 },
-    completeText: {
-      fontSize: isLandscape ? 56 : 48,
-      fontFamily: fontFamily.sansSemibold,
-      color: c.fg,
-      letterSpacing: tracking.tight,
     },
 
     landscapeTopRow: {

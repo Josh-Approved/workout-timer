@@ -9,7 +9,7 @@
 import { AccessibilityInfo } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import * as Speech from 'expo-speech';
-import { PhaseStep, SoundSettings, WorkoutPhase } from '../types';
+import { PhaseStep, SoundEventKey, SoundSettings, WorkoutPhase } from '../types';
 import { buildPhaseAnnouncement } from '../utils/workout';
 import { AudioEngine } from './AudioEngine';
 import { t } from '../i18n';
@@ -27,8 +27,10 @@ const VOICE_PHASE_PHRASES: Partial<Record<WorkoutPhase, string>> = {
 
 export function speakAndReactivate(phrase: string): void {
   Speech.stop();
+  if (AudioEngine.getVolume() === 0) return;
   Speech.speak(phrase, {
     language: 'en-US',
+    volume: AudioEngine.getVolume(),
     onDone: () => { AudioEngine.reactivate().catch(() => {}); },
     onError: () => { AudioEngine.reactivate().catch(() => {}); },
   });
@@ -49,7 +51,7 @@ export function firePhaseStart(
   maxCycles: number,
   speechMode: boolean,
 ): void {
-  const styleMap: Partial<Record<WorkoutPhase, keyof SoundSettings>> = {
+  const styleMap: Partial<Record<WorkoutPhase, SoundEventKey>> = {
     warm_up: 'warmUpStart',
     exercise: 'workStart',
     rest: 'restStart',
