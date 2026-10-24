@@ -81,8 +81,8 @@
       "note": "edit button on the seeded custom-sequence timer (fixtures qa-sequence, 2026-10-17) — opens the sequence editor with its named interval list. Name-first like @edit-tabata."
     },
     "sequence-interval": {
-      "text": "Swings",
-      "note": "a named interval row inside the sequence editor (fixtures qa-sequence) — proves the editor rendered the interval list, not the classic sliders. The FIRST interval, not the third: on a 16:9 Android phone the third row sits below the fold and the assert failed (2026-10-17)"
+      "text": "Swings(, edit)?",
+      "note": "a named interval row inside the sequence editor (fixtures qa-sequence) — proves the editor rendered the interval list, not the classic sliders. The FIRST interval, not the third: on a 16:9 Android phone the third row sits below the fold and the assert failed (2026-10-17). Matches the row's accessible name (i18n editor.editInterval), not the bare interval name: on iOS the row is one merged accessible element, so a bare 'Swings' never appears in the hierarchy there, while Android's tree shows the bare name and not the merged one (both asserts failed in turn, 2026-10-24). The optional suffix matches either"
     },
     "start-hangboard": {
       "text": "Start Climbing Hangboard",
