@@ -5,6 +5,13 @@
  * chevron right. The row never holds the options themselves — tapping opens
  * that dimension's focused editor (a DrilldownSheet). The value text is the
  * receipt: always the current state, muted while it's still the default ask.
+ *
+ * The row brings NO horizontal padding: the card or list it sits in supplies
+ * the gutter (space.s5 or space.s6, matching the rows around it), and the
+ * hairline divider spans that gutter's inner width. Dropped straight into a
+ * card, the label touches the card's border (shipped once: workout-timer's
+ * Sounds card, 2026-10); the edge-inset audit (src/qa/edgeInset.ts) fails
+ * that in jest.
  */
 
 import React from 'react';
