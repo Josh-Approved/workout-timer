@@ -1,0 +1,35 @@
+# Class mode (beta) smoke, one device: open Class mode, dismiss the one-time
+# beta note, start a class from the first timer, and see the class code and
+# the start countdown. Proves the screens mount and a hosted class gathers;
+# two-phone sync is scripts/e2e/run-two-device.sh's job.
+appId: com.joshapproved.freeworkouttimer
+---
+- launchApp
+- extendedWaitUntil:
+    visible:
+      text: "Class mode, beta"
+    timeout: 20000
+- tapOn:
+    text: "Class mode, beta"
+- extendedWaitUntil:
+    visible:
+      text: "Class mode is in beta"
+    timeout: 5000
+- tapOn: "Got it"
+- assertVisible: "Join a class"
+- assertVisible: "Run a class"
+- scrollUntilVisible:
+    element:
+      text: "Start class"
+- tapOn: "Start class"
+- extendedWaitUntil:
+    visible:
+      text: "Class code"
+    timeout: 5000
+- assertVisible:
+    text: "Class starts in.*"
+- tapOn: "Done"
+- assertVisible: "Instructor"
+# The clock is one merged accessibility element: "Class starts in 52 seconds".
+- assertVisible:
+    text: "Class starts in.*"

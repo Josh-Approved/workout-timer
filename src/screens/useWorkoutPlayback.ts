@@ -22,7 +22,7 @@
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Alert, AppState } from 'react-native';
+import { Alert, AppState, Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { PhaseStep, SoundSettings, TimerConfig, WorkoutPhase, TimerKind, timerKind } from '../types';
@@ -280,6 +280,7 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
 
     // event === 'phase-start'
     firePhaseStart(steps[next.stepIndex], sounds, steps, maxCyclesRef.current, speechModeRef.current);
+    devClassLog('step', next.stepIndex);
     halfwayFiredRef.current = false;
     stateRef.current = next;
     setDisplayState(next);
@@ -642,11 +643,15 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
     if (jumped) {
       const step = steps[target.stepIndex];
       firePhaseStart(step, soundsRef.current!, steps, maxCyclesRef.current, speechModeRef.current);
+      devClassLog('jump', target.stepIndex);
       halfwayFiredRef.current =
         target.timeRemaining < step.duration && target.timeRemaining <= Math.floor(step.duration / 2);
       stateRef.current = target;
       setDisplayState(target);
-    } else if (elapsedSeconds(steps, prev) > elapsedSeconds(steps, target)) {
+    } else if (!cc.running || elapsedSeconds(steps, prev) > elapsedSeconds(steps, target)) {
+      // Paused: show exactly where the class stopped (no tick will move us
+      // there). Running but ahead: a pause reached this phone late, so step
+      // back to the class quietly.
       stateRef.current = target;
       setDisplayState(target);
     }
@@ -669,7 +674,19 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
     } else if (!cc.running && wasRunning) {
       endLiveTimer(sessionIdRef.current).catch(() => {});
     }
+    if (cc.running !== wasRunning) devClassLog(cc.running ? 'run' : 'pause', stateRef.current.stepIndex);
     if (cc.running) tick();
+  }
+
+  // Development builds stamp every class step change with the time of day, so
+  // a multi-device test can measure how far apart the phones act (simulators
+  // and emulators share the Mac's clock). Never in store builds.
+  function devClassLog(what: string, stepIndex: number) {
+    const cs = classRef.current;
+    if (!__DEV__ || !cs) return;
+    console.log(
+      `[class] ${Platform.OS} ${cs.role} ${what} step=${stepIndex} running=${clockRef.current.running} wall=${Date.now()}`,
+    );
   }
 
   // Wake exactly when the class starts, or when the next command lands.

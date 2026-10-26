@@ -1,0 +1,189 @@
+#!/usr/bin/env bash
+# Shared helpers for the two-device (iOS sim + Android emulator) sync E2E.
+#
+# Factory template (templates/e2e-two-device/) — synced verbatim into each
+# shared-sync consumer's scripts/e2e/. Do NOT fork per app: the per-app
+# orchestration (which flow runs when, where the offline windows fall) lives in
+# the app-owned run-two-device.sh / run-chaos.sh that SOURCE this lib. Config
+# comes from scripts/e2e/e2e.config.sh (app-owned).
+#
+# Contract the sourcing script must satisfy (usually via e2e.config.sh):
+#   APP_ID          android/ios bundle id            (e.g. com.joshapproved.grocerylist)
+#   ANDROID_APK     path to the debug apk            (build/outputs/.../app-debug.apk)
+#   FLOWS           abs dir of the app's Maestro flows
+#   IOS_UDID        booted iOS simulator udid        (arg 1 to the runner)
+#   ANDROID_SERIAL  adb serial (default emulator-5554)
+#   RELAY_PORT      hermetic mini-relay port         (default 7447)
+#   CHAOS_PORT      toxiproxy front-end port         (default 7448)
+#   E2E_DIR         abs dir containing this lib + the relays
+
+set -euo pipefail
+
+: "${ANDROID_SERIAL:=emulator-5554}"
+: "${RELAY_PORT:=7447}"
+: "${CHAOS_PORT:=7448}"
+
+h_step() { printf '\n=== %s ===\n' "$*"; }
+h_ios()   { maestro --device "$IOS_UDID" test "$FLOWS/$1"; }
+h_droid() { maestro --device "$ANDROID_SERIAL" test "$FLOWS/$1"; }
+
+# Fresh Android state via reinstall + two warm-up launches. NOT Maestro
+# clearState / pm clear: the first launch after a wipe races expo-sqlite's
+# directory creation and hydrate fails, so the QA fixtures never seed. Reinstall
+# + warm-up gives the first real flow a fresh-but-healthy DB to relaunch into.
+h_reset_android() {
+  # Restore the radios BEFORE anything else. A suite that cuts the network for
+  # an offline window and then dies inside it leaves the emulator offline for
+  # good: the EXIT trap below covers an ordinary abort, but an OOM jetsam kill
+  # or `kill -9` never runs a trap, and on the 8 GB mini that is the normal way
+  # these runs die. The damage lands on the NEXT run, which fails at a totally
+  # unrelated assertion — phase 1's "Connected" — sending the reader into the
+  # sync/relay code instead of at leftover device state. That is exactly what
+  # happened on 2026-08-28: the 2026-08-25 run died at phase 4, immediately
+  # after h_android_offline, and every run after it was doomed before it began.
+  h_android_online_safe
+  h_assert_android_online
+  adb -s "$ANDROID_SERIAL" uninstall "$APP_ID" >/dev/null 2>&1 || true
+  adb -s "$ANDROID_SERIAL" install -r "$ANDROID_APK" >/dev/null
+  # The debug build loads its JS from localhost:8081 ON THE EMULATOR, which is
+  # only Metro if the port is reversed to the host. `expo run:android` sets
+  # this up as a side effect; a run that installs the apk itself (this one)
+  # must do it too, or the app boots to "Unable to load script" and phase 1
+  # fails on "Weekly shop" — which reads exactly like a sync defect. Cost a
+  # run on 2026-10-18.
+  adb -s "$ANDROID_SERIAL" reverse tcp:8081 tcp:8081 >/dev/null 2>&1 || true
+  adb -s "$ANDROID_SERIAL" shell am start -n "$APP_ID/.MainActivity" >/dev/null
+  sleep 20
+  adb -s "$ANDROID_SERIAL" shell am force-stop "$APP_ID"
+  adb -s "$ANDROID_SERIAL" shell am start -n "$APP_ID/.MainActivity" >/dev/null
+  sleep 10
+  adb -s "$ANDROID_SERIAL" shell am force-stop "$APP_ID"
+}
+
+h_ios_terminate() { xcrun simctl terminate "$IOS_UDID" "$APP_ID" 2>/dev/null || true; }
+# Kill the Android app (state kept — NOT pm clear). The store-and-forward phase
+# needs a partner that is genuinely closed, not backgrounded: a backgrounded RN
+# app keeps its relay sockets for a while and would answer a hello.
+h_android_terminate() { adb -s "$ANDROID_SERIAL" shell am force-stop "$APP_ID" >/dev/null 2>&1 || true; }
+
+h_android_offline() {
+  adb -s "$ANDROID_SERIAL" shell svc wifi disable
+  adb -s "$ANDROID_SERIAL" shell svc data disable
+}
+h_android_online() {
+  adb -s "$ANDROID_SERIAL" shell svc wifi enable
+  adb -s "$ANDROID_SERIAL" shell svc data enable
+}
+
+# Best-effort network restore. Never fails, never aborts its caller — it runs
+# both from the EXIT trap (where a non-zero would rewrite the run's exit code)
+# and from h_reset_android (where the device may not be attached yet).
+h_android_online_safe() {
+  [ -n "${ANDROID_SERIAL:-}" ] || return 0
+  adb -s "$ANDROID_SERIAL" shell svc wifi enable >/dev/null 2>&1 || true
+  adb -s "$ANDROID_SERIAL" shell svc data enable >/dev/null 2>&1 || true
+  return 0
+}
+
+# The ASSERTION half of the restore above, and the assertion is the whole point:
+# a repair that quietly fails still hands the next run a dead emulator, and that
+# run fails four phases later at "Connected" — which reads as a sync defect and
+# sends the reader into the relay code for nothing. It cost a whole run on
+# 2026-08-25. Naming the real cause here costs seconds.
+# Only an EXPLICIT 0 fails: some google_apis images report nothing for a radio
+# they do not have, and an absent radio must not fail a run that never uses it.
+h_assert_android_online() {
+  [ -n "${ANDROID_SERIAL:-}" ] || return 0
+  local tries=0 wifi="" data=""
+  while [ "$tries" -lt 10 ]; do
+    wifi=$(adb -s "$ANDROID_SERIAL" shell settings get global wifi_on 2>/dev/null | tr -d '\r')
+    data=$(adb -s "$ANDROID_SERIAL" shell settings get global mobile_data 2>/dev/null | tr -d '\r')
+    if [ "$wifi" != "0" ] && [ "$data" != "0" ]; then return 0; fi
+    tries=$((tries + 1))
+    sleep 1
+  done
+  {
+    echo ""
+    echo "PRECONDITION FAILED: $ANDROID_SERIAL still has a radio DOWN after 10s"
+    echo "  (wifi_on=${wifi:-?} mobile_data=${data:-?})."
+    echo "  A previous run almost certainly died inside an offline window. This is"
+    echo "  leftover DEVICE state, NOT a sync bug — do not go reading the relay code."
+    echo "  Fix: adb -s $ANDROID_SERIAL shell svc wifi enable"
+    echo "       adb -s $ANDROID_SERIAL shell svc data enable"
+  } >&2
+  return 1
+}
+
+# --- relay lifecycle ---------------------------------------------------------
+# The hermetic mini-relay (local ONLY — never a public relay).
+_RELAY_PID=""
+h_start_relay() {
+  node "$E2E_DIR/mini-relay.mjs" --port "$RELAY_PORT" "$@" &
+  _RELAY_PID=$!
+  sleep 1
+  echo "mini-relay pid=$_RELAY_PID on ws://127.0.0.1:$RELAY_PORT"
+}
+h_stop_relay() { [ -n "$_RELAY_PID" ] && kill "$_RELAY_PID" 2>/dev/null || true; }
+# A FRESH relay for this run: kill any mini-relay already on RELAY_PORT, then
+# start a new one. Mandatory since store-and-forward (2026-10-18): the relay
+# KEEPS each device's latest deposit, so a relay left running from the last
+# run hands a freshly reinstalled device the previous run's whole end state
+# within seconds of its first launch — "Bananas" is already checked, Mango and
+# Papaya are already there — and phase 1's "fresh baseline" fails in a way that
+# reads exactly like a sync defect. That is the feature working; the harness
+# just has to start from an empty drop box. (Cost a run on 2026-10-18.)
+h_fresh_relay() {
+  pkill -f "mini-relay.mjs --port $RELAY_PORT" 2>/dev/null || true
+  sleep 1
+  h_start_relay "$@"
+}
+
+# --- chaos lifecycle ---------------------------------------------------------
+# Boots toxiproxy + mini-relay behind CHAOS_PORT and runs a NAMED scenario's
+# fault schedule. Point Metro's EXPO_PUBLIC_SYNC_RELAYS at CHAOS_PORT for a
+# chaos run (ws://127.0.0.1:$CHAOS_PORT + ws://10.0.2.2:$CHAOS_PORT for Android).
+_CHAOS_PID=""
+h_start_chaos() {
+  local scenario="$1"
+  command -v toxiproxy-server >/dev/null 2>&1 || {
+    echo "toxiproxy-server not on PATH — brew install toxiproxy" >&2
+    return 3
+  }
+  node "$E2E_DIR/chaos-relay.mjs" --scenario "$scenario" \
+    --port "$CHAOS_PORT" --relay-port "$RELAY_PORT" &
+  _CHAOS_PID=$!
+  echo "chaos-relay pid=$_CHAOS_PID scenario=$scenario on ws://127.0.0.1:$CHAOS_PORT"
+}
+h_stop_chaos() { [ -n "$_CHAOS_PID" ] && kill "$_CHAOS_PID" 2>/dev/null || true; }
+
+# --- gate artifact -----------------------------------------------------------
+# Writes qa/e2e-sync-report.json — the artifact run-qa.mjs's two-device tier
+# reads (read-only, like the device matrix). Called at the END of a runner, so
+# under `set -e` it only fires on a fully green run → ok:true. Args:
+#   h_write_report <suite> <ok:true|false> <scenario-name>...
+h_write_report() {
+  local suite="$1"; local ok="$2"; shift 2
+  local scenarios="" first=1
+  for name in "$@"; do
+    [ $first -eq 1 ] && first=0 || scenarios+=","
+    scenarios+="{\"name\":\"$name\",\"ok\":$ok}"
+  done
+  local out="qa/e2e-sync-report.json"
+  mkdir -p qa
+  printf '{"suite":"%s","ok":%s,"scenarios":[%s]}\n' "$suite" "$ok" "$scenarios" > "$out"
+  echo "wrote $out (suite=$suite ok=$ok)"
+}
+
+# Runs on EVERY exit, green or red. Restoring the radios is part of cleanup for
+# the same reason killing the relay is: an offline window is borrowed device
+# state, and a suite that borrows it owes it back even when it fails. Ordinary
+# aborts (a failed assertion under `set -e`, Ctrl-C) land here; the belt to this
+# brace is h_reset_android's restore, which also covers a kill that skips traps.
+h_cleanup() {
+  local rc=$?
+  h_stop_chaos
+  h_stop_relay
+  h_android_online_safe
+  return $rc
+}
+trap h_cleanup EXIT
