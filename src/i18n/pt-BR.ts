@@ -227,6 +227,12 @@ const pt_BR = {
     gotIt: 'Entendi',
     rejoin: 'Voltar para a aula',
     rejoinHint: '{name} ainda está em andamento',
+    connecting: 'Conectando à aula.',
+    pausedLive: 'Aula pausada',
+    tooLong: 'Este timer é longo demais para compartilhar como código da aula. Tente um com menos intervalos.',
+    finishClassTitle: 'Encerrar a aula?',
+    finishClassBody: 'Isso encerra o treino em todos os celulares da aula.',
+    finishClass: 'Encerrar aula',
   },
   settings: {
     accessibility: 'Acessibilidade',

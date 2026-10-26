@@ -75,6 +75,8 @@ jest.mock('live-timer', () => ({
   updateLiveTimer: jest.fn(async () => {}),
   endLiveTimer: jest.fn(async () => {}),
   useLiveTimerEvents: () => {},
+  wakeAfter: () => {},
+  cancelWake: () => {},
   nowMs: () => Date.now(),
 }));
 
@@ -94,14 +96,31 @@ const mockBus = {
 jest.mock('../../class/relay', () => {
   const actual = jest.requireActual('../../class/relay');
   class FakeRelay {
-    constructor(private mockOpts: { hostSecret?: string; onTimeline: (tl: unknown) => void; onLive: (l: boolean) => void }) {}
+    private deliver: (tl: unknown) => void;
+    constructor(
+      private mockOpts: {
+        hostSecret?: string;
+        onTimeline: (tl: unknown) => void;
+        onHeard?: () => void;
+        onLive: (l: boolean) => void;
+      },
+    ) {
+      // As the real relay: a newer timeline first, then "heard".
+      this.deliver = (tl) => {
+        this.mockOpts.onTimeline(tl);
+        this.mockOpts.onHeard?.();
+      };
+    }
     start() {
-      if (!this.mockOpts.hostSecret) mockBus.members.add(this.mockOpts.onTimeline);
+      if (!this.mockOpts.hostSecret) mockBus.members.add(this.deliver);
       this.mockOpts.onLive(true);
-      if (!this.mockOpts.hostSecret && mockBus.latest) this.mockOpts.onTimeline(mockBus.latest);
+      if (!this.mockOpts.hostSecret && mockBus.latest) {
+        const tl = mockBus.latest;
+        setTimeout(() => this.deliver(tl), mockBus.delayMs);
+      }
     }
     close() {
-      mockBus.members.delete(this.mockOpts.onTimeline);
+      mockBus.members.delete(this.deliver);
     }
     publish(tl: unknown) {
       mockBus.latest = tl;
@@ -124,13 +143,13 @@ const settle = async () => {
 };
 
 async function startClass(startInMs = 5_000) {
-  const host = hostSession(mockTimer, startInMs, Date.now(), Date.now());
+  const host = hostSession(mockTimer, startInMs, Date.now(), Date.now())!;
   const hostHook = await renderHook(() => useWorkoutPlayback({ classSession: host }, jest.fn()));
   await settle();
   return { host, hostHook };
 }
 
-async function join(host: ReturnType<typeof hostSession>) {
+async function join(host: NonNullable<ReturnType<typeof hostSession>>) {
   const parsed = parseClassCode(classCodeUrl(host.invite, Date.now(), Date.now()))!;
   const member = memberSession(parsed.invite, parsed.inviteCode, 0, Date.now(), Date.now());
   const hook = await renderHook(() => useWorkoutPlayback({ classSession: member }, jest.fn()));
@@ -221,8 +240,16 @@ describe('class mode — phones in one class stay in step', () => {
     await advance(COMMAND_LEAD_MS + 20_000);
     await act(() => hostHook.result.current.togglePause());
     await advance(RESUME_LEAD_MS + 9_000);
+    const cuesBefore = (firePhaseStart as jest.Mock).mock.calls.length;
     const late = await join(host);
+    // It waits to hear the class (here 300 ms) instead of playing the bare
+    // schedule, so no wrong step and no wrong cue in between.
+    expect(late.result.current.classView?.connecting).toBe(true);
+    expect((firePhaseStart as jest.Mock).mock.calls.length).toBe(cuesBefore);
+    await advance(400);
+    expect(late.result.current.classView?.connecting).toBe(false);
     expect(late.result.current.displayState).toEqual(hostHook.result.current.displayState);
+    expect((firePhaseStart as jest.Mock).mock.calls.length).toBe(cuesBefore + 1);
     await advance(3_000);
     expect(late.result.current.displayState).toEqual(hostHook.result.current.displayState);
   });
@@ -239,6 +266,44 @@ describe('class mode — phones in one class stay in step', () => {
     mockBus.drop = false;
     await act(() => mockBus.reconnect());
     expect(a.result.current.isRunning).toBe(false);
+    expect(a.result.current.displayState).toEqual(hostHook.result.current.displayState);
+  });
+
+  it("a member's play does nothing while the class gathers or the instructor has it paused", async () => {
+    const { host, hostHook } = await startClass(3_000);
+    const a = await join(host);
+    await act(() => a.result.current.togglePause()); // during the countdown
+    expect(a.result.current.classView?.steppedOut).toBe(false);
+    await advance(3_001 + 2_000);
+    await act(() => hostHook.result.current.togglePause());
+    await advance(COMMAND_LEAD_MS + 1);
+    await act(() => a.result.current.togglePause()); // class paused
+    expect(a.result.current.classView?.steppedOut).toBe(false);
+    await act(() => hostHook.result.current.togglePause());
+    await advance(RESUME_LEAD_MS + 2_000);
+    expect(a.result.current.isRunning).toBe(true);
+    expect(a.result.current.displayState).toEqual(hostHook.result.current.displayState);
+  });
+
+  it("a fumbled double tap on the instructor's pause is one pause", async () => {
+    const { host, hostHook } = await startClass(1_000);
+    const a = await join(host);
+    await advance(1_001 + 3_000);
+    await act(() => hostHook.result.current.togglePause());
+    await advance(120);
+    await act(() => hostHook.result.current.togglePause());
+    await advance(COMMAND_LEAD_MS + 3_000);
+    expect(hostHook.result.current.isRunning).toBe(false);
+    expect(a.result.current.isRunning).toBe(false);
+  });
+
+  it("a skip in a step's last moment doesn't also skip the next step", async () => {
+    const { host, hostHook } = await startClass(1_000);
+    const a = await join(host);
+    await advance(1_001 + 19_500); // half a second of the first work interval left
+    await act(() => hostHook.result.current.handleSkip());
+    await advance(COMMAND_LEAD_MS + 1);
+    expect(hostHook.result.current.displayState.stepIndex).toBe(1); // the rest, not the next work
     expect(a.result.current.displayState).toEqual(hostHook.result.current.displayState);
   });
 });

@@ -18,9 +18,7 @@ import { nowMs } from 'live-timer';
 import { RootStackParamList } from '../types';
 import { parseClassCode, wallOffsetOf, type ClassInvite } from '../class/classCode';
 import { estimateOffset, linedUp, MIN_READS, type ClockRead } from '../class/clockSync';
-import { memberSession, type ClassSession } from '../class/session';
-import { classIsOver } from '../class/timeline';
-import { buildWorkoutSequence } from '../utils/workout';
+import { memberSession, MAX_CLASS_MS, type ClassSession } from '../class/session';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { BetaChip } from '../components/BetaChip';
 import { logEvent } from '../feedback/log';
@@ -31,9 +29,12 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ClassJoin'>;
 
 type Status = 'scanning' | 'liningUp' | 'notACode' | 'classOver';
 
+// A code alone can't say whether its class is over (the instructor may have
+// paused it past its planned end), so only a class past any plausible length
+// is refused here; one that has truly finished opens on its done screen.
 function openClass(invite: ClassInvite, inviteCode: string, offsetMs: number): ClassSession | null {
-  const session = memberSession(invite, inviteCode, offsetMs, nowMs(), Date.now());
-  return classIsOver(buildWorkoutSequence(session.workout), session.timeline, nowMs() + offsetMs) ? null : session;
+  if (nowMs() + offsetMs > invite.startAt + MAX_CLASS_MS) return null;
+  return memberSession(invite, inviteCode, offsetMs, nowMs(), Date.now());
 }
 
 export default function ClassJoinScreen({ route, navigation }: Props) {

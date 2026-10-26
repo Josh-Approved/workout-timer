@@ -53,8 +53,24 @@ function fromB64Url(s: string): Uint8Array {
   return decodeBase64(b64 + '='.repeat((4 - (b64.length % 4)) % 4));
 }
 
-/** The fixed part of a class's code (`d`). */
-export function encodeInvite(inv: ClassInvite): string {
+/**
+ * Past this many characters a code gets dense enough to be slow to draw and
+ * hard to scan across a room, so interval names are left out (phones show and
+ * say the phase names instead).
+ */
+export const NAMES_DROP_AT = 600;
+/** Past this even without names, the timer is too long to share as a code. */
+export const CLASS_CODE_MAX = 1100;
+
+/** The fixed part of a class's code (`d`), or null if the workout is too long for one. */
+export function encodeInvite(inv: ClassInvite): string | null {
+  const full = encodeWire(inv, true);
+  if (full.length <= NAMES_DROP_AT) return full;
+  const bare = encodeWire(inv, false);
+  return bare.length <= CLASS_CODE_MAX ? bare : null;
+}
+
+function encodeWire(inv: ClassInvite, withNames: boolean): string {
   const w = inv.workout;
   const wire: Wire = {
     n: w.name,
@@ -76,7 +92,7 @@ export function encodeInvite(inv: ClassInvite): string {
     h: inv.host,
   };
   if (w.intervals?.length) {
-    wire.i = w.intervals.map((iv) => [iv.name, iv.duration, iv.kind === 'rest' ? 1 : 0]);
+    wire.i = w.intervals.map((iv) => [withNames ? iv.name : '', iv.duration, iv.kind === 'rest' ? 1 : 0]);
   }
   return toB64Url(decodeUTF8(JSON.stringify(wire)));
 }

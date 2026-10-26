@@ -94,6 +94,26 @@ export function nowMs(): number {
   return typeof LiveTimerModule.nowMs === 'function' ? LiveTimerModule.nowMs() : Date.now();
 }
 
+// A wake that still fires while the app is in the background. On Android JS
+// timers stop when the app isn't in front, so the native side posts a "wake"
+// event after `delayMs` (one pending wake per id; re-arming replaces it).
+// Pair it with an ordinary setTimeout and let whichever comes first run. A
+// no-op on iOS and in jest, where JS timers keep running.
+export function wakeAfter(id: string, delayMs: number): void {
+  if (typeof LiveTimerModule.wakeAfter === 'function') LiveTimerModule.wakeAfter(id, Math.max(0, delayMs));
+}
+
+export function cancelWake(id: string): void {
+  if (typeof LiveTimerModule.cancelWake === 'function') LiveTimerModule.cancelWake(id);
+}
+
+// Ask for what the on-screen timer needs (Android 13+ notifications) ahead of
+// time — e.g. when a class is set up — so the prompt never lands on top of a
+// running workout.
+export function prepareLiveTimer(): Promise<void> {
+  return ensureAndroidNotificationPermission();
+}
+
 export function getAvailability(): Promise<LiveTimerAvailability> {
   return LiveTimerModule.getAvailability();
 }

@@ -45,7 +45,9 @@ export type LiveTimerUpdateInput = {
 export type LiveTimerEvent =
   | { type: 'action'; sessionId: string; action: LiveTimerActionId }
   | { type: 'dismissed'; sessionId: string }
-  | { type: 'phaseTransition'; sessionId: string; toPhaseId: string };
+  | { type: 'phaseTransition'; sessionId: string; toPhaseId: string }
+  /** A wake armed with `wakeAfter` came due (Android; see index.ts). */
+  | { type: 'wake'; id: string };
 
 export type LiveTimerAvailability = {
   // True if the platform supports a persistent on-screen timer at all

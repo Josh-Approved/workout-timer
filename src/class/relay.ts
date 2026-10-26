@@ -72,34 +72,83 @@ export interface ClassRelayOptions {
   hostSecret?: string;
   /** A newer timeline from the instructor (members). */
   onTimeline: (tl: ClassTimeline) => void;
-  /** Whether any relay is reachable right now. */
+  /** Any valid message from the instructor arrived (after onTimeline, if newer). */
+  onHeard?: () => void;
+  /**
+   * Instructor: a relay is reachable. Member: the instructor has actually been
+   * heard recently — an open socket that has gone quiet is not "live".
+   */
   onLive: (live: boolean) => void;
 }
+
+/** The instructor re-deposits the timeline this often: a heartbeat, and a repair for any relay that missed one. */
+export const HEARTBEAT_MS = 10_000;
+/** A member that hasn't heard the instructor for this long is not live, and reconnects. */
+export const SILENCE_MS = 25_000;
 
 export class ClassRelay {
   private transport: DropBoxTransport;
   private latest: ClassTimeline | null = null;
   private heardSeq = -1;
+  private openRelays = 0;
+  private lastHeard = 0;
+  private lastRestart = 0;
+  private timer: ReturnType<typeof setInterval> | null = null;
 
   constructor(private opts: ClassRelayOptions) {
-    this.transport = new DropBoxTransport(
-      channelId(opts.key),
+    this.transport = this.makeTransport();
+  }
+
+  private makeTransport(): DropBoxTransport {
+    return new DropBoxTransport(
+      channelId(this.opts.key),
       (ct) => this.onMessage(ct),
       () => this.redeposit(),
-      (openRelays) => opts.onLive(openRelays > 0),
+      (openRelays) => {
+        this.openRelays = openRelays;
+        this.reportLive();
+      },
       undefined,
       // The instructor's slot is stable across relaunches so each deposit
       // replaces the last; members never deposit, so a throwaway key is right.
-      opts.hostSecret ? authorSeed(opts.key, 'host') : undefined,
+      this.opts.hostSecret ? authorSeed(this.opts.key, 'host') : undefined,
     );
   }
 
   start(): void {
+    this.lastRestart = Date.now();
     this.transport.start();
+    // Instructor: heartbeat re-deposits. Member: notice a link gone quiet
+    // (open but passing nothing) and reconnect, which also replays the
+    // latest deposit.
+    this.timer = setInterval(() => {
+      if (this.opts.hostSecret) {
+        this.redeposit();
+        return;
+      }
+      this.reportLive();
+      const quietFor = Date.now() - Math.max(this.lastHeard, this.lastRestart);
+      if (quietFor > SILENCE_MS) this.restart();
+    }, this.opts.hostSecret ? HEARTBEAT_MS : 5_000);
   }
 
   close(): void {
+    if (this.timer) clearInterval(this.timer);
+    this.timer = null;
     this.transport.close();
+  }
+
+  private restart(): void {
+    this.lastRestart = Date.now();
+    this.transport.close();
+    this.openRelays = 0;
+    this.transport = this.makeTransport();
+    this.transport.start();
+  }
+
+  private reportLive(): void {
+    if (this.opts.hostSecret) this.opts.onLive(this.openRelays > 0);
+    else this.opts.onLive(this.openRelays > 0 && Date.now() - this.lastHeard < SILENCE_MS);
   }
 
   /** Instructor: deposit the timeline (kept, and re-deposited on every reconnect). */
@@ -115,8 +164,14 @@ export class ClassRelay {
 
   private onMessage(ciphertext: string): void {
     const tl = unpackTimeline(this.opts.key, this.opts.hostPub, ciphertext);
-    if (!tl || tl.seq <= this.heardSeq) return;
-    this.heardSeq = tl.seq;
-    this.opts.onTimeline(tl);
+    if (!tl) return;
+    const wasLive = Date.now() - this.lastHeard < SILENCE_MS;
+    this.lastHeard = Date.now();
+    if (tl.seq > this.heardSeq) {
+      this.heardSeq = tl.seq;
+      this.opts.onTimeline(tl);
+    }
+    this.opts.onHeard?.();
+    if (!wasLive) this.reportLive();
   }
 }

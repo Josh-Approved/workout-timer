@@ -97,8 +97,9 @@ export function nextCommand(tl: ClassTimeline, classNow: number): ClassCommand |
 
 // ---------------------------------------------------------------------------
 // The instructor's controls. Each returns the new timeline; the caller
-// publishes it. A control acts on where the class WILL be once the commands
-// already in flight have landed, so a double tap can't fight itself.
+// publishes it. A control acts on what the instructor sees when they tap —
+// or, with commands still in flight, on where those will have left the
+// class — and lands a lead later.
 // ---------------------------------------------------------------------------
 
 function append(tl: ClassTimeline, cmd: ClassCommand): ClassTimeline {
@@ -111,6 +112,11 @@ function landingAt(tl: ClassTimeline, classNow: number, lead: number): number {
   return Math.round(Math.max(classNow + lead, last + 1));
 }
 
+/** The moment a new control decides from: now, or the last command still in flight. */
+function decidingAt(tl: ClassTimeline, classNow: number): number {
+  return tl.commands.reduce((m, c) => Math.max(m, c.at), classNow);
+}
+
 /** Pause the class if it is (about to be) running, otherwise count it back in. */
 export function toggleClassPause(steps: PhaseStep[], tl: ClassTimeline, classNow: number): ClassTimeline {
   const settled = classClockAt(steps, tl, landingAt(tl, classNow, 0));
@@ -118,12 +124,21 @@ export function toggleClassPause(steps: PhaseStep[], tl: ClassTimeline, classNow
   return append(tl, { at: landingAt(tl, classNow, RESUME_LEAD_MS), action: 'resume' });
 }
 
-/** Skip the class to the next step (or the end). */
+/**
+ * Skip the class to the step after the one the instructor is looking at (or
+ * the end). Decided at the tap, not at landing: a skip in a step's last
+ * second must not also skip the step that begins during the lead.
+ */
 export function classSkip(steps: PhaseStep[], tl: ClassTimeline, classNow: number): ClassTimeline {
-  const at = landingAt(tl, classNow, COMMAND_LEAD_MS);
-  const there = classPositionAt(steps, tl, at);
+  const there = classPositionAt(steps, tl, decidingAt(tl, classNow));
   if (there.mode === 'complete') return tl;
-  return append(tl, { at, action: 'goto', step: there.stepIndex + 1 });
+  return append(tl, { at: landingAt(tl, classNow, COMMAND_LEAD_MS), action: 'goto', step: there.stepIndex + 1 });
+}
+
+/** End the class's workout on every phone (the instructor's Finish in AMRAP / For Time). */
+export function classFinish(steps: PhaseStep[], tl: ClassTimeline, classNow: number): ClassTimeline {
+  if (classPositionAt(steps, tl, decidingAt(tl, classNow)).mode === 'complete') return tl;
+  return append(tl, { at: landingAt(tl, classNow, COMMAND_LEAD_MS), action: 'goto', step: steps.length });
 }
 
 /** Back control for the class, music-player style (utils/playback `backTargetIndex`). */
@@ -133,12 +148,15 @@ export function classBack(
   classNow: number,
   thresholdSeconds: number,
 ): ClassTimeline {
-  const at = landingAt(tl, classNow, COMMAND_LEAD_MS);
-  const there = classPositionAt(steps, tl, at);
+  const there = classPositionAt(steps, tl, decidingAt(tl, classNow));
   if (there.mode === 'complete') return tl;
   const step = steps[there.stepIndex];
   if (!step) return tl;
-  return append(tl, { at, action: 'goto', step: backTargetIndex(there, step.duration, thresholdSeconds) });
+  return append(tl, {
+    at: landingAt(tl, classNow, COMMAND_LEAD_MS),
+    action: 'goto',
+    step: backTargetIndex(there, step.duration, thresholdSeconds),
+  });
 }
 
 /** Whether the class's workout has finished by this class-time moment. */

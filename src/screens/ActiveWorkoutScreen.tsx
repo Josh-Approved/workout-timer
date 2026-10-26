@@ -76,6 +76,10 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
   const inClass = classView != null;
   const isMember = classView?.role === 'member';
   const gathering = classView?.startsIn != null;
+  // The play button shows what is about to happen once a pending class command lands.
+  const shownRunning =
+    classView?.pending?.action === 'pause' ? false : classView?.pending?.action === 'resume' ? true : isRunning;
+  const holding = gathering || classView?.connecting === true;
 
   useEffect(() => {
     ScreenOrientation.unlockAsync().catch(() => {});
@@ -231,7 +235,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
   const controls = (
     <WorkoutControls
       complete={displayState.mode === 'complete'}
-      isRunning={isRunning}
+      isRunning={shownRunning}
       isLandscape={isLandscape}
       backA11yLabel={backA11yLabel}
       onBack={handleBack}
@@ -242,10 +246,12 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       skipFinishes={withRounds && isLastStep}
       showSeek={!isMember}
       playA11yLabel={classView?.steppedOut ? t('classMode.backInSync') : undefined}
+      playDisabled={holding || (isMember && !isRunning && !classView?.steppedOut)}
+      seekDisabled={holding}
     />
   );
 
-  const classBar = classView ? (
+  const classBar = classView && !isComplete ? (
     <ClassBar view={classView} onShowCode={() => setCodeVisible(true)} onFeedback={() => feedback.open('bug')} />
   ) : null;
   const codeSheet = inClass ? (

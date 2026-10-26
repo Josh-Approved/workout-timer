@@ -227,6 +227,12 @@ const fr = {
     gotIt: 'Compris',
     rejoin: 'Revenir au cours',
     rejoinHint: '{name} est toujours en cours',
+    connecting: 'Connexion au cours.',
+    pausedLive: 'Cours en pause',
+    tooLong: "Ce minuteur est trop long pour être partagé en code de cours. Essayez-en un avec moins d'intervalles.",
+    finishClassTitle: 'Terminer le cours ?',
+    finishClassBody: "Cela termine l'entraînement sur tous les téléphones du cours.",
+    finishClass: 'Terminer le cours',
   },
   settings: {
     accessibility: 'Accessibilité',

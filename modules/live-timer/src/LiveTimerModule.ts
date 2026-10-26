@@ -12,6 +12,8 @@ type Native = {
   update(input: LiveTimerUpdateInput): Promise<void>;
   end(sessionId: string): Promise<void>;
   nowMs(): number;
+  wakeAfter(id: string, delayMs: number): void;
+  cancelWake(id: string): void;
   addListener?: (name: string, cb: (...args: unknown[]) => void) => unknown;
 };
 
@@ -28,6 +30,8 @@ const noop: Native = {
   update: async () => {},
   end: async () => {},
   nowMs: () => Date.now(),
+  wakeAfter: () => {},
+  cancelWake: () => {},
 };
 
 const native = requireOptionalNativeModule<Native>('LiveTimerModule');

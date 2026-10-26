@@ -30,11 +30,13 @@ export function ClassBar({ view, onShowCode, onFeedback }: Props) {
         ? t('classMode.resumingIn', { seconds: view.pending.inSec })
         : t('classMode.moving')
     : null;
-  const notice = view.steppedOut
-    ? t('classMode.steppedOut')
-    : !view.live && view.startsIn == null
-      ? t(view.role === 'host' ? 'classMode.offlineHost' : 'classMode.offlineMember')
-      : null;
+  const notice = view.connecting
+    ? t('classMode.connecting')
+    : view.steppedOut
+      ? t('classMode.steppedOut')
+      : !view.live && view.startsIn == null
+        ? t(view.role === 'host' ? 'classMode.offlineHost' : 'classMode.offlineMember')
+        : null;
 
   return (
     <View style={s.wrap}>

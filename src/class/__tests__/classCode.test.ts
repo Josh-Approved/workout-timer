@@ -6,7 +6,14 @@
 
 import type { TimerConfig } from '../../types';
 import { buildWorkoutSequence } from '../../utils/workout';
-import { encodeInvite, classCodeUrl, parseClassCode, wallOffsetOf, type ClassInvite } from '../classCode';
+import {
+  encodeInvite,
+  classCodeUrl,
+  parseClassCode,
+  wallOffsetOf,
+  NAMES_DROP_AT,
+  type ClassInvite,
+} from '../classCode';
 
 const base: TimerConfig = {
   id: 'x',
@@ -32,7 +39,7 @@ const inv = (workout: TimerConfig): ClassInvite => ({
 
 describe('class code', () => {
   it('round-trips an intervals timer to the same workout', () => {
-    const url = classCodeUrl(encodeInvite(inv(base)), 123_400_000, 1_700_000_000_000);
+    const url = classCodeUrl(encodeInvite(inv(base))!, 123_400_000, 1_700_000_000_000);
     const got = parseClassCode(url)!;
     expect(got.classNow).toBe(123_400_000);
     expect(got.invite.startAt).toBe(123_456_789);
@@ -51,13 +58,13 @@ describe('class code', () => {
       ],
     };
     for (const w of [seq, { ...base, kind: 'amrap' as const, timeCap: 600 }, { ...base, kind: 'for_time' as const, timeCap: 0 }]) {
-      const got = parseClassCode(classCodeUrl(encodeInvite(inv(w)), 1, 2))!;
+      const got = parseClassCode(classCodeUrl(encodeInvite(inv(w))!, 1, 2))!;
       expect(buildWorkoutSequence(got.invite.workout)).toEqual(buildWorkoutSequence(w));
     }
   });
 
   it('stays small enough to scan from across a room', () => {
-    expect(classCodeUrl(encodeInvite(inv(base)), 9_999_999_999, 1_799_999_999_999).length).toBeLessThan(400);
+    expect(classCodeUrl(encodeInvite(inv(base))!, 9_999_999_999, 1_799_999_999_999).length).toBeLessThan(400);
   });
 
   it('refuses anything else', () => {
@@ -69,13 +76,38 @@ describe('class code', () => {
   });
 
   it('reads a link with no draw time as a code that can not line a clock up', () => {
-    const d = encodeInvite(inv(base));
+    const d = encodeInvite(inv(base))!;
     expect(parseClassCode(`fwt://class?v=1&d=${d}`)!.classNow).toBeNull();
   });
 
   it('carries the instructor time-of-day offset for link joins', () => {
-    const got = parseClassCode(classCodeUrl(encodeInvite(inv(base)), 5_000, 1_700_000_000_000))!;
+    const got = parseClassCode(classCodeUrl(encodeInvite(inv(base))!, 5_000, 1_700_000_000_000))!;
     expect(wallOffsetOf(got.classNow, got.wallNow)).toBe(5_000 - 1_700_000_000_000);
     expect(wallOffsetOf(null, 1)).toBeNull();
+  });
+
+  it('leaves interval names out of a long sequence, and refuses one too long for any code', () => {
+    const many = (n: number): TimerConfig => ({
+      ...base,
+      kind: 'sequence',
+      intervals: Array.from({ length: n }, (_, i) => ({
+        id: String(i),
+        name: `Interval number ${i}`,
+        duration: 30,
+        kind: i % 2 ? ('rest' as const) : ('work' as const),
+      })),
+    });
+    const named = encodeInvite(inv(many(4)))!;
+    expect(named.length).toBeLessThanOrEqual(NAMES_DROP_AT);
+    expect(parseClassCode(classCodeUrl(named, 1, 2))!.invite.workout.intervals![0].name).toBe('Interval number 0');
+    const bare = encodeInvite(inv(many(44)))!;
+    const got = parseClassCode(classCodeUrl(bare, 1, 2))!.invite.workout;
+    expect(got.intervals).toHaveLength(44);
+    expect(got.intervals![0].name).toBe('');
+    // Same timing, phase names in place of the dropped ones.
+    expect(buildWorkoutSequence(got).map((st) => st.duration)).toEqual(
+      buildWorkoutSequence(many(44)).map((st) => st.duration),
+    );
+    expect(encodeInvite(inv(many(400)))).toBeNull();
   });
 });

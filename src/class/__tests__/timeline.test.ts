@@ -15,6 +15,7 @@ import {
   toggleClassPause,
   classSkip,
   classBack,
+  classFinish,
   classIsOver,
   COMMAND_LEAD_MS,
   RESUME_LEAD_MS,
@@ -104,9 +105,25 @@ describe('the instructor controls', () => {
     expect(twice.commands[1].at).toBeGreaterThan(twice.commands[0].at);
   });
 
-  it('skip jumps to the step after where the class will be when it lands', () => {
-    const tl = classSkip(STEPS, newTimeline(START), START + 9_500); // lands in the rest
-    expect(tl.commands[0]).toMatchObject({ action: 'goto', step: 2 });
+  it("skip goes to the step after the one on screen, even when the next one starts during the lead", () => {
+    // Tapped with half a second of the first work interval left: the rest
+    // begins on its own before the skip lands, and the skip must not then
+    // jump past it.
+    const tl = classSkip(STEPS, newTimeline(START), START + 9_500);
+    expect(tl.commands[0]).toMatchObject({ action: 'goto', step: 1 });
+  });
+
+  it('a second skip while the first is in flight goes one further', () => {
+    const once = classSkip(STEPS, newTimeline(START), START + 2_000);
+    const twice = classSkip(STEPS, once, START + 2_400);
+    expect(twice.commands.map((c) => (c.action === 'goto' ? c.step : -1))).toEqual([1, 2]);
+  });
+
+  it('finish ends the class for everyone, once', () => {
+    const tl = classFinish(STEPS, newTimeline(START), START + 4_000);
+    expect(tl.commands[0]).toMatchObject({ action: 'goto', step: STEPS.length });
+    expect(classIsOver(STEPS, tl, START + 4_000 + COMMAND_LEAD_MS)).toBe(true);
+    expect(classFinish(STEPS, tl, START + 4_100)).toBe(tl);
   });
 
   it('back restarts the step, or goes to the previous one right after a start', () => {

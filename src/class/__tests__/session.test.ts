@@ -28,7 +28,7 @@ const workout: TimerConfig = {
 };
 
 describe('class sessions', () => {
-  const host = hostSession(workout, 30_000, 500_000, 1_700_000_000_000);
+  const host = hostSession(workout, 30_000, 500_000, 1_700_000_000_000)!;
 
   it('a hosted class carries a code any phone can join from', () => {
     const got = parseClassCode(classCodeUrl(host.invite, 500_000, 1_700_000_000_000))!;
@@ -49,5 +49,14 @@ describe('class sessions', () => {
     expect(canRejoin(host, 3_000, 1_700_000_000_000 + 120_000)).toBe(false); // clock restarted
     expect(canRejoin(host, 500_000 + 60_000, 1_700_000_000_000 + 600_000)).toBe(false); // clocks disagree
     expect(canRejoin(host, 500_000 + 700_000, 1_700_000_000_000 + 700_000)).toBe(false); // 10 min workout done
+  });
+
+  it("gives a member's saved class grace: the instructor may have paused past the planned end", () => {
+    const parsed = parseClassCode(classCodeUrl(host.invite, 500_000, 1_700_000_000_000))!;
+    const member = memberSession(parsed.invite, host.invite, 0, 500_000, 1_700_000_000_000);
+    // Planned end 530 s + 600 s; ten minutes past it the member is still offered the class...
+    expect(canRejoin(member, 1_130_000 + 600_000, 1_700_000_000_000 + 630_000 + 600_000)).toBe(true);
+    // ...but not once it's long gone.
+    expect(canRejoin(member, 1_130_000 + 1_000_000, 1_700_000_000_000 + 630_000 + 1_000_000)).toBe(false);
   });
 });

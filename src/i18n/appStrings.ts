@@ -243,6 +243,12 @@ export const APP_STRINGS = {
     gotIt: 'Got it',
     rejoin: 'Rejoin class',
     rejoinHint: '{name} is still running',
+    connecting: 'Connecting to the class.',
+    pausedLive: 'Class paused',
+    tooLong: 'This timer is too long to share as a class code. Try one with fewer intervals.',
+    finishClassTitle: 'Finish the class?',
+    finishClassBody: 'This ends the workout on every phone in the class.',
+    finishClass: 'Finish class',
   },
   // Extends the shell settings namespace (title/appearance/theme*/language*/about).
   settings: {

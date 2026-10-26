@@ -29,15 +29,25 @@ export interface ClassSession {
   joined: { mono: number; wall: number };
 }
 
-/** Start a class from one of the instructor's timers, `startInMs` from now. */
-export function hostSession(workout: TimerConfig, startInMs: number, monoNow: number, wallNow: number): ClassSession {
+/**
+ * Start a class from one of the instructor's timers, `startInMs` from now.
+ * Null when the timer is too long to fit in a class code.
+ */
+export function hostSession(
+  workout: TimerConfig,
+  startInMs: number,
+  monoNow: number,
+  wallNow: number,
+): ClassSession | null {
   const keys = newClassKeys();
   const timeline = newTimeline(monoNow + startInMs);
   const shared = { ...workout, id: `class-${timeline.startAt}`, createdAt: 0, updatedAt: 0 };
+  const invite = encodeInvite({ workout: shared, startAt: timeline.startAt, key: keys.key, host: keys.hostPub });
+  if (!invite) return null;
   return {
     role: 'host',
     workout: shared,
-    invite: encodeInvite({ workout: shared, startAt: timeline.startAt, key: keys.key, host: keys.hostPub }),
+    invite,
     key: keys.key,
     hostPub: keys.hostPub,
     hostSecret: keys.hostSecret,
@@ -68,7 +78,12 @@ export function memberSession(
 }
 
 /** Classes are gone after this long, whatever the timeline says. */
-const MAX_CLASS_MS = 6 * 3600 * 1000;
+export const MAX_CLASS_MS = 6 * 3600 * 1000;
+/**
+ * A member's saved timeline may have missed the instructor's latest pauses,
+ * so it only rules a class over once it would have ended this long ago.
+ */
+const MEMBER_OVER_GRACE_MS = 15 * 60 * 1000;
 /** Both clocks must have moved together this closely since joining. */
 const REBOOT_TOLERANCE_MS = 2000;
 
@@ -82,7 +97,8 @@ export function canRejoin(s: ClassSession, monoNow: number, wallNow: number): bo
   const wallMoved = wallNow - s.joined.wall;
   if (monoMoved < 0 || Math.abs(monoMoved - wallMoved) > REBOOT_TOLERANCE_MS) return false;
   if (monoMoved > MAX_CLASS_MS) return false;
-  return !classIsOver(buildWorkoutSequence(s.workout), s.timeline, monoNow + s.offsetMs);
+  const grace = s.role === 'member' ? MEMBER_OVER_GRACE_MS : 0;
+  return !classIsOver(buildWorkoutSequence(s.workout), s.timeline, monoNow + s.offsetMs - grace);
 }
 
 const KEY = '@fwt/class';

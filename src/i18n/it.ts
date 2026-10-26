@@ -227,6 +227,12 @@ const it = {
     gotIt: 'Capito',
     rejoin: 'Rientra nel corso',
     rejoinHint: '{name} è ancora in corso',
+    connecting: 'Connessione al corso.',
+    pausedLive: 'Corso in pausa',
+    tooLong: 'Questo timer è troppo lungo per essere condiviso come codice del corso. Provane uno con meno intervalli.',
+    finishClassTitle: 'Terminare il corso?',
+    finishClassBody: "Questo termina l'allenamento su tutti i telefoni del corso.",
+    finishClass: 'Termina corso',
   },
   settings: {
     accessibility: 'Accessibilità',

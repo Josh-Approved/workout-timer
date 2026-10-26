@@ -227,6 +227,12 @@ const es = {
     gotIt: 'Entendido',
     rejoin: 'Volver a la clase',
     rejoinHint: '{name} sigue en marcha',
+    connecting: 'Conectando con la clase.',
+    pausedLive: 'Clase en pausa',
+    tooLong: 'Este temporizador es demasiado largo para compartirlo como código de clase. Prueba uno con menos intervalos.',
+    finishClassTitle: '¿Terminar la clase?',
+    finishClassBody: 'Esto termina el entrenamiento en todos los teléfonos de la clase.',
+    finishClass: 'Terminar clase',
   },
   settings: {
     accessibility: 'Accesibilidad',

@@ -75,6 +75,8 @@ jest.mock('live-timer', () => ({
   updateLiveTimer: jest.fn(async () => {}),
   endLiveTimer: jest.fn(async () => {}),
   useLiveTimerEvents: () => {},
+  wakeAfter: () => {},
+  cancelWake: () => {},
   nowMs: () => Date.now() + mockStall.ms,
 }));
 

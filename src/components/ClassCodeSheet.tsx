@@ -14,8 +14,12 @@ import { formatTime, formatDurationSpoken } from '../utils/workout';
 import { BetaChip } from './BetaChip';
 import { useTheme, fontFamily, space, radius, type as ty, Colors } from '../theme';
 
-/** How often the code is redrawn with a fresh class time. */
-const REDRAW_MS = 100;
+/**
+ * How often the code is redrawn with a fresh class time. Fast enough that a
+ * scan sees several redraws a second; slow enough that drawing it doesn't
+ * hold up this phone's own cues.
+ */
+const REDRAW_MS = 150;
 
 type Props = {
   visible: boolean;
@@ -32,6 +36,7 @@ export function ClassCodeSheet({ visible, code, workoutName, startsIn, onDismiss
   const { width, height } = useWindowDimensions();
   const size = Math.min(width - space.s7 * 2, height * 0.5, 360);
   const [value, setValue] = useState<string | null>(() => code());
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
@@ -58,7 +63,18 @@ export function ClassCodeSheet({ visible, code, workoutName, startsIn, onDismiss
           accessibilityRole="image"
           accessibilityLabel={t('classMode.codeA11y', { name: workoutName })}
         >
-          {value ? <QRCode value={value} size={size} backgroundColor="#FFFFFF" color="#000000" ecl="L" /> : null}
+          {value && !failed ? (
+            <QRCode
+              value={value}
+              size={size}
+              backgroundColor="#FFFFFF"
+              color="#000000"
+              ecl="L"
+              onError={() => setFailed(true)}
+            />
+          ) : failed ? (
+            <Text style={s.failed}>{t('classMode.tooLong')}</Text>
+          ) : null}
         </View>
         <Text
           style={s.status}
@@ -99,6 +115,7 @@ function makeStyles(c: Colors) {
     title: { ...ty.lg, fontFamily: fontFamily.sansSemibold, color: c.fg },
     name: { ...ty.base, fontFamily: fontFamily.sans, color: c.fgMuted, textAlign: 'center' },
     qrWrap: { padding: space.s5, backgroundColor: '#FFFFFF', borderRadius: radius.lg },
+    failed: { ...ty.sm, fontFamily: fontFamily.sans, color: '#000000', maxWidth: 280, textAlign: 'center' },
     status: {
       ...ty.md,
       fontFamily: fontFamily.mono,

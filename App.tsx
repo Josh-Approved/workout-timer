@@ -36,11 +36,17 @@ const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
 // A class code opened from outside the app (the system camera, a tapped link)
 // lands on the class scanner: only an in-app scan lines a phone's clock up.
+// One workout at a time: a code opened mid-workout (say, scanned again with
+// the system camera while already in that class) is ignored rather than
+// stacking a second workout on top of the first.
 function openClassLink(url: string | null) {
   if (!url || !url.startsWith('fwt://class?')) return;
-  const go = () => navigationRef.navigate('ClassJoin', { link: url });
-  if (navigationRef.isReady()) go();
-  else setTimeout(() => openClassLink(url), 300);
+  if (!navigationRef.isReady()) {
+    setTimeout(() => openClassLink(url), 300);
+    return;
+  }
+  if (navigationRef.getCurrentRoute()?.name === 'ActiveWorkout') return;
+  navigationRef.navigate('ClassJoin', { link: url });
 }
 
 // Store identity for the canonical review prompt. Module scope on purpose — the

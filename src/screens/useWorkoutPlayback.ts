@@ -63,6 +63,8 @@ import {
   endLiveTimer,
   useLiveTimerEvents,
   nowMs,
+  wakeAfter,
+  cancelWake,
   type LiveTimerPhase,
   type LiveTimerActionId,
 } from 'live-timer';
@@ -74,6 +76,7 @@ import {
   toggleClassPause,
   classSkip,
   classBack,
+  classFinish,
 } from '../class/timeline';
 import { ClassRelay } from '../class/relay';
 import { classCodeUrl } from '../class/classCode';
@@ -105,7 +108,14 @@ export interface ClassView {
   pending: { action: ClassCommand['action']; inSec: number } | null;
   /** A member paused their own phone and is out of step until Back in sync. */
   steppedOut: boolean;
+  /** A member who joined mid-class is waiting to hear the class's state. */
+  connecting: boolean;
 }
+
+/** Taps on the instructor's controls closer together than this are one tap. */
+const HOST_TAP_DEBOUNCE_MS = 500;
+/** How long a mid-class joiner waits to hear the class before running on schedule. */
+const JOIN_HOLD_MS = 5000;
 
 export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
   const classSource = 'classSession' in source ? source.classSession : null;
@@ -138,6 +148,13 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
   const gatheringRef = useRef(true);
   const jumpsRef = useRef(0);
   const liveRef = useRef(false);
+  // Whether the on-screen timer is up in class mode (it stays up the whole
+  // class: start countdown, running, paused), the last instructor tap, and —
+  // for a member who joined mid-class — whether the class has been heard yet.
+  const liveOnRef = useRef(false);
+  const lastHostTapRef = useRef(-Infinity);
+  const heardRef = useRef(false);
+  const holdUntilRef = useRef(0);
   const [classView, setClassView] = useState<ClassView | null>(null);
 
   const stateRef = useRef<DisplayState>({ mode: 'phase', stepIndex: 0, timeRemaining: 0 });
@@ -219,6 +236,7 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
       AudioEngine.stopKeepAlive();
       endLiveTimer(sessionIdRef.current).catch(() => {});
       if (classWakeRef.current) clearTimeout(classWakeRef.current);
+      cancelWake('class');
       relayRef.current?.close();
       relayRef.current = null;
     };
@@ -297,11 +315,15 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
 
   // Wake at the next whole workout second (each wake schedules the next).
   // Declarations, so `tick` above can reach them; they only touch refs.
+  // The same wake is armed natively too (live-timer `wakeAfter`): Android
+  // stops JS timers while the app isn't in front, and whichever fires first runs.
   function scheduleTick() {
     stopTicking();
     const clock = clockRef.current;
     if (!clock.running) return;
-    timeoutRef.current = setTimeout(tick, msToNextSecond(clock, nowMs()));
+    const ms = msToNextSecond(clock, nowMs());
+    timeoutRef.current = setTimeout(tick, ms);
+    wakeAfter('tick', ms);
   }
 
   function stopTicking() {
@@ -309,6 +331,7 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
     }
+    cancelWake('tick');
   }
 
   // Wall-clock time the given step began on the workout clock (in the past for
@@ -334,6 +357,7 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
     clockRef.current = pauseClock(clockRef.current, nowMs());
     setIsRunning(false);
     endLiveTimer(sessionIdRef.current).catch(() => {});
+    liveOnRef.current = false;
     // Nothing left to rejoin.
     if (classRef.current) clearClassSession();
   };
@@ -373,11 +397,13 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
       // The instructor pauses (or counts back in) the whole class; a member
       // only steps their own phone out, or back in sync.
       if (cs.role === 'host') {
-        if (classNow() >= cs.timeline.startAt) {
+        if (classNow() >= cs.timeline.startAt && hostTap()) {
           commitTimeline(toggleClassPause(stepsRef.current, cs.timeline, classNow()), true);
         }
       } else if (steppedOutRef.current) backInSync();
-      else stepOut();
+      // A member can only step out of a class that is running; their play
+      // button does nothing while the class gathers or the instructor pauses.
+      else if (clockRef.current.running) stepOut();
       return;
     }
     if (clockRef.current.running) {
@@ -436,7 +462,7 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
     if (displayState.mode === 'complete') return;
     const cs = classRef.current;
     if (cs) {
-      if (cs.role === 'host' && classNow() >= cs.timeline.startAt) {
+      if (cs.role === 'host' && classNow() >= cs.timeline.startAt && hostTap()) {
         const tl = classBack(stepsRef.current, cs.timeline, classNow(), RESTART_THRESHOLD_SECONDS);
         if (tl !== cs.timeline) commitTimeline(tl, true);
       }
@@ -452,7 +478,7 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
     if (displayState.mode === 'complete') return;
     const cs = classRef.current;
     if (cs) {
-      if (cs.role === 'host' && classNow() >= cs.timeline.startAt) {
+      if (cs.role === 'host' && classNow() >= cs.timeline.startAt && hostTap()) {
         const tl = classSkip(stepsRef.current, cs.timeline, classNow());
         if (tl !== cs.timeline) commitTimeline(tl, true);
       }
@@ -478,6 +504,23 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
    */
   const handleFinish = () => {
     if (displayState.mode === 'complete') return;
+    const cs = classRef.current;
+    if (cs?.role === 'host') {
+      // The instructor ends the timed block for the whole class.
+      Alert.alert(t('classMode.finishClassTitle'), t('classMode.finishClassBody'), [
+        { text: t('workout.keepGoing'), style: 'cancel' },
+        {
+          text: t('classMode.finishClass'),
+          onPress: () => {
+            const live = classRef.current;
+            if (!live || classNow() < live.timeline.startAt) return;
+            const tl = classFinish(stepsRef.current, live.timeline, classNow());
+            if (tl !== live.timeline) commitTimeline(tl, true);
+          },
+        },
+      ]);
+      return;
+    }
     const at = stateRef.current;
     const steps = stepsRef.current;
     Alert.alert(t('workout.finish'), t('workout.finishBody'), [
@@ -566,17 +609,63 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
     return nowMs() + (classRef.current?.offsetMs ?? 0);
   }
 
+  // Members' Lock Screen / notification is display-only: stepping out of a
+  // class from the lock screen would leave no way back from there.
   function classActions(): LiveTimerActionId[] {
-    return classRef.current?.role === 'host' ? ['pause', 'skip'] : ['pause'];
+    return classRef.current?.role === 'host' ? ['pause', 'skip'] : [];
+  }
+
+  /** One instructor tap per HOST_TAP_DEBOUNCE_MS: a fumbled double tap must not undo itself. */
+  function hostTap(): boolean {
+    const now = nowMs();
+    if (now - lastHostTapRef.current < HOST_TAP_DEBOUNCE_MS) return false;
+    lastHostTapRef.current = now;
+    return true;
+  }
+
+  /**
+   * The on-screen timer in class mode. It stays up for the whole class — the
+   * countdown to the start, the running steps, and a paused state — because
+   * on Android its foreground service is what keeps the phone awake enough
+   * for the native wakes to fire with the screen off.
+   */
+  function showClassLiveTimer(phases: LiveTimerPhase[], phaseStartMs: number) {
+    if (liveOnRef.current) {
+      updateLiveTimer({ sessionId: sessionIdRef.current, phases, phaseStartMs }).catch(() => {});
+      return;
+    }
+    liveOnRef.current = true;
+    startLiveTimer({
+      sessionId: sessionIdRef.current,
+      title: timerNameRef.current,
+      phases,
+      phaseStartMs,
+      actions: classActions(),
+    }).catch(() => {});
+  }
+
+  function hideClassLiveTimer() {
+    if (!liveOnRef.current) return;
+    liveOnRef.current = false;
+    endLiveTimer(sessionIdRef.current).catch(() => {});
   }
 
   function startClass(cs: ClassSession) {
     saveClassSession(cs);
+    // A member arriving after the start waits briefly to hear the class's
+    // state (pauses, jumps) before falling back to the bare schedule.
+    heardRef.current = cs.role === 'host';
+    if (cs.role === 'member' && classNow() > cs.timeline.startAt) holdUntilRef.current = nowMs() + JOIN_HOLD_MS;
     const relay = new ClassRelay({
       key: cs.key,
       hostPub: cs.hostPub,
       hostSecret: cs.hostSecret,
       onTimeline: receiveTimeline,
+      onHeard: () => {
+        if (heardRef.current) return;
+        heardRef.current = true;
+        applyClass();
+      },
       onLive: (live) => {
         liveRef.current = live;
         refreshClassView();
@@ -622,7 +711,19 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
     if (stateRef.current.mode === 'complete' || steppedOutRef.current) return;
     const local = nowMs();
     const cc = classClockAt(steps, cs.timeline, local + cs.offsetMs);
-    if (!cc.started) return;
+    if (!cc.started) {
+      // Counting down to the start, on the Lock Screen / notification too.
+      if (!liveOnRef.current) {
+        const waitMs = -cc.elapsedMs;
+        const waitSec = Math.max(1, Math.ceil(waitMs / 1000));
+        showClassLiveTimer(
+          [{ id: 'gathering', label: t('classMode.classStartsIn'), durationSeconds: waitSec }, ...phasesFrom(steps, 0)],
+          Date.now() + waitMs - waitSec * 1000,
+        );
+      }
+      return;
+    }
+    if (!heardRef.current && local < holdUntilRef.current) return; // connecting
 
     const prev = stateRef.current;
     const target = positionAt(steps, cc.elapsedMs);
@@ -657,22 +758,13 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
     }
 
     const idx = stateRef.current.stepIndex;
-    if (cc.running && !wasRunning) {
-      startLiveTimer({
-        sessionId: sessionIdRef.current,
-        title: timerNameRef.current,
-        phases: phasesFrom(steps, idx),
-        phaseStartMs: stepStartWallMs(idx),
-        actions: classActions(),
-      }).catch(() => {});
-    } else if (cc.running && jumped) {
-      updateLiveTimer({
-        sessionId: sessionIdRef.current,
-        phases: phasesFrom(steps, idx),
-        phaseStartMs: stepStartWallMs(idx),
-      }).catch(() => {});
-    } else if (!cc.running && wasRunning) {
-      endLiveTimer(sessionIdRef.current).catch(() => {});
+    if (cc.running && (!wasRunning || jumped)) {
+      showClassLiveTimer(phasesFrom(steps, idx), stepStartWallMs(idx));
+    } else if (!cc.running && (wasRunning || jumped || !liveOnRef.current)) {
+      showClassLiveTimer(
+        [{ id: 'paused', label: t('classMode.pausedLive'), durationSeconds: 6 * 3600, countsUp: true }],
+        Date.now(),
+      );
     }
     if (cc.running !== wasRunning) devClassLog(cc.running ? 'run' : 'pause', stateRef.current.stepIndex);
     if (cc.running) tick();
@@ -696,12 +788,23 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
     const cs = classRef.current;
     if (!cs) return;
     const cn = classNow();
-    const at = cn < cs.timeline.startAt ? cs.timeline.startAt : nextCommand(cs.timeline, cn)?.at;
-    if (at == null) return;
+    const holdLeft = heardRef.current ? 0 : holdUntilRef.current - nowMs();
+    const at =
+      cn < cs.timeline.startAt
+        ? cs.timeline.startAt
+        : holdLeft > 0
+          ? cn + holdLeft
+          : nextCommand(cs.timeline, cn)?.at;
+    if (at == null) {
+      cancelWake('class');
+      return;
+    }
+    const ms = Math.max(0, at - cn) + 1;
     classWakeRef.current = setTimeout(() => {
       classWakeRef.current = null;
       applyClass();
-    }, Math.max(0, at - cn) + 1);
+    }, ms);
+    wakeAfter('class', ms);
   }
 
   function refreshClassView() {
@@ -716,6 +819,7 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
       startsIn: waitMs > 0 ? Math.ceil(waitMs / 1000) : null,
       pending: next ? { action: next.action, inSec: Math.max(1, Math.ceil((next.at - cn) / 1000)) } : null,
       steppedOut: steppedOutRef.current,
+      connecting: waitMs <= 0 && !heardRef.current && nowMs() < holdUntilRef.current,
     };
     setClassView((prev) => (prev && sameView(prev, view) ? prev : view));
   }
@@ -726,7 +830,7 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
     clockRef.current = pauseClock(clockRef.current, nowMs());
     stopTicking();
     setIsRunning(false);
-    endLiveTimer(sessionIdRef.current).catch(() => {});
+    hideClassLiveTimer();
     refreshClassView();
   }
 
@@ -736,7 +840,8 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
   }
 
   // Countdowns on screen ("Starts in", "Resuming in") tick while one is showing.
-  const countingDown = classView != null && (classView.startsIn != null || classView.pending != null);
+  const countingDown =
+    classView != null && (classView.startsIn != null || classView.pending != null || classView.connecting);
   useEffect(() => {
     if (!countingDown) return;
     const id = setInterval(refreshClassView, 250);
@@ -744,6 +849,19 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
   }, [countingDown]);
 
   useLiveTimerEvents((e) => {
+    // A native wake (Android, app not in front): run whatever it stood in for.
+    if (e.type === 'wake') {
+      if (e.id === 'tick' && timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+        tick();
+      } else if (e.id === 'class' && classWakeRef.current) {
+        clearTimeout(classWakeRef.current);
+        classWakeRef.current = null;
+        applyClass();
+      }
+      return;
+    }
     if (e.type !== 'action') return;
     if (e.sessionId !== sessionIdRef.current) return;
     if (e.action === 'pause' || e.action === 'resume') togglePause();
@@ -785,6 +903,7 @@ function sameView(a: ClassView, b: ClassView): boolean {
     a.live === b.live &&
     a.startsIn === b.startsIn &&
     a.steppedOut === b.steppedOut &&
+    a.connecting === b.connecting &&
     a.pending?.action === b.pending?.action &&
     a.pending?.inSec === b.pending?.inSec
   );

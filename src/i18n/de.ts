@@ -227,6 +227,12 @@ const de = {
     gotIt: 'Verstanden',
     rejoin: 'Kurs wieder beitreten',
     rejoinHint: '{name} läuft noch',
+    connecting: 'Verbindung zum Kurs wird hergestellt.',
+    pausedLive: 'Kurs pausiert',
+    tooLong: 'Dieser Timer ist zu lang, um ihn als Kurscode zu teilen. Versuche einen mit weniger Intervallen.',
+    finishClassTitle: 'Kurs beenden?',
+    finishClassBody: 'Damit endet das Workout auf jedem Handy im Kurs.',
+    finishClass: 'Kurs beenden',
   },
   settings: {
     accessibility: 'Barrierefreiheit',

@@ -227,6 +227,12 @@ const ja = {
     gotIt: 'わかりました',
     rejoin: 'クラスに再参加',
     rejoinHint: '{name}はまだ進行中です',
+    connecting: 'クラスに接続しています。',
+    pausedLive: 'クラス一時停止中',
+    tooLong: 'このタイマーは長すぎてクラスコードで共有できません。インターバルの少ないタイマーをお試しください。',
+    finishClassTitle: 'クラスを終了しますか？',
+    finishClassBody: 'クラスのすべてのスマートフォンでワークアウトが終了します。',
+    finishClass: 'クラスを終了',
   },
   settings: {
     accessibility: 'アクセシビリティ',

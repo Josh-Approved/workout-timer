@@ -10,7 +10,7 @@ import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Check, ScanLine } from 'lucide-react-native';
-import { nowMs } from 'live-timer';
+import { nowMs, prepareLiveTimer } from 'live-timer';
 import { RootStackParamList, TimerConfig } from '../types';
 import { loadTimers } from '../storage/storage';
 import { getTimerSummary } from '../utils/workout';
@@ -37,6 +37,7 @@ export default function ClassScreen({ navigation }: Props) {
   const [picked, setPicked] = useState<string | null>(null);
   const [startIn, setStartIn] = useState('m1');
   const [betaVisible, setBetaVisible] = useState(false);
+  const [tooLong, setTooLong] = useState(false);
 
   useEffect(() => {
     loadTimers().then((list) => {
@@ -48,12 +49,24 @@ export default function ClassScreen({ navigation }: Props) {
     });
   }, []);
 
-  const startClass = () => {
+  // The on-screen timer's permission (Android notifications) is asked here,
+  // as the class is set up, so it never lands on top of the class starting.
+  const startClass = async () => {
     const timer = timers.find((tt) => tt.id === picked);
     if (!timer) return;
+    await prepareLiveTimer();
     const session = hostSession(timer, START_IN[startIn], nowMs(), Date.now());
+    if (!session) {
+      setTooLong(true);
+      return;
+    }
     logEvent('class', 'started a class', { startInMs: START_IN[startIn], kind: timer.kind ?? 'intervals' });
     navigation.replace('ActiveWorkout', { classSession: session, showCode: true });
+  };
+
+  const scan = async () => {
+    await prepareLiveTimer();
+    navigation.navigate('ClassJoin', {});
   };
 
   return (
@@ -67,7 +80,7 @@ export default function ClassScreen({ navigation }: Props) {
           <Text style={s.body}>{t('classMode.joinBody')}</Text>
           <Pressable
             style={({ pressed }) => [s.primaryBtn, pressed && s.pressed]}
-            onPress={() => navigation.navigate('ClassJoin', {})}
+            onPress={scan}
             accessibilityRole="button"
             accessibilityLabel={t('classMode.joinCta')}
           >
@@ -92,7 +105,10 @@ export default function ClassScreen({ navigation }: Props) {
                   return (
                     <Pressable
                       key={tt.id}
-                      onPress={() => setPicked(tt.id)}
+                      onPress={() => {
+                        setPicked(tt.id);
+                        setTooLong(false);
+                      }}
                       style={({ pressed }) => [s.row, pressed && s.pressed]}
                       accessibilityRole="radio"
                       accessibilityState={{ checked: on }}
@@ -117,6 +133,11 @@ export default function ClassScreen({ navigation }: Props) {
                 selectedKey={startIn}
                 onPick={setStartIn}
               />
+              {tooLong ? (
+                <Text style={s.warning} accessibilityLiveRegion="polite">
+                  {t('classMode.tooLong')}
+                </Text>
+              ) : null}
               <Pressable
                 style={({ pressed }) => [s.primaryBtn, pressed && s.pressed, !picked && s.disabled]}
                 onPress={startClass}
@@ -191,6 +212,7 @@ function makeStyles(c: Colors) {
     },
     primaryBtnText: { ...ty.base, fontFamily: fontFamily.sansSemibold, color: c.inkButtonText },
     disabled: { opacity: 0.4 },
+    warning: { ...ty.sm, fontFamily: fontFamily.sans, color: c.warning },
     footnote: { ...ty.sm, fontFamily: fontFamily.sans, color: c.fgMuted, textAlign: 'center' },
     link: { alignSelf: 'center', minHeight: 44, justifyContent: 'center', paddingHorizontal: space.s4 },
     linkText: { ...ty.sm, fontFamily: fontFamily.sansSemibold, color: c.fg, textDecorationLine: 'underline' },
