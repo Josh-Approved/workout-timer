@@ -9,7 +9,7 @@
  *
  *   fwt://class?v=1&d=<base64url JSON>&c=<class time drawn>&w=<wall time drawn>
  *
- * `d` never changes for a class, so redrawing the code each tenth of a second
+ * `d` never changes for a class, so redrawing the code several times a second
  * only rewrites `c` and `w`. `w` (the instructor's time of day at the same
  * moment) is the fallback for a code opened as a link rather than scanned
  * live: it lines up only as well as the two phones' time-of-day clocks agree.

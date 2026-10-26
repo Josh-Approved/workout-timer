@@ -19,8 +19,8 @@ function makeStyles(c: Colors) {
     chip: {
       ...ty.xs,
       fontFamily: fontFamily.sansSemibold,
-      color: c.warning,
-      backgroundColor: c.warningBg,
+      color: c.fg,
+      backgroundColor: c.bgSubtle,
       paddingHorizontal: space.s3,
       paddingVertical: space.s1,
       borderRadius: radius.pill,

@@ -1,7 +1,7 @@
 /**
  * Lining a phone's clock up with the class, offline, by scanning.
  *
- * The instructor's class code is redrawn about ten times a second with the
+ * The instructor's class code is redrawn several times a second with the
  * class time at that moment (`classNow`). Each read the camera makes is a pair:
  * the class time printed in the code, and this phone's own clock when the read
  * arrived. Every source of error — how old the drawn code was, the screen's and

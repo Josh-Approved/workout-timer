@@ -130,7 +130,7 @@ export default function TimerListScreen({ navigation }: Props) {
           accessibilityRole="button"
           accessibilityLabel={`${t('classMode.rejoin')}. ${t('classMode.rejoinHint', { name: rejoinable.workout.name })}`}
         >
-          <Users size={18} color={c.fg} strokeWidth={1.75} />
+          <Users size={20} color={c.fg} strokeWidth={1.5} />
           <Text style={s.rejoinText} importantForAccessibility="no">
             {t('classMode.rejoin')} · {t('classMode.rejoinHint', { name: rejoinable.workout.name })}
           </Text>
@@ -269,7 +269,7 @@ function makeStyles(c: Colors) {
       gap: space.s3,
       paddingHorizontal: space.s6,
       paddingVertical: space.s4,
-      backgroundColor: c.warningBg,
+      backgroundColor: c.bgSubtle,
     },
     rejoinText: { ...ty.sm, flex: 1, color: c.fg, fontFamily: fontFamily.sansSemibold },
     iconBtn: {

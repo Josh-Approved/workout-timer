@@ -142,6 +142,7 @@ jest.mock('../../lib/tipJar', () => {
 const mockPlayback = {
   displayState: { mode: 'phase', stepIndex: 0, timeRemaining: 20 } as any,
   isRunning: true,
+  classView: null as any,
 };
 jest.mock('../../screens/useWorkoutPlayback', () => ({
   RESTART_THRESHOLD_SECONDS: 1,
@@ -165,7 +166,14 @@ jest.mock('../../screens/useWorkoutPlayback', () => ({
     undoRound: jest.fn(),
     finalElapsed: null,
     restart: jest.fn(),
+    classView: mockPlayback.classView,
+    classCode: () => 'fwt://class?v=1&d=e30&c=1&w=2',
   }),
+}));
+// The scanner asks for the camera before it shows one: render that ask.
+jest.mock('expo-camera', () => ({
+  CameraView: require('react-native').View,
+  useCameraPermissions: () => [{ granted: false, canAskAgain: true }, jest.fn()],
 }));
 
 import { auditScreen } from '../edgeInsetAudit';
@@ -176,6 +184,10 @@ import ActiveWorkoutScreen from '../../screens/ActiveWorkoutScreen';
 import { SoundStyleSheet } from '../../components/SoundStyleSheet';
 import ValueEditorModal from '../../components/ValueEditorModal';
 import TipJarSheet from '../../components/TipJarSheet';
+import ClassScreen from '../../screens/ClassScreen';
+import ClassJoinScreen from '../../screens/ClassJoinScreen';
+import { ClassBetaSheet } from '../../components/ClassBetaSheet';
+import { ClassCodeSheet } from '../../components/ClassCodeSheet';
 import { TIP_PRODUCT_IDS } from '../../constants/tipProducts';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -218,6 +230,7 @@ describe("edge-inset audit — this app's screens", () => {
   ])('Active workout (%s)', async (_label, displayState, isRunning) => {
     mockPlayback.displayState = displayState;
     mockPlayback.isRunning = isRunning;
+    mockPlayback.classView = null;
     expect(
       await auditScreen(
         <ActiveWorkoutScreen navigation={navigation} route={route('ActiveWorkout', { timerId: 't' })} />
@@ -254,6 +267,54 @@ describe("edge-inset audit — this app's screens", () => {
   it('Tip jar sheet', async () => {
     expect(
       await auditScreen(<TipJarSheet visible onDismiss={noop} productIds={TIP_PRODUCT_IDS} />)
+    ).toEqual([]);
+  });
+
+  it.each([
+    ['instructor, gathering', { role: 'host', live: true, startsIn: 42, pending: null, steppedOut: false, connecting: false }],
+    ['member, offline', { role: 'member', live: false, startsIn: null, pending: null, steppedOut: false, connecting: false }],
+    ['member, stepped out', { role: 'member', live: true, startsIn: null, pending: null, steppedOut: true, connecting: false }],
+  ])('Active workout, class (%s)', async (_label, classView) => {
+    mockPlayback.displayState = { mode: 'phase', stepIndex: 0, timeRemaining: 20 };
+    mockPlayback.isRunning = true;
+    mockPlayback.classView = classView;
+    expect(
+      await auditScreen(
+        <ActiveWorkoutScreen navigation={navigation} route={route('ActiveWorkout', { timerId: 't' })} />
+      )
+    ).toEqual([]);
+    mockPlayback.classView = null;
+  });
+
+  it('Class mode', async () => {
+    expect(
+      await auditScreen(<ClassScreen navigation={navigation} route={route('Class')} />, {
+        readyText: 'Standard Tabata',
+      })
+    ).toEqual([]);
+  });
+
+  it('Join a class (camera ask)', async () => {
+    expect(
+      await auditScreen(<ClassJoinScreen navigation={navigation} route={route('ClassJoin', {})} />)
+    ).toEqual([]);
+  });
+
+  it('Class beta note', async () => {
+    expect(await auditScreen(<ClassBetaSheet visible onDismiss={noop} />)).toEqual([]);
+  });
+
+  it('Class code sheet', async () => {
+    expect(
+      await auditScreen(
+        <ClassCodeSheet
+          visible
+          code={() => 'fwt://class?v=1&d=e30&c=1&w=2'}
+          workoutName="Standard Tabata"
+          startsIn={42}
+          onDismiss={noop}
+        />
+      )
     ).toEqual([]);
   });
 });

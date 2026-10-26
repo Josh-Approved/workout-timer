@@ -252,6 +252,7 @@ export const APP_STRINGS = {
   },
   // Extends the shell settings namespace (title/appearance/theme*/language*/about).
   settings: {
+    whereDataGoes: "Your timers stay on this phone. The app goes online only to check for updates and, during a class, to pass the instructor's pause and skip between phones, end-to-end encrypted through free public relays we don't run and can't read.",
     accessibility: 'Accessibility',
     countdown: 'Countdown',
     sounds: 'Sounds',

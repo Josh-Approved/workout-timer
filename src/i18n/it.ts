@@ -235,6 +235,7 @@ const it = {
     finishClass: 'Termina corso',
   },
   settings: {
+    whereDataGoes: "I tuoi timer restano su questo telefono. L'app va online solo per cercare aggiornamenti e, durante un corso, per passare la pausa e il salto dell'istruttore tra i telefoni, crittografati end-to-end tramite relay pubblici gratuiti che non gestiamo e non possiamo leggere.",
     accessibility: 'Accessibilità',
     countdown: 'Conto alla rovescia',
     sounds: 'Suoni',

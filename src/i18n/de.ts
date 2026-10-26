@@ -231,10 +231,11 @@ const de = {
     pausedLive: 'Kurs pausiert',
     tooLong: 'Dieser Timer ist zu lang, um ihn als Kurscode zu teilen. Versuche einen mit weniger Intervallen.',
     finishClassTitle: 'Kurs beenden?',
-    finishClassBody: 'Damit endet das Workout auf jedem Handy im Kurs.',
+    finishClassBody: 'Damit endet das Workout auf jedem Telefon im Kurs.',
     finishClass: 'Kurs beenden',
   },
   settings: {
+    whereDataGoes: 'Deine Timer bleiben auf diesem Telefon. Die App geht nur online, um nach Updates zu suchen und während eines Kurses Pause und Überspringen der Kursleitung zwischen den Telefonen weiterzugeben, Ende-zu-Ende-verschlüsselt über kostenlose öffentliche Relays, die wir weder betreiben noch lesen können.',
     accessibility: 'Barrierefreiheit',
     countdown: 'Countdown',
     sounds: 'Töne',

@@ -231,10 +231,11 @@ const pt_BR = {
     pausedLive: 'Aula pausada',
     tooLong: 'Este timer é longo demais para compartilhar como código da aula. Tente um com menos intervalos.',
     finishClassTitle: 'Encerrar a aula?',
-    finishClassBody: 'Isso encerra o treino em todos os celulares da aula.',
+    finishClassBody: 'Isso encerra o treino em todos os telefones da aula.',
     finishClass: 'Encerrar aula',
   },
   settings: {
+    whereDataGoes: 'Seus timers ficam neste telefone. O app só fica online para buscar atualizações e, durante uma aula, para passar a pausa e o pulo do instrutor entre os telefones, com criptografia de ponta a ponta, por relays públicos gratuitos que não operamos e não conseguimos ler.',
     accessibility: 'Acessibilidade',
     countdown: 'Contagem regressiva',
     sounds: 'Sons',

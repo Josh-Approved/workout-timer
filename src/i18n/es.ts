@@ -235,6 +235,7 @@ const es = {
     finishClass: 'Terminar clase',
   },
   settings: {
+    whereDataGoes: 'Tus temporizadores se quedan en este teléfono. La app solo se conecta para buscar actualizaciones y, durante una clase, para pasar la pausa y el salto del instructor entre teléfonos, cifrados de extremo a extremo a través de relés públicos gratuitos que no gestionamos ni podemos leer.',
     accessibility: 'Accesibilidad',
     countdown: 'Cuenta atrás',
     sounds: 'Sonidos',

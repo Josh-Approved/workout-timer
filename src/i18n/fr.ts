@@ -235,6 +235,7 @@ const fr = {
     finishClass: 'Terminer le cours',
   },
   settings: {
+    whereDataGoes: "Vos minuteurs restent sur ce téléphone. L'app ne se connecte que pour chercher des mises à jour et, pendant un cours, pour transmettre la pause et le passage du coach entre les téléphones, chiffrés de bout en bout via des relais publics gratuits que nous n'exploitons pas et ne pouvons pas lire.",
     accessibility: 'Accessibilité',
     countdown: 'Compte à rebours',
     sounds: 'Sons',

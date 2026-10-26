@@ -31,7 +31,7 @@ Then scan the QR code with Expo Go (or press `i` for iOS simulator, `a` for Andr
 
 ## Privacy
 
-Your data stays with you. We don't collect any of it: no accounts, no tracking, no analytics.
+Your data stays with you. We don't collect any of it: no accounts, no tracking, no analytics. The app only goes online for things that work for you: the check for app updates, and, in class mode (beta), the instructor's pause and skip passing between the class's phones, end-to-end encrypted through free public relays we don't run and can't read. Details in [PRIVACY.md](PRIVACY.md).
 
 ## License
 

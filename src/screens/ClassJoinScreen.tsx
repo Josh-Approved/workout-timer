@@ -23,7 +23,9 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { BetaChip } from '../components/BetaChip';
 import { logEvent } from '../feedback/log';
 import { t } from '../i18n';
-import { useTheme, fontFamily, space, radius, type as ty, Colors } from '../theme';
+import { ClassBetaSheet } from '../components/ClassBetaSheet';
+import { classBetaSeen, markClassBetaSeen } from '../class/betaNotice';
+import { useTheme, lightColors, appAccent, fontFamily, space, radius, type as ty, Colors } from '../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ClassJoin'>;
 
@@ -46,6 +48,14 @@ export default function ClassJoinScreen({ route, navigation }: Props) {
   const reads = useRef<ClockRead[]>([]);
   const current = useRef<{ invite: ClassInvite; inviteCode: string } | null>(null);
   const done = useRef(false);
+  // A link from outside the app can bring someone here first: they get the
+  // one-time beta note too.
+  const [betaVisible, setBetaVisible] = useState(false);
+  useEffect(() => {
+    classBetaSeen().then((seen) => {
+      if (!seen) setBetaVisible(true);
+    });
+  }, []);
 
   const join = (session: ClassSession | null) => {
     if (!session) {
@@ -139,6 +149,13 @@ export default function ClassJoinScreen({ route, navigation }: Props) {
           </Text>
         </View>
       )}
+      <ClassBetaSheet
+        visible={betaVisible}
+        onDismiss={() => {
+          setBetaVisible(false);
+          markClassBetaSeen();
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -154,10 +171,10 @@ function makeStyles(c: Colors) {
       maxWidth: 420,
       borderRadius: radius.lg,
       overflow: 'hidden',
-      backgroundColor: '#000000',
+      backgroundColor: lightColors.fg,
     },
     bar: { width: '100%', maxWidth: 420, height: 6, borderRadius: radius.pill, backgroundColor: c.bgSubtle },
-    barFill: { height: 6, borderRadius: radius.pill, backgroundColor: c.success },
+    barFill: { height: 6, borderRadius: radius.pill, backgroundColor: appAccent },
     body: { ...ty.base, fontFamily: fontFamily.sans, color: c.fgMuted, textAlign: 'center' },
     primaryBtn: {
       alignItems: 'center',

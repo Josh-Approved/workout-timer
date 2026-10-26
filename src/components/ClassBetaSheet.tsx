@@ -7,13 +7,21 @@ import React from 'react';
 import { Modal, View, Text, Pressable, StyleSheet } from 'react-native';
 import { t } from '../i18n';
 import { BetaChip } from './BetaChip';
+import { useReducedMotion } from './dialogShared';
 import { useTheme, fontFamily, space, radius, type as ty, hairline, Colors } from '../theme';
 
 export function ClassBetaSheet({ visible, onDismiss }: { visible: boolean; onDismiss: () => void }) {
   const { c } = useTheme();
   const s = makeStyles(c);
+  const reduceMotion = useReducedMotion();
   return (
-    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onDismiss}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType={reduceMotion ? 'none' : 'fade'}
+      statusBarTranslucent
+      onRequestClose={onDismiss}
+    >
       <View style={s.overlay}>
         <View style={s.card} accessibilityViewIsModal>
           <BetaChip />

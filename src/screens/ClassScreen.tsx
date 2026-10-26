@@ -84,7 +84,7 @@ export default function ClassScreen({ navigation }: Props) {
             accessibilityRole="button"
             accessibilityLabel={t('classMode.joinCta')}
           >
-            <ScanLine size={20} color={c.inkButtonText} strokeWidth={1.75} />
+            <ScanLine size={20} color={c.inkButtonText} strokeWidth={1.5} />
             <Text style={s.primaryBtnText}>{t('classMode.joinCta')}</Text>
           </Pressable>
         </View>
@@ -100,7 +100,7 @@ export default function ClassScreen({ navigation }: Props) {
             <>
               <Text style={s.label}>{t('classMode.pickTimer')}</Text>
               <View style={s.list} accessibilityRole="radiogroup">
-                {timers.map((tt) => {
+                {timers.map((tt, i) => {
                   const on = tt.id === picked;
                   return (
                     <Pressable
@@ -109,7 +109,7 @@ export default function ClassScreen({ navigation }: Props) {
                         setPicked(tt.id);
                         setTooLong(false);
                       }}
-                      style={({ pressed }) => [s.row, pressed && s.pressed]}
+                      style={({ pressed }) => [s.row, i === timers.length - 1 && s.lastRow, pressed && s.pressed]}
                       accessibilityRole="radio"
                       accessibilityState={{ checked: on }}
                       accessibilityLabel={`${tt.name}, ${getTimerSummary(tt)}`}
@@ -118,7 +118,7 @@ export default function ClassScreen({ navigation }: Props) {
                         <Text style={s.rowName}>{tt.name}</Text>
                         <Text style={s.rowSummary}>{getTimerSummary(tt)}</Text>
                       </View>
-                      {on ? <Check size={20} color={c.fg} strokeWidth={2} /> : null}
+                      {on ? <Check size={20} color={c.fg} strokeWidth={1.5} /> : null}
                     </Pressable>
                   );
                 })}
@@ -198,6 +198,7 @@ function makeStyles(c: Colors) {
       gap: space.s3,
       minHeight: 44,
     },
+    lastRow: { borderBottomWidth: 0 },
     rowText: { flex: 1 },
     rowName: { ...ty.base, fontFamily: fontFamily.sansSemibold, color: c.fg },
     rowSummary: { ...ty.sm, fontFamily: fontFamily.sans, color: c.fgMuted },

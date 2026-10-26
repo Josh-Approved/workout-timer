@@ -53,7 +53,7 @@ export function ClassBar({ view, onShowCode, onFeedback }: Props) {
           accessibilityRole="button"
           accessibilityLabel={t('classMode.sendFeedback')}
         >
-          <MessageSquare size={20} color={c.fg} strokeWidth={1.5} />
+          <MessageSquare size={24} color={c.fg} strokeWidth={1.5} />
         </Pressable>
         <Pressable
           onPress={onShowCode}
@@ -62,7 +62,7 @@ export function ClassBar({ view, onShowCode, onFeedback }: Props) {
           accessibilityRole="button"
           accessibilityLabel={t('classMode.showCode')}
         >
-          <QrCode size={22} color={c.fg} strokeWidth={1.5} />
+          <QrCode size={24} color={c.fg} strokeWidth={1.5} />
         </Pressable>
       </View>
       {pending || notice ? (
@@ -78,9 +78,11 @@ function makeStyles(c: Colors) {
   return StyleSheet.create({
     wrap: { alignSelf: 'stretch', paddingHorizontal: space.s5, gap: space.s2 },
     row: { flexDirection: 'row', alignItems: 'center', gap: space.s3 },
-    left: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.s3 },
-    label: { ...ty.sm, fontFamily: fontFamily.sansSemibold, color: c.fg },
-    live: { ...ty.sm, fontFamily: fontFamily.sans, color: c.success },
+    // Shrinks and wraps before it can push the two buttons off the edge
+    // (larger text, longer translations).
+    left: { flex: 1, minWidth: 0, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space.s3 },
+    label: { ...ty.sm, flexShrink: 1, fontFamily: fontFamily.sansSemibold, color: c.fg },
+    live: { ...ty.sm, flexShrink: 1, fontFamily: fontFamily.sans, color: c.fgMuted },
     iconBtn: { width: target.min, height: target.min, alignItems: 'center', justifyContent: 'center' },
     notice: { ...ty.sm, fontFamily: fontFamily.sans, color: c.fgMuted, textAlign: 'center' },
     pending: { ...ty.base, fontFamily: fontFamily.sansSemibold, color: c.fg },

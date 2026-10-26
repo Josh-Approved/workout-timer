@@ -361,8 +361,12 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
     setIsRunning(false);
     endLiveTimer(sessionIdRef.current).catch(() => {});
     liveOnRef.current = false;
-    // Nothing left to rejoin.
-    if (classRef.current) clearClassSession();
+    // The class is over for this phone: nothing left to rejoin, and nothing
+    // left to say on the relay ("online only while you're in a class").
+    if (classRef.current) {
+      clearClassSession();
+      closeRelay();
+    }
   };
 
   useEffect(() => {
@@ -640,8 +644,17 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
 
   function relayPulse() {
     relayPulseRef.current = null;
-    relayRef.current?.pulse();
+    if (!relayRef.current) return;
+    relayRef.current.pulse();
     scheduleRelayPulse();
+  }
+
+  function closeRelay() {
+    if (relayPulseRef.current) clearTimeout(relayPulseRef.current);
+    relayPulseRef.current = null;
+    cancelWake('relay');
+    relayRef.current?.close();
+    relayRef.current = null;
   }
 
   /**

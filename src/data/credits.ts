@@ -14,31 +14,31 @@ export const CREDITS_INTRO = "Workout Timer is built on the work of these open-s
 export const CREDITS: CreditEntry[] = [
   {
     "name": "React Native",
-    "version": "0.83.6",
+    "version": "0.86.2",
     "license": "MIT",
     "url": "https://reactnative.dev/"
   },
   {
     "name": "Expo",
-    "version": "55.0.18",
+    "version": "57.0.14",
     "license": "MIT",
     "url": "https://github.com/expo/expo/tree/main/packages/expo"
   },
   {
     "name": "React Navigation",
-    "version": "7.2.2",
+    "version": "7.3.17",
     "license": "MIT",
     "url": "https://reactnavigation.org"
   },
   {
     "name": "react-native-svg",
-    "version": "15.15.3",
+    "version": "15.15.4",
     "license": "MIT",
     "url": "https://github.com/react-native-community/react-native-svg"
   },
   {
     "name": "Slider",
-    "version": "5.1.2",
+    "version": "5.2.0",
     "license": "MIT",
     "url": "https://github.com/callstack/react-native-slider#readme"
   },
@@ -53,6 +53,48 @@ export const CREDITS: CreditEntry[] = [
     "version": "1.14.0",
     "license": "ISC",
     "url": "https://lucide.dev"
+  },
+  {
+    "name": "Expo Camera",
+    "version": "57.0.6",
+    "license": "MIT",
+    "url": "https://docs.expo.dev/versions/latest/sdk/camera/"
+  },
+  {
+    "name": "react-native-qrcode-svg",
+    "version": "6.3.27",
+    "license": "MIT",
+    "url": "https://github.com/Expensify/react-native-qrcode-svg#readme"
+  },
+  {
+    "name": "TweetNaCl.js",
+    "version": "1.0.3",
+    "license": "Unlicense",
+    "url": "https://tweetnacl.js.org"
+  },
+  {
+    "name": "tweetnacl-util",
+    "version": "0.15.1",
+    "license": "Unlicense",
+    "url": "https://github.com/dchest/tweetnacl-util-js"
+  },
+  {
+    "name": "noble-curves",
+    "version": "2.4.0",
+    "license": "MIT",
+    "url": "https://paulmillr.com/noble/"
+  },
+  {
+    "name": "noble-hashes",
+    "version": "2.4.0",
+    "license": "MIT",
+    "url": "https://paulmillr.com/noble/"
+  },
+  {
+    "name": "react-native-get-random-values",
+    "version": "1.11.0",
+    "license": "MIT",
+    "url": "LinusU/react-native-get-random-values"
   },
   {
     "name": "IBM Plex",
