@@ -85,6 +85,15 @@ function wireDeepLinks() {
   });
 }
 
+// The workout clock: keeps counting while the phone sleeps and never jumps
+// when the OS adjusts the time of day (iOS CLOCK_MONOTONIC, Android
+// elapsedRealtime). Milliseconds from an arbitrary origin, so only differences
+// mean anything. Falls back to Date.now() where the native function is missing
+// (jest, or a binary built before it existed).
+export function nowMs(): number {
+  return typeof LiveTimerModule.nowMs === 'function' ? LiveTimerModule.nowMs() : Date.now();
+}
+
 export function getAvailability(): Promise<LiveTimerAvailability> {
   return LiveTimerModule.getAvailability();
 }

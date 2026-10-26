@@ -81,7 +81,8 @@
     ],
     "modulePathIgnorePatterns": [
       "<rootDir>/qa/known-bad/",
-      "<rootDir>/.stryker-tmp/"
+      "<rootDir>/.stryker-tmp/",
+      "<rootDir>/.claude/"
     ],
     "testPathIgnorePatterns": [
       "/node_modules/",

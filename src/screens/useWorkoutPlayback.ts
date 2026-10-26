@@ -1,15 +1,21 @@
 /**
- * The active-workout playback wiring — loads the timer, drives the 1-second
- * interval over the pure engine (utils/playback), fires the audio/haptic cues
+ * The active-workout playback wiring — loads the timer, keeps the workout
+ * clock (utils/workoutClock) and wakes on each whole second to ask the pure
+ * engine (utils/playback) where it should be, fires the audio/haptic cues
  * (audio/workoutCues), and mirrors state into the OS live timer. Extracted
  * from ActiveWorkoutScreen so the screen file is composition and layout only.
  *
- * State the interval callback reads lives in refs (so `tick` never
- * re-subscribes); each ref-write is mirrored into useState for render.
+ * The position comes from elapsed time on a real clock, never from counting
+ * wakes: a late wake catches up, a pause freezes the clock to the millisecond,
+ * and the Lock Screen / notification schedule is derived from the same clock,
+ * so nothing drifts.
+ *
+ * State the wake callback reads lives in refs (so `tick` never re-subscribes);
+ * each ref-write is mirrored into useState for render.
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Alert } from 'react-native';
+import { Alert, AppState } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { PhaseStep, SoundSettings, WorkoutPhase, TimerKind, timerKind } from '../types';
@@ -18,11 +24,21 @@ import { buildWorkoutSequence, getTotalDuration, isOpenEnded } from '../utils/wo
 import {
   type PlaybackState,
   initialPlayback,
-  advancePlayback,
+  catchUpPlayback,
   goToStep as pbGoToStep,
   skipPlayback,
   backTargetIndex,
+  stepStartSeconds,
 } from '../utils/playback';
+import {
+  type WorkoutClock,
+  clockElapsed,
+  runningAt,
+  pauseClock,
+  resumeClock,
+  seekClock,
+  msToNextSecond,
+} from '../utils/workoutClock';
 import { AudioEngine } from '../audio/AudioEngine';
 import {
   firePhaseStart,
@@ -37,6 +53,7 @@ import {
   updateLiveTimer,
   endLiveTimer,
   useLiveTimerEvents,
+  nowMs,
   type LiveTimerPhase,
 } from 'live-timer';
 
@@ -58,8 +75,8 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
   const totalDurationRef = useRef(0);
   const maxCyclesRef = useRef(0);
   const speechModeRef = useRef(false);
-  const isRunningRef = useRef(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const clockRef = useRef<WorkoutClock>({ running: false, elapsedMs: 0 });
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const halfwayFiredRef = useRef(false);
   const sessionIdRef = useRef<string>(`fwt-${Date.now()}`);
   const timerNameRef = useRef<string>('Workout');
@@ -117,6 +134,8 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
       const initial: DisplayState = initialPlayback(steps);
       stateRef.current = initial;
       setDisplayState(initial);
+      // The workout's clock starts with its first cue.
+      clockRef.current = runningAt(nowMs());
       setLoaded(true);
 
       await activateKeepAwakeAsync();
@@ -126,7 +145,7 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
         sessionId: sessionIdRef.current,
         title: timerNameRef.current,
         phases: phasesFrom(steps, 0),
-        phaseStartMs: Date.now(),
+        phaseStartMs: stepStartWallMs(0),
         actions: ['pause', 'skip'],
       }).catch(() => {});
     })();
@@ -139,13 +158,36 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
     };
   }, [timerId]);
 
+  // A wake: sample the clock and play the second(s) it has crossed. Normally
+  // that is exactly one; after a stall the engine skips the in-between seconds
+  // silently and plays only the last, so a late phone lands on time without a
+  // burst of beeps.
   const tick = useCallback(() => {
-    const s = stateRef.current;
+    timeoutRef.current = null;
+    const clock = clockRef.current;
+    if (!clock.running) return;
     const sounds = soundsRef.current!;
     const steps = stepsRef.current;
-    const { next, event } = advancePlayback(steps, s);
+    const played = catchUpPlayback(steps, stateRef.current, clockElapsed(clock, nowMs()));
+    if (!played) {
+      scheduleTick();
+      return;
+    }
+    const { from: s, next, event, jumped } = played;
+
+    if (event === 'complete') {
+      finishWorkout(next, s);
+      return;
+    }
 
     if (event === 'tick') {
+      if (jumped) {
+        // Landed in a new step during a stall: say where we are, and don't
+        // fire a halfway cue that has already gone by.
+        const landed = steps[next.stepIndex];
+        firePhaseStart(landed, sounds, steps, maxCyclesRef.current, speechModeRef.current);
+        halfwayFiredRef.current = next.timeRemaining <= Math.floor(landed.duration / 2);
+      }
       const newTime = next.timeRemaining;
       if (sounds.countdownDuration > 0 && newTime <= sounds.countdownDuration) {
         AudioEngine.playTick().catch(() => {});
@@ -166,11 +208,7 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
       }
       stateRef.current = next;
       setDisplayState(next);
-      return;
-    }
-
-    if (event === 'complete') {
-      finishWorkout(next, s);
+      scheduleTick();
       return;
     }
 
@@ -179,6 +217,7 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
     halfwayFiredRef.current = false;
     stateRef.current = next;
     setDisplayState(next);
+    scheduleTick();
     // No live-timer call here. iOS encodes the full schedule into the
     // activity's ContentState at start and the widget computes the
     // active phase from Date() on each render — boundary advancement
@@ -188,6 +227,30 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
     // updateLiveTimer for explicit user actions (skip / restart /
     // pause / resume).
   }, []);
+
+  // Wake at the next whole workout second (each wake schedules the next).
+  // Declarations, so `tick` above can reach them; they only touch refs.
+  function scheduleTick() {
+    stopTicking();
+    const clock = clockRef.current;
+    if (!clock.running) return;
+    timeoutRef.current = setTimeout(tick, msToNextSecond(clock, nowMs()));
+  }
+
+  function stopTicking() {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  }
+
+  // Wall-clock time the given step began on the workout clock (in the past for
+  // the active step) — what the Lock Screen / notification schedule counts
+  // from, so it matches the app to the second, mid-step resumes included.
+  function stepStartWallMs(idx: number): number {
+    const elapsed = clockElapsed(clockRef.current, nowMs());
+    return Date.now() - (elapsed - stepStartSeconds(stepsRef.current, idx) * 1000);
+  }
 
   /**
    * Land in the complete state from position `from`. For a count-up step the
@@ -200,32 +263,30 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
     playComplete(soundsRef.current!, speechModeRef.current);
     stateRef.current = next;
     setDisplayState(next);
-    stopInterval();
-    isRunningRef.current = false;
+    stopTicking();
+    clockRef.current = pauseClock(clockRef.current, nowMs());
     setIsRunning(false);
     endLiveTimer(sessionIdRef.current).catch(() => {});
   };
 
-  const startInterval = useCallback(() => {
-    if (intervalRef.current) return;
-    intervalRef.current = setInterval(tick, 1000);
-  }, [tick]);
-
-  const stopInterval = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-  }, []);
-
   useEffect(() => {
     if (loaded) {
-      isRunningRef.current = true;
-      setIsRunning(true);
-      startInterval();
+      setIsRunning(clockRef.current.running);
+      scheduleTick();
     }
-    return stopInterval;
+    return stopTicking;
   }, [loaded]);
+
+  // A phone that slept or was throttled wakes late; catch up the moment the
+  // app is back in front rather than at the next scheduled wake.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next !== 'active' || !clockRef.current.running) return;
+      stopTicking();
+      tick();
+    });
+    return () => sub.remove();
+  }, []);
 
   // Completion is no longer a prompt moment: the app shell counts sessions and
   // owns the review-prompt trigger (canon § Review prompt), and the tip jar is
@@ -233,31 +294,27 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
 
   const togglePause = () => {
     if (displayState.mode === 'complete') return;
-    if (isRunningRef.current) {
-      stopInterval();
-      isRunningRef.current = false;
+    if (clockRef.current.running) {
+      clockRef.current = pauseClock(clockRef.current, nowMs());
+      stopTicking();
       setIsRunning(false);
       endLiveTimer(sessionIdRef.current).catch(() => {});
     } else {
-      isRunningRef.current = true;
+      clockRef.current = resumeClock(clockRef.current, nowMs());
       setIsRunning(true);
-      startInterval();
+      scheduleTick();
       const s = stateRef.current;
       const steps = stepsRef.current;
-      const remaining = s.timeRemaining;
       const cur = steps[s.stepIndex];
-      if (cur && remaining > 0) {
-        // A count-up step resumes by back-dating its start so the stopwatch
-        // on the Lock Screen / notification continues from the paused time;
-        // a countdown resumes by shortening the active phase to what's left.
-        const elapsed = cur.duration - remaining;
+      if (cur && s.timeRemaining > 0) {
+        // The active step's start is back-dated to where the clock stands, so
+        // the Lock Screen / notification countdown (or count-up stopwatch)
+        // continues from the paused moment, to the millisecond.
         startLiveTimer({
           sessionId: sessionIdRef.current,
           title: timerNameRef.current,
-          phases: cur.countUp
-            ? phasesFrom(steps, s.stepIndex)
-            : phasesFrom(steps, s.stepIndex, remaining),
-          phaseStartMs: cur.countUp ? Date.now() - elapsed * 1000 : Date.now(),
+          phases: phasesFrom(steps, s.stepIndex),
+          phaseStartMs: stepStartWallMs(s.stepIndex),
           actions: ['pause', 'skip'],
         }).catch(() => {});
       }
@@ -276,10 +333,13 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
     const next: DisplayState = pbGoToStep(steps, idx);
     stateRef.current = next;
     setDisplayState(next);
+    // The clock jumps to the step's start, so its first second is a whole one.
+    clockRef.current = seekClock(clockRef.current, nowMs(), stepStartSeconds(steps, idx) * 1000);
+    scheduleTick();
     updateLiveTimer({
       sessionId: sessionIdRef.current,
       phases: phasesFrom(steps, idx),
-      phaseStartMs: Date.now(),
+      phaseStartMs: stepStartWallMs(idx),
     }).catch(() => {});
   };
 
@@ -362,14 +422,14 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
     const initial: DisplayState = initialPlayback(steps);
     stateRef.current = initial;
     setDisplayState(initial);
-    isRunningRef.current = true;
+    clockRef.current = runningAt(nowMs());
     setIsRunning(true);
-    startInterval();
+    scheduleTick();
     startLiveTimer({
       sessionId: sessionIdRef.current,
       title: timerNameRef.current,
       phases: phasesFrom(steps, 0),
-      phaseStartMs: Date.now(),
+      phaseStartMs: stepStartWallMs(0),
       actions: ['pause', 'skip'],
     }).catch(() => {});
   };
@@ -381,7 +441,7 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
         text: t('workout.stop'),
         style: 'destructive',
         onPress: () => {
-          stopInterval();
+          stopTicking();
           endLiveTimer(sessionIdRef.current).catch(() => {});
           onExit();
         },
@@ -421,26 +481,18 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
   };
 }
 
-// Returns every remaining phase from `idx` onward. The native module on
+// Returns every remaining phase from `idx` onward, each at its full duration
+// (a mid-step resume back-dates the start instead). The native module on
 // iOS uses the full list to schedule its own boundary timer, so phase
 // transitions don't depend on the JS bridge being awake.
-// `activeOverrideSeconds` shortens the active phase only — used when
-// resuming from pause with partial time remaining.
-function phasesFrom(
-  steps: PhaseStep[],
-  idx: number,
-  activeOverrideSeconds?: number,
-): LiveTimerPhase[] {
+function phasesFrom(steps: PhaseStep[], idx: number): LiveTimerPhase[] {
   const out: LiveTimerPhase[] = [];
   for (let i = idx; i < steps.length; i++) {
     out.push({
       id: `step-${i}`,
       // A named interval shows its own name on the Lock Screen / notification.
       label: steps[i].label ?? phaseLabel(steps[i].phase),
-      durationSeconds:
-        i === idx && activeOverrideSeconds != null
-          ? activeOverrideSeconds
-          : steps[i].duration,
+      durationSeconds: steps[i].duration,
       ...(steps[i].countUp ? { countsUp: true } : {}),
     });
   }
