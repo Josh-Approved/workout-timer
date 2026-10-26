@@ -6,8 +6,10 @@
  */
 
 import React, { useEffect } from 'react';
+import { Linking } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createNavigationContainerRef } from '@react-navigation/native';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { RootStackParamList } from './src/types';
 import { AudioEngine } from './src/audio/AudioEngine';
@@ -17,6 +19,8 @@ import TimerListScreen from './src/screens/TimerListScreen';
 import TimerEditorScreen from './src/screens/TimerEditorScreen';
 import ActiveWorkoutScreen from './src/screens/ActiveWorkoutScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import ClassScreen from './src/screens/ClassScreen';
+import ClassJoinScreen from './src/screens/ClassJoinScreen';
 import Credits from './src/components/Credits';
 import { IOS_APP_STORE_ID, ANDROID_PACKAGE } from './src/lib/links';
 import { QA_MODE } from './src/qa/qaMode';
@@ -28,6 +32,16 @@ if (!QA_MODE) {
 }
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+const navigationRef = createNavigationContainerRef<RootStackParamList>();
+
+// A class code opened from outside the app (the system camera, a tapped link)
+// lands on the class scanner: only an in-app scan lines a phone's clock up.
+function openClassLink(url: string | null) {
+  if (!url || !url.startsWith('fwt://class?')) return;
+  const go = () => navigationRef.navigate('ClassJoin', { link: url });
+  if (navigationRef.isReady()) go();
+  else setTimeout(() => openClassLink(url), 300);
+}
 
 // Store identity for the canonical review prompt. Module scope on purpose — the
 // shell's session effect keys off this prop, so a fresh object every render
@@ -47,13 +61,16 @@ export default function App() {
   useEffect(() => {
     AudioEngine.initialize().catch(() => {});
     ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
+    Linking.getInitialURL().then(openClassLink).catch(() => {});
+    const sub = Linking.addEventListener('url', ({ url }) => openClassLink(url));
+    return () => sub.remove();
   }, []);
 
   // Fonts are the only readiness gate.
   const ready = fontsLoaded;
 
   return (
-    <AppShell ready={ready} review={REVIEW}>
+    <AppShell ready={ready} review={REVIEW} navigationRef={navigationRef}>
       <Stack.Navigator screenOptions={{ headerShown: false, animation: QA_MODE ? 'none' : undefined }}>
         <Stack.Screen name="TimerList" component={TimerListScreen} />
         <Stack.Screen name="TimerEditor" component={TimerEditorScreen} />
@@ -63,6 +80,8 @@ export default function App() {
           options={{ gestureEnabled: false }}
         />
         <Stack.Screen name="Settings" component={SettingsScreen} />
+        <Stack.Screen name="Class" component={ClassScreen} />
+        <Stack.Screen name="ClassJoin" component={ClassJoinScreen} />
         <Stack.Screen name="Acknowledgements">
           {(props) => <Credits onBack={() => props.navigation.goBack()} />}
         </Stack.Screen>

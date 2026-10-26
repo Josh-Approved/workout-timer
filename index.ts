@@ -1,3 +1,6 @@
+// Must run before anything else: class mode's relay crypto (tweetnacl) draws
+// its randomness from crypto.getRandomValues, which this installs.
+import 'react-native-get-random-values';
 import { registerRootComponent } from 'expo';
 
 import App from './App';

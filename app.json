@@ -60,6 +60,14 @@
       ],
       "expo-font",
       "live-timer",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Scan a class code to join a class. Nothing the camera sees is saved or sent.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
       "@bacons/apple-targets",
       "./plugins/withGradleJvmArgs",
       "expo-iap",

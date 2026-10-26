@@ -1,3 +1,5 @@
+import type { ClassSession } from '../class/session';
+
 /**
  * Which kind of timer a saved TimerConfig is. `intervals` is the classic
  * one-tap Tabata/HIIT shape (and the default for every timer saved before the
@@ -136,7 +138,11 @@ export interface PhaseStep {
 export type RootStackParamList = {
   TimerList: undefined;
   TimerEditor: { timerId?: string; kind?: TimerKind };
-  ActiveWorkout: { timerId: string };
+  /** A saved timer, or a class this phone is in (class mode, beta). */
+  ActiveWorkout: { timerId: string } | { classSession: ClassSession; showCode?: boolean };
+  Class: undefined;
+  /** `link`: a fwt://class link that opened the app. */
+  ClassJoin: { link?: string };
   Settings: undefined;
   Acknowledgements: undefined;
 };

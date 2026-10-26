@@ -34,6 +34,10 @@ type Props = {
   /** The skip control ends the workout (last step of an AMRAP / For Time):
    *  it reads and looks like "Finish" rather than "Skip". */
   skipFinishes?: boolean;
+  /** Class members follow the instructor: no back / skip of their own. */
+  showSeek?: boolean;
+  /** Overrides the play/pause label (a stepped-out class member: "Back in sync"). */
+  playA11yLabel?: string;
 };
 
 export function WorkoutControls({
@@ -47,6 +51,8 @@ export function WorkoutControls({
   onSkip,
   onDone,
   skipFinishes = false,
+  showSeek = true,
+  playA11yLabel,
 }: Props) {
   const { c } = useTheme();
   const s = makeStyles(c, isLandscape);
@@ -68,15 +74,17 @@ export function WorkoutControls({
 
   return (
     <View style={s.controls}>
-      <Pressable
-        style={({ pressed }) => [s.secondaryBtn, pressed && s.pressed]}
-        onPress={onBack}
-        hitSlop={8}
-        accessibilityLabel={backA11yLabel}
-        accessibilityRole="button"
-      >
-        <SkipBack size={24} color={c.fg} strokeWidth={1.5} />
-      </Pressable>
+      {showSeek ? (
+        <Pressable
+          style={({ pressed }) => [s.secondaryBtn, pressed && s.pressed]}
+          onPress={onBack}
+          hitSlop={8}
+          accessibilityLabel={backA11yLabel}
+          accessibilityRole="button"
+        >
+          <SkipBack size={24} color={c.fg} strokeWidth={1.5} />
+        </Pressable>
+      ) : null}
       <Pressable
         style={({ pressed }) => [s.secondaryBtn, pressed && s.pressed]}
         onPress={onStop}
@@ -89,7 +97,7 @@ export function WorkoutControls({
       <Pressable
         style={({ pressed }) => [s.playPauseBtn, pressed && s.pressed]}
         onPress={onTogglePause}
-        accessibilityLabel={isRunning ? t('workout.pause') : t('workout.resume')}
+        accessibilityLabel={playA11yLabel ?? (isRunning ? t('workout.pause') : t('workout.resume'))}
         accessibilityRole="button"
       >
         {isRunning ? (
@@ -98,7 +106,7 @@ export function WorkoutControls({
           <Play size={36} color={c.inkButtonText} strokeWidth={1.75} fill={c.inkButtonText} />
         )}
       </Pressable>
-      {skipFinishes ? (
+      {!showSeek && !skipFinishes ? null : skipFinishes ? (
         <Pressable
           style={({ pressed }) => [s.finishBtn, pressed && s.pressed]}
           onPress={onSkip}

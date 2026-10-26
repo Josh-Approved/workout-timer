@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ScreenOrientation from 'expo-screen-orientation';
@@ -22,6 +22,9 @@ import { WorkoutProgressBar } from '../components/WorkoutProgressBar';
 import { WorkoutInfoPanels } from '../components/WorkoutInfoPanels';
 import { RoundCounter } from '../components/RoundCounter';
 import { WorkoutComplete } from '../components/WorkoutComplete';
+import { ClassBar } from '../components/ClassBar';
+import { ClassCodeSheet } from '../components/ClassCodeSheet';
+import { useFeedback } from '../feedback/FeedbackProvider';
 import { onSuccessMoment } from '../storage/reviewPrompt';
 import { t } from '../i18n';
 
@@ -37,8 +40,8 @@ import {
 type Props = NativeStackScreenProps<RootStackParamList, 'ActiveWorkout'>;
 
 export default function ActiveWorkoutScreen({ route, navigation }: Props) {
-  const { timerId } = route.params;
   const { c } = useTheme();
+  const feedback = useFeedback();
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
 
@@ -61,7 +64,18 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
     countRound,
     undoRound,
     finalElapsed,
-  } = useWorkoutPlayback(timerId, () => navigation.goBack());
+    classView,
+    classCode,
+  } = useWorkoutPlayback(route.params, () => navigation.goBack());
+
+  // Class mode (beta): the instructor's phone opens with the code up, so the
+  // room can scan in while the start counts down.
+  const params = route.params;
+  const classWorkoutName = 'classSession' in params ? params.classSession.workout.name : '';
+  const [codeVisible, setCodeVisible] = useState('classSession' in params && params.showCode === true);
+  const inClass = classView != null;
+  const isMember = classView?.role === 'member';
+  const gathering = classView?.startsIn != null;
 
   useEffect(() => {
     ScreenOrientation.unlockAsync().catch(() => {});
@@ -109,10 +123,12 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
 
   // Count-up (For Time): the big number is time elapsed in the block.
   const stepElapsed = currentStep ? currentStep.duration - displayState.timeRemaining : 0;
-  const bigTime = countUp ? stepElapsed : displayState.timeRemaining;
+  const bigTime = gathering ? classView!.startsIn! : countUp ? stepElapsed : displayState.timeRemaining;
   const timerA11yLabel = isComplete
     ? t('workout.complete')
-    : countUp
+    : gathering
+      ? t('classMode.startsInA11y', { time: formatDurationSpoken(classView!.startsIn!) })
+      : countUp
       ? t('workout.elapsedA11y', { time: formatDurationSpoken(stepElapsed) })
       : t('workout.remainingA11y', { time: formatDurationSpoken(displayState.timeRemaining) });
 
@@ -159,7 +175,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
         isLandscape={isLandscape}
         a11yLabel={clockA11yLabel}
         finalTime={finalTime}
-        onRestart={restart}
+        onRestart={inClass ? undefined : restart}
       />
     </View>
   ) : (
@@ -170,6 +186,9 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       accessibilityRole="text"
       accessibilityLiveRegion="none"
     >
+      {gathering ? (
+        <Text style={s.capText} importantForAccessibility="no">{t('classMode.classStartsIn')}</Text>
+      ) : null}
       <Text
         style={s.timer}
         importantForAccessibility="no"
@@ -221,8 +240,23 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       onSkip={withRounds && isLastStep ? handleFinish : handleSkip}
       onDone={() => navigation.goBack()}
       skipFinishes={withRounds && isLastStep}
+      showSeek={!isMember}
+      playA11yLabel={classView?.steppedOut ? t('classMode.backInSync') : undefined}
     />
   );
+
+  const classBar = classView ? (
+    <ClassBar view={classView} onShowCode={() => setCodeVisible(true)} onFeedback={() => feedback.open('bug')} />
+  ) : null;
+  const codeSheet = inClass ? (
+    <ClassCodeSheet
+      visible={codeVisible}
+      code={classCode}
+      workoutName={classWorkoutName}
+      startsIn={classView?.startsIn ?? null}
+      onDismiss={() => setCodeVisible(false)}
+    />
+  ) : null;
 
   // An uncapped For Time has no whole to make progress against.
   const progressBar = openEnded ? (
@@ -247,6 +281,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
   if (isLandscape) {
     return (
       <SafeAreaView style={s.container}>
+        {classBar}
         <View style={s.landscapeTopRow}>
           <View style={s.leftCol}>
             <View
@@ -269,12 +304,14 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
         </View>
 
         {progressBar}
+        {codeSheet}
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={s.container}>
+      {classBar}
       <View
         style={s.phaseRow}
         accessible
@@ -293,6 +330,7 @@ export default function ActiveWorkoutScreen({ route, navigation }: Props) {
       {progressBar}
 
       {controls}
+      {codeSheet}
     </SafeAreaView>
   );
 }
