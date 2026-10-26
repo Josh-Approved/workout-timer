@@ -55,6 +55,38 @@ c_open_droid() {
   adb -s "$ANDROID_SERIAL" shell pm grant "$APP_ID" android.permission.POST_NOTIFICATIONS >/dev/null 2>&1 || true
   adb -s "$ANDROID_SERIAL" shell am start -a android.intent.action.VIEW -d "'$DEV_CLIENT_URL'" >/dev/null
 }
+# Open a class link on the iOS simulator. When the instructor is the Android
+# emulator, the link's `w` is on the emulator's clock; move it onto the Mac's
+# (the simulator's) by MEMBER_SKEW_MS.
+c_join_ios() {
+  local url="$1" w
+  w=$(printf '%s' "$url" | sed -n 's/.*[?&]w=\([0-9]*\).*/\1/p')
+  if [ -n "$w" ] && [ "${MEMBER_SKEW_MS:-0}" != 0 ]; then
+    url=$(printf '%s' "$url" | sed "s/\([?&]\)w=$w/\1w=$((w + MEMBER_SKEW_MS))/")
+  fi
+  xcrun simctl openurl "$IOS_UDID" "$url"
+}
+# How many actions the app's class-timer notification offers right now.
+c_droid_notif_actions() {
+  adb -s "$ANDROID_SERIAL" shell dumpsys notification --noredact \
+    | grep "pkg=$APP_ID" | grep -o 'actions=[0-9]*' | head -1 | cut -d= -f2 | grep . || echo 0
+}
+c_expect_droid_actions() {
+  # The service rebuilds the notification a moment after the class changes.
+  local want="$1" got i=0
+  got=$(c_droid_notif_actions)
+  while [ "$got" != "$want" ] && [ $i -lt 10 ]; do
+    sleep 0.5
+    i=$((i + 1))
+    got=$(c_droid_notif_actions)
+  done
+  if [ "$got" != "$want" ]; then
+    echo "FAIL the instructor's notification offers $got action(s), expected $want" >&2
+    return 1
+  fi
+  echo "ok   instructor notification offers $want action(s)"
+}
+
 # How far the emulator's time of day is behind the Mac's (ms, Mac − emulator),
 # best of 5 adb round trips. The emulator does NOT share the Mac's clock (it
 # was 2.2 s behind on 2026-10-25), and a development build lines a linked

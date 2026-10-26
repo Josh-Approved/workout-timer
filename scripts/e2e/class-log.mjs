@@ -35,6 +35,9 @@
  *                                            events), optionally as of a wall time
  *   converged [--timeout ms]                 host and member agree on step and
  *                                            running/paused (latest events)
+ *   heartbeat --url <class link> [--relay ws://…] [--for ms] [--max-gap ms]
+ *                                            the instructor keeps depositing on the
+ *                                            class channel (no gap over --max-gap)
  *   table                                    every class event after --since, grouped
  *
  * <w> is step | jump | run | pause | at (at = step or jump: "arrived at step n").
@@ -55,9 +58,10 @@ const HOST = opt('host', 'ios host');
 const MEMBER = opt('member', 'android member');
 const RE = /\[class\] (ios|android) (host|member) (step|jump|run|pause) step=(\d+) running=(\w+) wall=(\d+)/;
 // The Android emulator's time of day is NOT the Mac's (measured 2.2 s behind on
-// 2026-10-25). Its stamps are moved onto the Mac's clock by this many ms
-// (Mac − emulator), which the runner measures over adb (class-lib c_droid_skew).
-const MEMBER_SKEW = Number(opt('member-skew', process.env.MEMBER_SKEW_MS || 0));
+// 2026-10-25). Its stamps — whichever role it plays — are moved onto the Mac's
+// clock by this many ms (Mac − emulator), which the runner measures over adb
+// (class-lib c_droid_skew).
+const ANDROID_SKEW = Number(opt('member-skew', process.env.MEMBER_SKEW_MS || 0));
 
 if (!LOG || !fs.existsSync(LOG)) {
   console.error(`class-log: no Metro log at "${LOG}" (set METRO_LOG or --log)`);
@@ -85,7 +89,7 @@ function events() {
     const m = line.match(RE);
     if (!m) continue;
     const dev = `${m[1]} ${m[2]}`;
-    const wall = Number(m[6]) + (dev === MEMBER ? MEMBER_SKEW : 0);
+    const wall = Number(m[6]) + (m[1] === 'android' ? ANDROID_SKEW : 0);
     out.push({ dev, what: m[3], step: Number(m[4]), running: m[5] === 'true', wall });
   }
   return out;
@@ -221,6 +225,49 @@ async function main() {
         return 1;
       }
       console.log(`ok   converged: ${last}`);
+      return 0;
+    }
+    case 'heartbeat': {
+      // Listen on the class's relay channel (from the class link's key) and
+      // check the instructor keeps depositing: every gap between deposits
+      // must stay under --max-gap for --for ms.
+      const { createRequire } = await import('node:module');
+      const req = createRequire(new URL('../../package.json', import.meta.url));
+      const nacl = req('tweetnacl');
+      const WS = req('ws');
+      const url = opt('url');
+      const d = (url.match(/[?&]d=([^&]+)/) || [])[1] || '';
+      const b64 = d.replace(/-/g, '+').replace(/_/g, '/');
+      const wire = JSON.parse(Buffer.from(b64 + '='.repeat((4 - (b64.length % 4)) % 4), 'base64').toString('utf8'));
+      const channel = Buffer.from(nacl.hash(new Uint8Array(Buffer.from(wire.x, 'base64'))).slice(32, 48)).toString('base64');
+      const forMs = Number(opt('for', 60000));
+      const maxGap = Number(opt('max-gap', 15000));
+      const arrivals = [];
+      const t0 = Date.now();
+      await new Promise((resolve) => {
+        const ws = new WS(opt('relay', 'ws://127.0.0.1:7447'));
+        ws.on('open', () =>
+          ws.send(JSON.stringify(['REQ', 'hb', { kinds: [30078], '#t': [channel], since: Math.floor(t0 / 1000) - 1 }])),
+        );
+        ws.on('message', (m) => {
+          const msg = JSON.parse(String(m));
+          if (msg[0] === 'EVENT' && Date.now() - t0 > 200) arrivals.push(Date.now());
+        });
+        ws.on('error', resolve);
+        setTimeout(() => {
+          ws.close();
+          resolve();
+        }, forMs);
+      });
+      const points = [t0, ...arrivals, t0 + forMs];
+      let worst = 0;
+      for (let i = 1; i < points.length; i++) worst = Math.max(worst, points[i] - points[i - 1]);
+      const line = `instructor deposits over ${forMs / 1000}s: ${arrivals.length}, longest gap ${worst}ms (max ${maxGap})`;
+      if (worst > maxGap) {
+        console.error(`FAIL ${line}`);
+        return 1;
+      }
+      console.log(`ok   ${line}`);
       return 0;
     }
     case 'table': {

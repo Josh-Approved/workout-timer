@@ -10,7 +10,12 @@
 #   back in sync → member's app in the background (HOME): host pause, resume
 #   and skip land together → member's screen off: the next boundary and a skip
 #   land together → member's radios cut, host skips (member must NOT move) →
-#   radios back → member snaps to the class's step → both leave.
+#   radios back → member snaps to the class's step → both leave. Then roles
+#   swap (Android instructor, iOS member): with the instructor's app in the
+#   background and then its screen off, its heartbeat keeps depositing, the
+#   member stays Live, boundaries stay together, and pause/resume from the
+#   instructor's notification land; the notification's actions follow the
+#   class (none gathering, Pause+Skip running, Resume paused).
 #
 # Every "together" is checked on the `wall=` stamps both phones log to Metro
 # (class-log.mjs): same step, within TOL_MS (default 250 ms). The iOS simulator
@@ -66,7 +71,7 @@ source "$E2E_DIR/harness-lib.sh"
 source "$E2E_DIR/class-lib.sh"
 cd "$E2E_DIR/../.."
 
-h_step "0/11 Preconditions; both apps to the timer list"
+h_step "0/16 Preconditions; both apps to the timer list"
 c_require_metro
 RUN_START=$(c_mark)
 c_require_relay
@@ -80,45 +85,45 @@ c_open_droid
 h_ios 00-ready.yaml
 h_droid 00-ready.yaml
 
-h_step "1/11 Instructor (iOS) starts a class: $CLASS_TIMER, starts in $CLASS_START_IN"
+h_step "1/16 Instructor (iOS) starts a class: $CLASS_TIMER, starts in $CLASS_START_IN"
 M=$(c_mark)
 maestro --device "$IOS_UDID" test -e TIMER="$CLASS_TIMER" -e START_IN="$CLASS_START_IN" "$FLOWS/01-host-start-class.yaml"
 URL=$(c_log url --since "$M" --expect-name "$CLASS_TIMER")
 echo "class link: ${URL:0:60}…"
 
-h_step "2/11 Member (Android) joins by the class link; start counts down"
+h_step "2/16 Member (Android) joins by the class link; start counts down"
 c_join_droid "$URL"
 h_droid 02-member-gathering.yaml
 
-h_step "3/11 Both start at the class start, and cross the first boundary together"
+h_step "3/16 Both start at the class start, and cross the first boundary together"
 c_pair "$M" run --step 0 --timeout 130000
 c_pair "$M" at --step 1 --timeout 60000
 
-h_step "4/11 Instructor pauses → member paused"
+h_step "4/16 Instructor pauses → member paused"
 M=$(c_mark)
 h_ios 03-host-pause.yaml
 c_pair "$M" pause
 h_droid 04-member-paused.yaml
 
-h_step "5/11 Instructor resumes → both running again"
+h_step "5/16 Instructor resumes → both running again"
 M=$(c_mark)
 h_ios 05-host-resume.yaml
 c_pair "$M" run
 h_droid 06-member-running.yaml
 
-h_step "6/11 Instructor skips → both on the same next step"
+h_step "6/16 Instructor skips → both on the same next step"
 M=$(c_mark)
 c_host_skip "$M"
 c_pair "$M" jump
 
-h_step "7/11 Member steps out, waits, comes back in sync"
+h_step "7/16 Member steps out, waits, comes back in sync"
 h_droid 08-member-step-out.yaml
 sleep 5
 M=$(c_mark)
 h_droid 09-member-back-in-sync.yaml
 c_member_matches_host "$M"
 
-h_step "8/11 Member's app in the background (HOME): pause, resume and skip still land together"
+h_step "8/16 Member's app in the background (HOME): pause, resume and skip still land together"
 # Android stops JS timers for an app that isn't in front; the class must not.
 c_droid_background
 M=$(c_mark)
@@ -131,7 +136,7 @@ M=$(c_mark)
 c_host_skip "$M"
 c_pair "$M" jump
 
-h_step "9/11 Member's screen off: the next boundary and a skip still land together"
+h_step "9/16 Member's screen off: the next boundary and a skip still land together"
 c_droid_screen off
 M=$(c_mark)
 c_pair "$M" at --timeout 70000
@@ -142,7 +147,7 @@ c_droid_screen on
 c_droid_foreground
 h_droid 06-member-running.yaml
 
-h_step "10/11 Member offline: instructor's skip can't reach it; on reconnect it snaps to the class"
+h_step "10/16 Member offline: instructor's skip can't reach it; on reconnect it snaps to the class"
 h_android_offline
 h_droid 10-member-offline.yaml
 M=$(c_mark)
@@ -155,7 +160,73 @@ h_android_online
 h_droid 11-member-online.yaml
 c_member_matches_host "$M" 45000
 
-h_step "11/11 Both leave the class"
+h_step "11/16 Both leave the class"
+h_ios 12-leave-class.yaml
+h_droid 12-leave-class.yaml
+
+# ── Roles swapped: the Android emulator is the instructor ─────────────────────
+# The instructor's 10 s heartbeat (and every class wake) must keep going while
+# an Android instructor's app is in the background or its screen is off —
+# otherwise members churn reconnects and read "Offline" (the 2026-10-25
+# regression). Commands from the instructor's notification must still land.
+SWAP_HOST="android host"
+SWAP_MEMBER="ios member"
+c_swap_pair() { local since="$1" what="$2"; shift 2; c_pair "$since" "$what" --host "$SWAP_HOST" --member "$SWAP_MEMBER" "$@"; }
+
+h_step "12/16 Roles swapped: the Android instructor starts a class; the iOS member joins"
+M=$(c_mark)
+maestro --device "$ANDROID_SERIAL" test -e TIMER="$CLASS_TIMER" -e START_IN="$CLASS_START_IN" "$FLOWS/01-host-start-class.yaml"
+URL=$(c_log url --since "$M" --expect-name "$CLASS_TIMER")
+c_expect_droid_actions 0 # gathering: nothing to tap yet
+c_join_ios "$URL"
+h_ios 18-ios-open-link.yaml
+RUN_M=$(c_mark)
+c_swap_pair "$M" run --step 0 --timeout 90000
+c_expect_droid_actions 2 # running: Pause, Skip
+
+# Deposits come every 10–15 s (a 10 s heartbeat checked on a 5 s pulse); a gap
+# over 20 s means the heartbeat stalled. Members only call it silence at 25 s.
+h_step "13/16 Instructor's app in the background: heartbeat continues, member stays Live, skip and boundaries together"
+c_droid_background
+c_log heartbeat --url "$URL" --relay "ws://127.0.0.1:$RELAY_PORT" --for 60000 --max-gap 20000 &
+HB=$!
+# The get-ready → warm-up boundary lands together with the instructor in the
+# background; then skip the (long) warm-up from the notification, so the
+# next boundaries come every 10–20 s.
+c_swap_pair "$RUN_M" at --step 1 --timeout 40000
+M=$(c_mark)
+maestro --device "$ANDROID_SERIAL" test -e ACTION=Skip -e TITLE="$CLASS_TIMER" "$FLOWS/16-droid-notification-action.yaml"
+c_swap_pair "$M" jump
+M=$(c_mark)
+c_swap_pair "$M" at --timeout 30000
+h_ios 17-member-live.yaml
+wait "$HB"
+h_ios 17-member-live.yaml
+
+h_step "14/16 Instructor pauses and resumes from its notification (app still in the background)"
+M=$(c_mark)
+maestro --device "$ANDROID_SERIAL" test -e ACTION=Pause -e TITLE="$CLASS_TIMER" "$FLOWS/16-droid-notification-action.yaml"
+c_swap_pair "$M" pause
+c_expect_droid_actions 1 # paused: Resume only
+M=$(c_mark)
+maestro --device "$ANDROID_SERIAL" test -e ACTION=Resume -e TITLE="$CLASS_TIMER" "$FLOWS/16-droid-notification-action.yaml"
+c_swap_pair "$M" run
+c_expect_droid_actions 2
+
+h_step "15/16 Instructor's screen off: heartbeat continues, member stays Live, boundaries together"
+c_droid_screen off
+c_log heartbeat --url "$URL" --relay "ws://127.0.0.1:$RELAY_PORT" --for 60000 --max-gap 20000 &
+HB=$!
+M=$(c_mark)
+c_swap_pair "$M" at --timeout 30000
+sleep 15
+h_ios 17-member-live.yaml
+wait "$HB"
+h_ios 17-member-live.yaml
+c_droid_screen on
+c_droid_foreground
+
+h_step "16/16 Both leave the class"
 h_ios 12-leave-class.yaml
 h_droid 12-leave-class.yaml
 

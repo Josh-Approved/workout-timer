@@ -1,0 +1,13 @@
+# Class mode E2E (iOS, after `simctl openurl` of a class link): the simulator
+# asks "Open in Workout Timer?" the first time; accept it, then wait for the
+# class strip.
+appId: com.joshapproved.freeworkouttimer
+---
+- runFlow:
+    when:
+      visible: "Open"
+    commands:
+      - tapOn: "Open"
+- extendedWaitUntil:
+    visible: "Class mode"
+    timeout: 15000
