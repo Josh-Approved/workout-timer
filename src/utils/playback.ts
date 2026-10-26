@@ -15,6 +15,13 @@ import { PhaseStep } from '../types';
  * pausing is the screen simply not calling `advance`, so the position is frozen
  * with no time lost or invented (the "background + relaunch resumes the same
  * point" property, at pure-logic level).
+ *
+ * Every control restarts a step at its full duration, so a position is also
+ * fully described by the workout time elapsed since the top (`positionAt`).
+ * The screen keeps that elapsed time on a real clock (utils/workoutClock) and
+ * asks where it should be, rather than counting its own ticks — a busy phone
+ * or a pause can't make it drift, and two phones that agree on a start stay
+ * together.
  */
 
 export type PlaybackMode = 'phase' | 'complete';
@@ -115,4 +122,57 @@ export function totalRemaining(totalDuration: number, elapsed: number): number {
 /** Progress as a 0..1 fraction of the whole workout. */
 export function progressFraction(totalDuration: number, elapsed: number): number {
   return totalDuration > 0 ? Math.min(1, elapsed / totalDuration) : 0;
+}
+
+/** Seconds of the workout before step `idx` starts (its start, on the elapsed timeline). */
+export function stepStartSeconds(steps: PhaseStep[], idx: number): number {
+  let sum = 0;
+  for (let i = 0; i < idx && i < steps.length; i++) sum += steps[i].duration;
+  return sum;
+}
+
+/**
+ * The position `elapsedMs` of workout time after the top: the same state that
+ * many one-second `advancePlayback` calls from `initialPlayback` reach. Past the
+ * end it is `complete`.
+ */
+export function positionAt(steps: PhaseStep[], elapsedMs: number): PlaybackState {
+  if (steps.length === 0) return initialPlayback(steps);
+  let sec = Math.max(0, Math.floor(elapsedMs / 1000));
+  for (let i = 0; i < steps.length; i++) {
+    const d = steps[i].duration;
+    if (sec < d) return { mode: 'phase', stepIndex: i, timeRemaining: d - sec };
+    sec -= d;
+  }
+  return { mode: 'complete', stepIndex: steps.length - 1, timeRemaining: 0 };
+}
+
+/**
+ * Bring the position up to `elapsedMs` of real workout time. A normal wake is
+ * one second on and plays as one `advancePlayback` from where we are, cues and
+ * all. After a stall (a busy or throttled phone) the seconds in between pass
+ * silently and only the last one plays, so a late phone lands on time without a
+ * burst of catch-up beeps; `jumped` says that silent part crossed into another
+ * step, so the screen can announce where it landed. Returns null when there is
+ * nothing to do yet (an early wake, or already complete).
+ *
+ * `from` is the position the played second starts at — the state a finish is
+ * measured from.
+ */
+export function catchUpPlayback(
+  steps: PhaseStep[],
+  s: PlaybackState,
+  elapsedMs: number,
+): { from: PlaybackState; next: PlaybackState; event: PlaybackEvent; jumped: boolean } | null {
+  if (s.mode === 'complete' || steps.length === 0) return null;
+  const target = Math.floor(elapsedMs / 1000);
+  const current = elapsedSeconds(steps, s);
+  if (target <= current) return null;
+  let from = s;
+  if (target - 1 > current) {
+    const total = stepStartSeconds(steps, steps.length);
+    from = positionAt(steps, (Math.min(target, total) - 1) * 1000);
+  }
+  const { next, event } = advancePlayback(steps, from);
+  return { from, next, event, jumped: from.stepIndex !== s.stepIndex };
 }

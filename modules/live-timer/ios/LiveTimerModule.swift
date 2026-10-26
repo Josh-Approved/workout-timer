@@ -26,6 +26,14 @@ public class LiveTimerModule: Module {
 
         Events("event")
 
+        // A clock that keeps counting while the phone sleeps and never jumps
+        // when the OS adjusts the time of day (Darwin's CLOCK_MONOTONIC runs
+        // through sleep). The workout timer runs on it, so it can't drift.
+        // Milliseconds from an arbitrary origin: only differences mean anything.
+        Function("nowMs") { () -> Double in
+            Double(clock_gettime_nsec_np(CLOCK_MONOTONIC)) / 1_000_000
+        }
+
         AsyncFunction("getAvailability") { () -> [String: Any?] in
             if #available(iOS 16.2, *) {
                 let info = ActivityAuthorizationInfo()

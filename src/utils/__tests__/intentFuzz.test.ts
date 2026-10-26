@@ -33,6 +33,11 @@
  *                  (never off the ends), always at that step's full duration.
  *   I-RESUME       pausing/resuming and a background-relaunch leave the position
  *                  exactly where it was — no time lost or invented.
+ *   I-POSITION     the position is always exactly what the elapsed time says
+ *                  (`positionAt`) — the screen's clock-driven wakes and every
+ *                  control agree on one timeline.
+ *   I-CATCH-UP     a stalled phone that wakes N seconds late lands exactly N
+ *                  seconds on, playing one second (never a burst).
  *
  * Oracles are intent statements, never convergence alone (canon, 2026-07-03),
  * and every random draw is a logged fast-check seed — no bare Math.random.
@@ -53,6 +58,8 @@ import {
   backTargetIndex,
   elapsedSeconds,
   progressFraction,
+  positionAt,
+  catchUpPlayback,
 } from '../playback';
 
 const APP = require('../../../app.json').expo.slug as string;
@@ -123,6 +130,8 @@ function assertInvariants(r: Real, ctx: string): void {
   intent(`${ctx}: elapsed never exceeds the workout total (${el} / ${r.total})`, el <= r.total);
   const pf = progressFraction(r.total, el);
   intent(`${ctx}: progress within [0,1] (was ${pf})`, pf >= 0 && pf <= 1);
+  // I-POSITION — one timeline: the state is what its elapsed time says.
+  intent(`${ctx}: position matches elapsed time (${el}s)`, sameState(positionAt(r.steps, el * 1000), r.state));
 }
 
 function assertBuildOracles(r: Real, c: ConfigDraw): void {
@@ -191,6 +200,28 @@ class Tick implements fc.Command<Model, Real> {
     assertInvariants(r, `tick(${event})`);
   }
   toString = () => 'tick';
+}
+
+/** The phone stalls (busy, throttled, asleep) and wakes `seconds` late. */
+class Stall implements fc.Command<Model, Real> {
+  constructor(readonly seconds: number, readonly intoMs: number) {}
+  check = (m: Model) => m.running && m.mode === 'phase';
+  run(m: Model, r: Real): void {
+    const before = elapsedSeconds(r.steps, r.state);
+    const played = catchUpPlayback(r.steps, r.state, (before + this.seconds) * 1000 + this.intoMs);
+    intent('a late wake always plays a second', played !== null);
+    if (!played) return;
+    r.state = played.next;
+    const after = elapsedSeconds(r.steps, r.state);
+    const expected = Math.min(r.total, before + this.seconds);
+    // I-CATCH-UP — lands exactly where real time says, by playing one second.
+    intent(`stall of ${this.seconds}s lands on time (${before}→${after}, want ${expected})`, after === expected);
+    intent('the played second is the one just before landing', elapsedSeconds(r.steps, played.from) === Math.min(r.total, before + this.seconds) - 1 || played.event === 'complete');
+    if (played.event === 'complete') m.running = false;
+    m.mode = r.state.mode;
+    assertInvariants(r, `stall(${this.seconds})`);
+  }
+  toString = () => `stall(${this.seconds}s+${this.intoMs}ms)`;
 }
 
 /** Skip forward to the next interval (or finish if on the last). */
@@ -306,6 +337,7 @@ const commands: fc.Arbitrary<fc.Command<Model, Real>>[] = [
   fc.constant(new Pause()),
   fc.constant(new Resume()),
   fc.constant(new Relaunch()),
+  fc.tuple(fc.integer({ min: 1, max: 40 }), fc.integer({ min: 0, max: 999 })).map(([sec, ms]) => new Stall(sec, ms)),
 ];
 
 // A representative default workout so playback commands always have a sequence

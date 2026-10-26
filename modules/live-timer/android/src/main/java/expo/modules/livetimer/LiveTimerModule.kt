@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
@@ -17,6 +18,11 @@ class LiveTimerModule : Module() {
 
         OnCreate { activeInstance = this@LiveTimerModule }
         OnDestroy { if (activeInstance === this@LiveTimerModule) activeInstance = null }
+
+        // A clock that keeps counting while the phone sleeps and never jumps
+        // when the OS adjusts the time of day. The workout timer runs on it, so
+        // it can't drift. Milliseconds from boot: only differences mean anything.
+        Function("nowMs") { SystemClock.elapsedRealtimeNanos() / 1_000_000.0 }
 
         AsyncFunction("getAvailability") { ->
             val ctx = appContext.reactContext ?: return@AsyncFunction availability(false, false, "no_context")
