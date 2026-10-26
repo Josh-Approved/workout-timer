@@ -122,6 +122,7 @@ jest.mock('../../class/relay', () => {
     close() {
       mockBus.members.delete(this.deliver);
     }
+    pulse() {}
     publish(tl: unknown) {
       mockBus.latest = tl;
       if (mockBus.drop) return;
@@ -285,12 +286,14 @@ describe('class mode — phones in one class stay in step', () => {
     expect(a.result.current.displayState).toEqual(hostHook.result.current.displayState);
   });
 
-  it("a fumbled double tap on the instructor's pause is one pause", async () => {
+  it("a fumbled triple tap on the instructor's pause is one pause", async () => {
     const { host, hostHook } = await startClass(1_000);
     const a = await join(host);
     await advance(1_001 + 3_000);
     await act(() => hostHook.result.current.togglePause());
-    await advance(120);
+    await advance(340);
+    await act(() => hostHook.result.current.togglePause());
+    await advance(340);
     await act(() => hostHook.result.current.togglePause());
     await advance(COMMAND_LEAD_MS + 3_000);
     expect(hostHook.result.current.isRunning).toBe(false);

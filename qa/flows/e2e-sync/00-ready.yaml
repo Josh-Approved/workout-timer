@@ -29,6 +29,18 @@ appId: com.joshapproved.freeworkouttimer
     commands:
       - tapOn: "Stop workout"
       - tapOn: "Leave|Stop"
+# Left on the Class mode screen or the scanner (a previous run's join/scan):
+# step back to the list with the header's Back.
+- runFlow:
+    when:
+      visible: "Point your camera at.*|Lining up.*|That class has finished.*|To join a class.*"
+    commands:
+      - tapOn: "Back"
+- runFlow:
+    when:
+      visible: "Run a class|Start class|Scan class code"
+    commands:
+      - tapOn: "Back"
 - extendedWaitUntil:
     visible: "Class mode, beta"
     timeout: 30000

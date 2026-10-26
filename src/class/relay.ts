@@ -83,6 +83,12 @@ export interface ClassRelayOptions {
 
 /** The instructor re-deposits the timeline this often: a heartbeat, and a repair for any relay that missed one. */
 export const HEARTBEAT_MS = 10_000;
+/**
+ * How often the owner calls `pulse()`. The driver arms it natively as well as
+ * with a JS timer, so the heartbeat and the watchdog keep going while an
+ * Android app is in the background (where JS timers stop).
+ */
+export const PULSE_MS = 5_000;
 /** A member that hasn't heard the instructor for this long is not live, and reconnects. */
 export const SILENCE_MS = 25_000;
 
@@ -93,7 +99,7 @@ export class ClassRelay {
   private openRelays = 0;
   private lastHeard = 0;
   private lastRestart = 0;
-  private timer: ReturnType<typeof setInterval> | null = null;
+  private lastDeposit = 0;
 
   constructor(private opts: ClassRelayOptions) {
     this.transport = this.makeTransport();
@@ -102,7 +108,7 @@ export class ClassRelay {
   private makeTransport(): DropBoxTransport {
     return new DropBoxTransport(
       channelId(this.opts.key),
-      (ct) => this.onMessage(ct),
+      (ct, at) => this.onMessage(ct, at),
       () => this.redeposit(),
       (openRelays) => {
         this.openRelays = openRelays;
@@ -118,24 +124,25 @@ export class ClassRelay {
   start(): void {
     this.lastRestart = Date.now();
     this.transport.start();
-    // Instructor: heartbeat re-deposits. Member: notice a link gone quiet
-    // (open but passing nothing) and reconnect, which also replays the
-    // latest deposit.
-    this.timer = setInterval(() => {
-      if (this.opts.hostSecret) {
-        this.redeposit();
-        return;
-      }
-      this.reportLive();
-      const quietFor = Date.now() - Math.max(this.lastHeard, this.lastRestart);
-      if (quietFor > SILENCE_MS) this.restart();
-    }, this.opts.hostSecret ? HEARTBEAT_MS : 5_000);
   }
 
   close(): void {
-    if (this.timer) clearInterval(this.timer);
-    this.timer = null;
     this.transport.close();
+  }
+
+  /**
+   * Call every PULSE_MS. Instructor: the heartbeat re-deposit. Member: notice
+   * a link gone quiet (open but passing nothing) and reconnect, which also
+   * replays the latest deposit.
+   */
+  pulse(): void {
+    if (this.opts.hostSecret) {
+      if (Date.now() - this.lastDeposit >= HEARTBEAT_MS) this.redeposit();
+      return;
+    }
+    this.reportLive();
+    const quietFor = Date.now() - Math.max(this.lastHeard, this.lastRestart);
+    if (quietFor > SILENCE_MS) this.restart();
   }
 
   private restart(): void {
@@ -155,6 +162,7 @@ export class ClassRelay {
   publish(tl: ClassTimeline): void {
     if (!this.opts.hostSecret) return;
     this.latest = tl;
+    this.lastDeposit = Date.now();
     this.transport.publishStored(packTimeline(this.opts.key, tl, this.opts.hostSecret), 'timeline');
   }
 
@@ -162,11 +170,15 @@ export class ClassRelay {
     if (this.latest) this.publish(this.latest);
   }
 
-  private onMessage(ciphertext: string): void {
+  private onMessage(ciphertext: string, at: number): void {
     const tl = unpackTimeline(this.opts.key, this.opts.hostPub, ciphertext);
     if (!tl) return;
     const wasLive = Date.now() - this.lastHeard < SILENCE_MS;
-    this.lastHeard = Date.now();
+    // Only a recent deposit means the instructor is there now. A reconnect
+    // replays the last one however old it is: its timeline still counts, but
+    // it isn't the instructor speaking. (`at` is the instructor's clock; the
+    // silence window is wide enough to absorb two phones' clocks disagreeing.)
+    if (Date.now() - at < SILENCE_MS) this.lastHeard = Date.now();
     if (tl.seq > this.heardSeq) {
       this.heardSeq = tl.seq;
       this.opts.onTimeline(tl);

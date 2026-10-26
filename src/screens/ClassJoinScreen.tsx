@@ -14,7 +14,7 @@ import { View, Text, Pressable, StyleSheet, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { nowMs } from 'live-timer';
+import { nowMs, prepareLiveTimer } from 'live-timer';
 import { RootStackParamList } from '../types';
 import { parseClassCode, wallOffsetOf, type ClassInvite } from '../class/classCode';
 import { estimateOffset, linedUp, MIN_READS, type ClockRead } from '../class/clockSync';
@@ -55,6 +55,12 @@ export default function ClassJoinScreen({ route, navigation }: Props) {
     done.current = true;
     navigation.replace('ActiveWorkout', { classSession: session });
   };
+
+  // However the scanner was reached (a link from outside the app included),
+  // the on-screen timer's permission is settled before the class runs.
+  useEffect(() => {
+    prepareLiveTimer().catch(() => {});
+  }, []);
 
   // Development builds join straight from a tapped/opened link, lining up by
   // time of day (simulators share the host's clock). Store builds scan.

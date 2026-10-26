@@ -18,10 +18,12 @@
 #   relay-restart  the relay process restarts (its stored timeline is gone) →
 #                  host re-deposits on reconnect → skip converges → a member
 #                  killed and relaunched is offered "Rejoin class" and lands in step
-#   blackhole      (opt-in, KNOWN RED) the member's link goes silent without a
-#                  reset — the gym-Wi-Fi failure. The member's strip must stop
-#                  saying "Live". Today it never does (no heartbeat), so this
-#                  scenario fails on that honesty oracle until that's fixed.
+#   blackhole      the member's link goes silent without a reset (the gym-Wi-Fi
+#                  failure) while the host pauses: the member must stop saying
+#                  "Live" (no instructor heartbeat for 25 s) and must land on
+#                  the pause once the link comes back
+#   stall          nothing moves on the member's link for 40 s (no drop, no
+#                  reset) while the host skips: honest status, then convergence
 #
 # Prerequisites: as run-two-device.sh, but Metro must give the member ONLY the
 # proxied relay (the instructor stays direct):
@@ -62,7 +64,7 @@ cd "$E2E_DIR/../.."
 
 SCENARIOS=("$@")
 if [ ${#SCENARIOS[@]} -eq 0 ]; then
-  SCENARIOS=(partition slow-drip lossy flap relay-restart)
+  SCENARIOS=(partition slow-drip lossy flap blackhole stall relay-restart)
 fi
 trap 'c_chaos_down; h_cleanup' EXIT
 
@@ -120,7 +122,7 @@ for scenario in "${SCENARIOS[@]}"; do
       c_toxic_add drip-up latency upstream '{"latency":2000,"jitter":250}'
       sleep 3
       M=$(c_mark)
-      h_ios 07-host-skip.yaml
+      c_host_skip "$M"
       H=$(c_log wait --since "$M" --dev "ios host" --what jump --timeout 6000)
       MB=$(c_log wait --since "$M" --dev "android member" --what jump --timeout 20000)
       echo "member jumped $(lateness "$H" "$MB") ms after the class did (2 s pipe vs 1.2 s lead)"
@@ -155,7 +157,7 @@ for scenario in "${SCENARIOS[@]}"; do
       disown || true
       sleep 6 # both transports retry every 4 s
       M=$(c_mark)
-      h_ios 07-host-skip.yaml
+      c_host_skip "$M"
       c_log converged --since "$CLASS_M" --timeout 20000
       h_step "relay-restart: member killed and relaunched → Rejoin class"
       h_android_terminate
@@ -165,18 +167,42 @@ for scenario in "${SCENARIOS[@]}"; do
       c_member_matches_host "$M" 20000
       ;;
     blackhole)
+      # The link goes silent without a reset (timeout toxic, both ways): data
+      # vanishes but the socket stays "open". The member must stop claiming
+      # "Live" (it hasn't heard the instructor's 10 s heartbeat for 25 s) and
+      # must land on the class's state once the link comes back.
       c_toxic_add bh-down timeout downstream '{"timeout":0}'
       c_toxic_add bh-up timeout upstream '{"timeout":0}'
       M=$(c_mark)
       h_ios 03-host-pause.yaml
       c_log none --since "$M" --dev "android member" --what pause --for 5000
-      # Honesty oracle — RED today: a silent dead link still reads "Live".
-      h_droid 10-member-offline.yaml
+      h_droid 15-member-not-live.yaml
       c_toxics_clear
-      c_log converged --since "$CLASS_M" --timeout 20000
+      MB=$(c_log wait --since "$M" --dev "android member" --what pause --timeout 40000)
+      echo "member paused $(( ${MB% *} - $(c_log wait --since "$M" --dev "ios host" --what pause | cut -d' ' -f1) )) ms after the class did (blackhole lifted)"
+      c_log converged --since "$CLASS_M" --timeout 10000
+      h_droid 11-member-online.yaml
       M=$(c_mark)
       h_ios 05-host-resume.yaml
       c_pair "$M" run
+      ;;
+    stall)
+      # The link stalls (bandwidth 0 both ways: nothing moves, nothing is
+      # dropped or reset) for 40 s — longer than the member's 25 s silence
+      # limit — while the instructor skips. Honest status during the stall,
+      # and convergence after it.
+      c_toxic_add st-down bandwidth downstream '{"rate":0}'
+      c_toxic_add st-up bandwidth upstream '{"rate":0}'
+      M=$(c_mark)
+      T0=$(date +%s)
+      c_host_skip "$M"
+      c_log none --since "$M" --dev "android member" --what jump --for 4000
+      h_droid 15-member-not-live.yaml
+      while [ $(( $(date +%s) - T0 )) -lt 40 ]; do sleep 2; done
+      c_toxics_clear
+      c_member_matches_host "$M" 40000
+      c_log converged --since "$CLASS_M" --timeout 10000
+      h_droid 11-member-online.yaml
       ;;
     *)
       echo "unknown scenario $scenario" >&2

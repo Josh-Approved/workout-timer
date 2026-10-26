@@ -207,8 +207,10 @@ async function main() {
       };
       let last = '';
       const ok = await until(() => {
-        const hs = latest(HOST, ['step', 'jump']);
-        const ms = latest(MEMBER, ['step', 'jump']);
+        // Every event carries the step the phone is on (a pause that reached a
+        // phone late moves it back with no step/jump event of its own).
+        const hs = latest(HOST, ['step', 'jump', 'run', 'pause']);
+        const ms = latest(MEMBER, ['step', 'jump', 'run', 'pause']);
         const hr = latest(HOST, ['run', 'pause']);
         const mr = latest(MEMBER, ['run', 'pause']);
         last = `host step=${hs?.step} ${hr?.what ?? '?'} / member step=${ms?.step} ${mr?.what ?? '?'}`;

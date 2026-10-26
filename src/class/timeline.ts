@@ -130,9 +130,16 @@ export function toggleClassPause(steps: PhaseStep[], tl: ClassTimeline, classNow
  * second must not also skip the step that begins during the lead.
  */
 export function classSkip(steps: PhaseStep[], tl: ClassTimeline, classNow: number): ClassTimeline {
-  const there = classPositionAt(steps, tl, decidingAt(tl, classNow));
+  const from = decidingAt(tl, classNow);
+  const there = classPositionAt(steps, tl, from);
   if (there.mode === 'complete') return tl;
-  return append(tl, { at: landingAt(tl, classNow, COMMAND_LEAD_MS), action: 'goto', step: there.stepIndex + 1 });
+  const at = landingAt(tl, classNow, COMMAND_LEAD_MS);
+  // A step that ends on its own before the skip could land needs no skip:
+  // sending one would restart the next step a moment after it began.
+  const clock = classClockAt(steps, tl, from);
+  const endsAt = from + stepStartSeconds(steps, there.stepIndex + 1) * 1000 - clock.elapsedMs;
+  if (clock.running && endsAt <= at) return tl;
+  return append(tl, { at, action: 'goto', step: there.stepIndex + 1 });
 }
 
 /** End the class's workout on every phone (the instructor's Finish in AMRAP / For Time). */

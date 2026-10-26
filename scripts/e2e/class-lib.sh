@@ -85,6 +85,37 @@ c_join_droid() {
   adb -s "$ANDROID_SERIAL" shell am start -a android.intent.action.VIEW -d "'$url'" >/dev/null
 }
 
+# The member's app out of the foreground, and back. HOME leaves it running in
+# the background; the screen state uses KEYCODE_SLEEP / KEYCODE_WAKEUP, which
+# (unlike POWER) only ever go one way.
+c_droid_background() { adb -s "$ANDROID_SERIAL" shell input keyevent 3; sleep 2; }
+c_droid_foreground() {
+  adb -s "$ANDROID_SERIAL" shell am start -n "$APP_ID/.MainActivity" >/dev/null 2>&1 || true
+  sleep 2
+}
+c_droid_screen() {
+  if [ "$1" = off ]; then
+    adb -s "$ANDROID_SERIAL" shell input keyevent 223
+  else
+    adb -s "$ANDROID_SERIAL" shell input keyevent 224
+  fi
+  sleep 2
+  adb -s "$ANDROID_SERIAL" shell dumpsys power | grep -m1 'mWakefulness=' | tr -d ' \r'
+}
+
+# The instructor's skip, confirmed: Maestro sometimes reports an iOS tap as
+# done that the app never received (seen 4 times in ~45 host taps on
+# 2026-10-25). A received skip shows as the host's own jump ~1.2 s later; if
+# none shows within 4 s the tap was lost, and one more is safe.
+c_host_skip() {
+  local since="$1"
+  h_ios 07-host-skip.yaml
+  if ! c_log wait --since "$since" --dev "ios host" --what jump --timeout 4000 >/dev/null 2>&1; then
+    echo "host skip tap not received by the app; tapping once more"
+    h_ios 07-host-skip.yaml
+  fi
+}
+
 # --- oracles -----------------------------------------------------------------
 # Both phones did <what> (run|pause|jump|at), on the same step, within TOL_MS.
 c_pair() {

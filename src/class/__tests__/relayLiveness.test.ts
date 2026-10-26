@@ -35,7 +35,7 @@ jest.mock('../../sync/transport', () => ({
   },
 }));
 
-import { ClassRelay, newClassKeys, packTimeline, HEARTBEAT_MS, SILENCE_MS } from '../relay';
+import { ClassRelay, newClassKeys, packTimeline, HEARTBEAT_MS, SILENCE_MS, PULSE_MS } from '../relay';
 import { newTimeline } from '../timeline';
 
 beforeEach(() => {
@@ -47,12 +47,19 @@ afterEach(() => jest.useRealTimers());
 describe('class relay liveness', () => {
   const keys = newClassKeys();
   const tl = newTimeline(5_000);
+  // The driver pulses the relay every PULSE_MS (JS timer + native wake).
+  const pulseFor = (relay: ClassRelay, ms: number) => {
+    for (let t = 0; t < ms; t += PULSE_MS) {
+      jest.advanceTimersByTime(PULSE_MS);
+      relay.pulse();
+    }
+  };
 
   it('the instructor re-deposits the timeline as a heartbeat', () => {
     const relay = new ClassRelay({ ...keys, hostPub: keys.hostPub, onTimeline: () => {}, onLive: () => {} });
     relay.start();
     relay.publish(tl);
-    jest.advanceTimersByTime(HEARTBEAT_MS * 3);
+    pulseFor(relay, HEARTBEAT_MS * 3);
     expect(mockTransports[0].published.length).toBe(4);
     relay.close();
   });
@@ -70,10 +77,28 @@ describe('class relay liveness', () => {
     expect(live.at(-1)).toBe(false); // ...but nothing heard yet
     mockTransports[0].mockOnMessage(packTimeline(keys.key, tl, keys.hostSecret), Date.now());
     expect(live.at(-1)).toBe(true);
-    jest.advanceTimersByTime(SILENCE_MS + 5_000); // open but silent
+    pulseFor(relay, SILENCE_MS + 5_000); // open but silent
     expect(live.at(-1)).toBe(false);
     expect(mockTransports[0].closed).toBe(true);
     expect(mockTransports).toHaveLength(2); // a fresh connection, which replays the latest deposit
+    relay.close();
+  });
+
+  it("a replayed old deposit updates the timeline but doesn't count as hearing the instructor", () => {
+    const live: boolean[] = [];
+    const got: number[] = [];
+    const relay = new ClassRelay({
+      key: keys.key,
+      hostPub: keys.hostPub,
+      onTimeline: (t) => got.push(t.seq),
+      onLive: (l) => live.push(l),
+    });
+    relay.start();
+    mockTransports[0].mockOnStatus?.(2);
+    const stale = { ...tl, seq: 3 };
+    mockTransports[0].mockOnMessage(packTimeline(keys.key, stale, keys.hostSecret), Date.now() - 5 * 60_000);
+    expect(got).toEqual([3]);
+    expect(live.at(-1)).toBe(false);
     relay.close();
   });
 });

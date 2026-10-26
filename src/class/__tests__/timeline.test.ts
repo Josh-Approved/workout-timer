@@ -105,12 +105,17 @@ describe('the instructor controls', () => {
     expect(twice.commands[1].at).toBeGreaterThan(twice.commands[0].at);
   });
 
-  it("skip goes to the step after the one on screen, even when the next one starts during the lead", () => {
-    // Tapped with half a second of the first work interval left: the rest
-    // begins on its own before the skip lands, and the skip must not then
-    // jump past it.
-    const tl = classSkip(STEPS, newTimeline(START), START + 9_500);
+  it('skip goes to the step after the one on screen', () => {
+    const tl = classSkip(STEPS, newTimeline(START), START + 7_000); // 3 s left
     expect(tl.commands[0]).toMatchObject({ action: 'goto', step: 1 });
+  });
+
+  it("a skip in a step's last moment sends nothing: the step ends on its own first", () => {
+    // Half a second left, less than the lead: skipping would restart the
+    // rest a moment after it began (and once, before decisions moved to the
+    // tap, skipped it entirely).
+    const tl = newTimeline(START);
+    expect(classSkip(STEPS, tl, START + 9_500)).toBe(tl);
   });
 
   it('a second skip while the first is in flight goes one further', () => {

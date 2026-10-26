@@ -78,7 +78,7 @@ import {
   classBack,
   classFinish,
 } from '../class/timeline';
-import { ClassRelay } from '../class/relay';
+import { ClassRelay, PULSE_MS } from '../class/relay';
 import { classCodeUrl } from '../class/classCode';
 import { type ClassSession, saveClassSession, clearClassSession } from '../class/session';
 
@@ -143,6 +143,7 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
   // applied, so a new one is announced too.
   const classRef = useRef<ClassSession | null>(classSource);
   const relayRef = useRef<ClassRelay | null>(null);
+  const relayPulseRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const classWakeRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const steppedOutRef = useRef(false);
   const gatheringRef = useRef(true);
@@ -236,7 +237,9 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
       AudioEngine.stopKeepAlive();
       endLiveTimer(sessionIdRef.current).catch(() => {});
       if (classWakeRef.current) clearTimeout(classWakeRef.current);
+      if (relayPulseRef.current) clearTimeout(relayPulseRef.current);
       cancelWake('class');
+      cancelWake('relay');
       relayRef.current?.close();
       relayRef.current = null;
     };
@@ -611,16 +614,34 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
 
   // Members' Lock Screen / notification is display-only: stepping out of a
   // class from the lock screen would leave no way back from there.
-  function classActions(): LiveTimerActionId[] {
-    return classRef.current?.role === 'host' ? ['pause', 'skip'] : [];
+  function classActions(running: boolean): LiveTimerActionId[] {
+    if (classRef.current?.role !== 'host') return [];
+    return running ? ['pause', 'skip'] : ['resume'];
   }
 
-  /** One instructor tap per HOST_TAP_DEBOUNCE_MS: a fumbled double tap must not undo itself. */
+  /**
+   * A fumbled burst of instructor taps is one tap: a tap counts only after
+   * HOST_TAP_DEBOUNCE_MS of no tapping (each tap restarts the window, so a
+   * triple tap can't sneak a second toggle in).
+   */
   function hostTap(): boolean {
     const now = nowMs();
-    if (now - lastHostTapRef.current < HOST_TAP_DEBOUNCE_MS) return false;
+    const quiet = now - lastHostTapRef.current >= HOST_TAP_DEBOUNCE_MS;
     lastHostTapRef.current = now;
-    return true;
+    return quiet;
+  }
+
+  // The relay's heartbeat / watchdog, armed natively too (see scheduleTick).
+  function scheduleRelayPulse() {
+    if (relayPulseRef.current) clearTimeout(relayPulseRef.current);
+    relayPulseRef.current = setTimeout(relayPulse, PULSE_MS);
+    wakeAfter('relay', PULSE_MS);
+  }
+
+  function relayPulse() {
+    relayPulseRef.current = null;
+    relayRef.current?.pulse();
+    scheduleRelayPulse();
   }
 
   /**
@@ -629,9 +650,9 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
    * on Android its foreground service is what keeps the phone awake enough
    * for the native wakes to fire with the screen off.
    */
-  function showClassLiveTimer(phases: LiveTimerPhase[], phaseStartMs: number) {
+  function showClassLiveTimer(phases: LiveTimerPhase[], phaseStartMs: number, actions: LiveTimerActionId[]) {
     if (liveOnRef.current) {
-      updateLiveTimer({ sessionId: sessionIdRef.current, phases, phaseStartMs }).catch(() => {});
+      updateLiveTimer({ sessionId: sessionIdRef.current, phases, phaseStartMs, actions }).catch(() => {});
       return;
     }
     liveOnRef.current = true;
@@ -640,7 +661,7 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
       title: timerNameRef.current,
       phases,
       phaseStartMs,
-      actions: classActions(),
+      actions,
     }).catch(() => {});
   }
 
@@ -673,6 +694,7 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
     });
     relayRef.current = relay;
     relay.start();
+    scheduleRelayPulse();
     if (cs.role === 'host') relay.publish(cs.timeline);
     if (__DEV__) console.log('[class] code', classCodeUrl(cs.invite, classNow(), Date.now()));
     applyClass();
@@ -719,6 +741,7 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
         showClassLiveTimer(
           [{ id: 'gathering', label: t('classMode.classStartsIn'), durationSeconds: waitSec }, ...phasesFrom(steps, 0)],
           Date.now() + waitMs - waitSec * 1000,
+          [],
         );
       }
       return;
@@ -759,11 +782,12 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
 
     const idx = stateRef.current.stepIndex;
     if (cc.running && (!wasRunning || jumped)) {
-      showClassLiveTimer(phasesFrom(steps, idx), stepStartWallMs(idx));
+      showClassLiveTimer(phasesFrom(steps, idx), stepStartWallMs(idx), classActions(true));
     } else if (!cc.running && (wasRunning || jumped || !liveOnRef.current)) {
       showClassLiveTimer(
         [{ id: 'paused', label: t('classMode.pausedLive'), durationSeconds: 6 * 3600, countsUp: true }],
         Date.now(),
+        classActions(false),
       );
     }
     if (cc.running !== wasRunning) devClassLog(cc.running ? 'run' : 'pause', stateRef.current.stepIndex);
@@ -859,6 +883,9 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
         clearTimeout(classWakeRef.current);
         classWakeRef.current = null;
         applyClass();
+      } else if (e.id === 'relay' && relayPulseRef.current) {
+        clearTimeout(relayPulseRef.current);
+        relayPulse();
       }
       return;
     }

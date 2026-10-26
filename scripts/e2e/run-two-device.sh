@@ -7,7 +7,9 @@
 #   start → member joins via link → both start at the same instant → both cross
 #   the first boundary together → host pause → member paused → host resume →
 #   both running → host skip → both on the same step → member steps out and
-#   back in sync → member's radios cut, host skips (member must NOT move) →
+#   back in sync → member's app in the background (HOME): host pause, resume
+#   and skip land together → member's screen off: the next boundary and a skip
+#   land together → member's radios cut, host skips (member must NOT move) →
 #   radios back → member snaps to the class's step → both leave.
 #
 # Every "together" is checked on the `wall=` stamps both phones log to Metro
@@ -64,7 +66,7 @@ source "$E2E_DIR/harness-lib.sh"
 source "$E2E_DIR/class-lib.sh"
 cd "$E2E_DIR/../.."
 
-h_step "0/9 Preconditions; both apps to the timer list"
+h_step "0/11 Preconditions; both apps to the timer list"
 c_require_metro
 RUN_START=$(c_mark)
 c_require_relay
@@ -78,49 +80,73 @@ c_open_droid
 h_ios 00-ready.yaml
 h_droid 00-ready.yaml
 
-h_step "1/9 Instructor (iOS) starts a class: $CLASS_TIMER, starts in $CLASS_START_IN"
+h_step "1/11 Instructor (iOS) starts a class: $CLASS_TIMER, starts in $CLASS_START_IN"
 M=$(c_mark)
 maestro --device "$IOS_UDID" test -e TIMER="$CLASS_TIMER" -e START_IN="$CLASS_START_IN" "$FLOWS/01-host-start-class.yaml"
 URL=$(c_log url --since "$M" --expect-name "$CLASS_TIMER")
 echo "class link: ${URL:0:60}…"
 
-h_step "2/9 Member (Android) joins by the class link; start counts down"
+h_step "2/11 Member (Android) joins by the class link; start counts down"
 c_join_droid "$URL"
 h_droid 02-member-gathering.yaml
 
-h_step "3/9 Both start at the class start, and cross the first boundary together"
+h_step "3/11 Both start at the class start, and cross the first boundary together"
 c_pair "$M" run --step 0 --timeout 130000
 c_pair "$M" at --step 1 --timeout 60000
 
-h_step "4/9 Instructor pauses → member paused"
+h_step "4/11 Instructor pauses → member paused"
 M=$(c_mark)
 h_ios 03-host-pause.yaml
 c_pair "$M" pause
 h_droid 04-member-paused.yaml
 
-h_step "5/9 Instructor resumes → both running again"
+h_step "5/11 Instructor resumes → both running again"
 M=$(c_mark)
 h_ios 05-host-resume.yaml
 c_pair "$M" run
 h_droid 06-member-running.yaml
 
-h_step "6/9 Instructor skips → both on the same next step"
+h_step "6/11 Instructor skips → both on the same next step"
 M=$(c_mark)
-h_ios 07-host-skip.yaml
+c_host_skip "$M"
 c_pair "$M" jump
 
-h_step "7/9 Member steps out, waits, comes back in sync"
+h_step "7/11 Member steps out, waits, comes back in sync"
 h_droid 08-member-step-out.yaml
 sleep 5
 M=$(c_mark)
 h_droid 09-member-back-in-sync.yaml
 c_member_matches_host "$M"
 
-h_step "8/9 Member offline: instructor's skip can't reach it; on reconnect it snaps to the class"
+h_step "8/11 Member's app in the background (HOME): pause, resume and skip still land together"
+# Android stops JS timers for an app that isn't in front; the class must not.
+c_droid_background
+M=$(c_mark)
+h_ios 03-host-pause.yaml
+c_pair "$M" pause
+M=$(c_mark)
+h_ios 05-host-resume.yaml
+c_pair "$M" run
+M=$(c_mark)
+c_host_skip "$M"
+c_pair "$M" jump
+
+h_step "9/11 Member's screen off: the next boundary and a skip still land together"
+c_droid_screen off
+M=$(c_mark)
+c_pair "$M" at --timeout 70000
+M=$(c_mark)
+c_host_skip "$M"
+c_pair "$M" jump
+c_droid_screen on
+c_droid_foreground
+h_droid 06-member-running.yaml
+
+h_step "10/11 Member offline: instructor's skip can't reach it; on reconnect it snaps to the class"
 h_android_offline
 h_droid 10-member-offline.yaml
 M=$(c_mark)
-h_ios 07-host-skip.yaml
+c_host_skip "$M"
 HOST_JUMP=$(c_log wait --since "$M" --dev "ios host" --what jump --timeout 6000)
 echo "host skipped to step ${HOST_JUMP#* } @${HOST_JUMP% *}"
 # The member keeps running on schedule; it must NOT have followed the skip.
@@ -129,7 +155,7 @@ h_android_online
 h_droid 11-member-online.yaml
 c_member_matches_host "$M" 45000
 
-h_step "9/9 Both leave the class"
+h_step "11/11 Both leave the class"
 h_ios 12-leave-class.yaml
 h_droid 12-leave-class.yaml
 
