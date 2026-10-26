@@ -1,6 +1,7 @@
 /**
- * The one-time class mode beta note: what to expect, how it works, and where
- * to say so if it slips. One action.
+ * The one-time class mode beta note: what it does and that it's new, in two
+ * sentences. How it works (the relays, privacy) lives on the Class mode
+ * screen and in PRIVACY.md, not here. One action.
  */
 
 import React from 'react';
@@ -29,7 +30,6 @@ export function ClassBetaSheet({ visible, onDismiss }: { visible: boolean; onDis
             {t('classMode.betaTitle')}
           </Text>
           <Text style={s.body}>{t('classMode.betaBody')}</Text>
-          <Text style={s.body}>{t('classMode.howItWorks')}</Text>
           <Pressable
             style={({ pressed }) => [s.primaryBtn, pressed && s.pressed]}
             onPress={onDismiss}

@@ -223,7 +223,7 @@ const es = {
     allowCamera: 'Permitir cámara',
     openSettings: 'Abrir Ajustes',
     betaTitle: 'El modo clase está en beta',
-    betaBody: 'Los teléfonos de todos deberían seguir al mismo ritmo, pero aún no se ha probado en todas las salas. Si el tuyo se desfasa, avísame y lo arreglo.',
+    betaBody: 'Todos escanean el código del instructor y cada teléfono va al mismo ritmo. Es nuevo, así que si algo falla, avísame.',
     gotIt: 'Entendido',
     rejoin: 'Volver a la clase',
     rejoinHint: '{name} sigue en marcha',

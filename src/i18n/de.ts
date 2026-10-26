@@ -223,7 +223,7 @@ const de = {
     allowCamera: 'Kamera erlauben',
     openSettings: 'Einstellungen öffnen',
     betaTitle: 'Der Kursmodus ist in der Beta',
-    betaBody: 'Die Telefone aller sollten im Gleichschritt bleiben, aber in jedem Raum wurde das noch nicht getestet. Wenn deins aus dem Takt gerät, sag mir Bescheid, dann behebe ich das.',
+    betaBody: 'Alle scannen den Code der Kursleitung, und jedes Telefon bleibt im Takt. Es ist neu, also sag mir Bescheid, wenn etwas nicht stimmt.',
     gotIt: 'Verstanden',
     rejoin: 'Kurs wieder beitreten',
     rejoinHint: '{name} läuft noch',

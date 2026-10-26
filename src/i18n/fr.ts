@@ -223,7 +223,7 @@ const fr = {
     allowCamera: 'Autoriser la caméra',
     openSettings: 'Ouvrir les Réglages',
     betaTitle: 'Le mode cours est en bêta',
-    betaBody: "Le téléphone de chacun devrait rester en rythme, mais cela n'a pas encore été essayé dans toutes les salles. Si le vôtre décroche, dites-le-moi et je corrigerai.",
+    betaBody: 'Chacun scanne le code du coach, et tous les téléphones restent en rythme. C’est nouveau, alors si quelque chose cloche, dites-le-moi.',
     gotIt: 'Compris',
     rejoin: 'Revenir au cours',
     rejoinHint: '{name} est toujours en cours',

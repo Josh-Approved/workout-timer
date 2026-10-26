@@ -223,7 +223,7 @@ const pt_BR = {
     allowCamera: 'Permitir câmera',
     openSettings: 'Abrir Configurações',
     betaTitle: 'O modo aula está em beta',
-    betaBody: 'O telefone de todo mundo deve ficar em sincronia, mas ainda não foi testado em todas as salas. Se o seu escapar, me avise que eu conserto.',
+    betaBody: 'Todos escaneiam o código do instrutor e cada telefone fica em sincronia. É novo, então se algo der errado, me avise.',
     gotIt: 'Entendi',
     rejoin: 'Voltar para a aula',
     rejoinHint: '{name} ainda está em andamento',

@@ -239,7 +239,7 @@ export const APP_STRINGS = {
     allowCamera: 'Allow camera',
     openSettings: 'Open Settings',
     betaTitle: 'Class mode is in beta',
-    betaBody: "Everyone's phone should stay in step, but it hasn't been tried in every room yet. If yours slips, tell me and I'll fix it.",
+    betaBody: "Everyone scans the instructor's code, and every phone stays in step. It's new, so if something's off, tell me.",
     gotIt: 'Got it',
     rejoin: 'Rejoin class',
     rejoinHint: '{name} is still running',

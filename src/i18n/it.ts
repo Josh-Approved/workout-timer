@@ -223,7 +223,7 @@ const it = {
     allowCamera: 'Consenti fotocamera',
     openSettings: 'Apri Impostazioni',
     betaTitle: 'La modalità corso è in beta',
-    betaBody: 'Il telefono di tutti dovrebbe restare a tempo, ma non è stato ancora provato in ogni sala. Se il tuo va fuori tempo, dimmelo e lo sistemo.',
+    betaBody: "Tutti scansionano il codice dell'istruttore e ogni telefono resta a tempo. È una novità, quindi se qualcosa non va, dimmelo.",
     gotIt: 'Capito',
     rejoin: 'Rientra nel corso',
     rejoinHint: '{name} è ancora in corso',
