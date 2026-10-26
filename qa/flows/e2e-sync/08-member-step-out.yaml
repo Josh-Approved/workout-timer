@@ -1,0 +1,9 @@
+# Class mode two-device E2E (MEMBER, Android): the member's own pause steps
+# only this phone out of the class; play now reads "Back in sync".
+appId: com.joshapproved.freeworkouttimer
+---
+- tapOn: "Pause"
+- extendedWaitUntil:
+    visible: "Back in sync"
+    timeout: 3000
+- assertVisible: "You've stepped out.*"

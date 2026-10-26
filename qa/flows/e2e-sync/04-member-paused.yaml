@@ -1,0 +1,8 @@
+# Class mode two-device E2E (MEMBER, Android): the instructor's pause reached
+# this phone — it is paused, and NOT stepped out (play reads Resume, not Back in sync).
+appId: com.joshapproved.freeworkouttimer
+---
+- extendedWaitUntil:
+    visible: "Resume"
+    timeout: 8000
+- assertNotVisible: "Back in sync"

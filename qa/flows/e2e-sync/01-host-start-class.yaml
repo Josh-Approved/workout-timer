@@ -1,0 +1,48 @@
+# Class mode two-device E2E, step 1 (HOST, iOS): from the timer list, open
+# Class mode, pick a timer and a start delay, start the class, close the code
+# sheet. The app logs `[class] code fwt://class?...` to Metro; the runner reads
+# the class link from there and opens it on the member.
+# Env (REQUIRED, pass with -e): TIMER (timer name as listed), START_IN
+# ("30 sec" | "1 min" | "2 min"). No defaults on purpose: Maestro 2.x lets a
+# flow's own `env:` block win over `-e`, which silently ran the wrong timer.
+appId: com.joshapproved.freeworkouttimer
+---
+- runFlow:
+    when:
+      visible: "Continue"
+    commands:
+      - tapOn: "Continue"
+- extendedWaitUntil:
+    visible: "Class mode, beta"
+    timeout: 20000
+- tapOn: "Class mode, beta"
+- runFlow:
+    when:
+      visible: "Got it"
+    commands:
+      - tapOn: "Got it"
+- extendedWaitUntil:
+    visible: "Run a class"
+    timeout: 5000
+- scrollUntilVisible:
+    element:
+      text: "${TIMER},.*"
+- tapOn: "${TIMER},.*"
+# (iOS exposes no "checked" state on the radio row to Maestro, so the runner
+# checks the pick instead: class-log.mjs url --expect-name reads the workout
+# name out of the class link.)
+- scrollUntilVisible:
+    element:
+      text: "${START_IN}"
+- tapOn: "${START_IN}"
+- scrollUntilVisible:
+    element:
+      text: "Start class"
+- tapOn: "Start class"
+- extendedWaitUntil:
+    visible: "Class code"
+    timeout: 8000
+- tapOn: "Done"
+- extendedWaitUntil:
+    visible: "Instructor"
+    timeout: 5000

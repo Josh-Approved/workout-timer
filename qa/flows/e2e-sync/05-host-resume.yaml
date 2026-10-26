@@ -1,0 +1,12 @@
+# Class mode two-device E2E (HOST, iOS): resume the class. Everyone is counted
+# back in over ~3 s; the button turns back to Pause when it lands.
+# Retry: see 03-host-pause.yaml (a received resume flips the button in ~3.3 s).
+appId: com.joshapproved.freeworkouttimer
+---
+- retry:
+    maxRetries: 1
+    commands:
+      - tapOn: "Resume"
+      - extendedWaitUntil:
+          visible: "Pause"
+          timeout: 6500

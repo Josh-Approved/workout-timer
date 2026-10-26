@@ -1,0 +1,8 @@
+# Class mode two-device E2E (MEMBER, Android, radios cut): the strip says so
+# honestly, and the phone keeps running on schedule meanwhile.
+appId: com.joshapproved.freeworkouttimer
+---
+- extendedWaitUntil:
+    visible: "Offline.*"
+    timeout: 20000
+- assertVisible: "Pause"
