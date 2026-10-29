@@ -1,0 +1,6 @@
+# Class mode two-device E2E (MEMBER, Android): running with the class again.
+appId: com.joshapproved.freeworkouttimer
+---
+- extendedWaitUntil:
+    visible: "Pause"
+    timeout: 10000

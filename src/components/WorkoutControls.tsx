@@ -34,6 +34,14 @@ type Props = {
   /** The skip control ends the workout (last step of an AMRAP / For Time):
    *  it reads and looks like "Finish" rather than "Skip". */
   skipFinishes?: boolean;
+  /** Class members follow the instructor: no back / skip of their own. */
+  showSeek?: boolean;
+  /** Overrides the play/pause label (a stepped-out class member: "Back in sync"). */
+  playA11yLabel?: string;
+  /** Class mode: play/pause can't act right now (the class is gathering, or the instructor paused it). */
+  playDisabled?: boolean;
+  /** Class mode: back/skip can't act right now (the class hasn't started). */
+  seekDisabled?: boolean;
 };
 
 export function WorkoutControls({
@@ -47,6 +55,10 @@ export function WorkoutControls({
   onSkip,
   onDone,
   skipFinishes = false,
+  showSeek = true,
+  playA11yLabel,
+  playDisabled = false,
+  seekDisabled = false,
 }: Props) {
   const { c } = useTheme();
   const s = makeStyles(c, isLandscape);
@@ -68,15 +80,19 @@ export function WorkoutControls({
 
   return (
     <View style={s.controls}>
-      <Pressable
-        style={({ pressed }) => [s.secondaryBtn, pressed && s.pressed]}
-        onPress={onBack}
-        hitSlop={8}
-        accessibilityLabel={backA11yLabel}
-        accessibilityRole="button"
-      >
-        <SkipBack size={24} color={c.fg} strokeWidth={1.5} />
-      </Pressable>
+      {showSeek ? (
+        <Pressable
+          style={({ pressed }) => [s.secondaryBtn, pressed && s.pressed, seekDisabled && s.disabled]}
+          onPress={onBack}
+          disabled={seekDisabled}
+          hitSlop={8}
+          accessibilityLabel={backA11yLabel}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: seekDisabled }}
+        >
+          <SkipBack size={24} color={c.fg} strokeWidth={1.5} />
+        </Pressable>
+      ) : null}
       <Pressable
         style={({ pressed }) => [s.secondaryBtn, pressed && s.pressed]}
         onPress={onStop}
@@ -87,9 +103,11 @@ export function WorkoutControls({
         <Square size={22} color={c.danger} strokeWidth={1.75} fill={c.danger} />
       </Pressable>
       <Pressable
-        style={({ pressed }) => [s.playPauseBtn, pressed && s.pressed]}
+        style={({ pressed }) => [s.playPauseBtn, pressed && s.pressed, playDisabled && s.disabled]}
         onPress={onTogglePause}
-        accessibilityLabel={isRunning ? t('workout.pause') : t('workout.resume')}
+        disabled={playDisabled}
+        accessibilityState={{ disabled: playDisabled }}
+        accessibilityLabel={playA11yLabel ?? (isRunning ? t('workout.pause') : t('workout.resume'))}
         accessibilityRole="button"
       >
         {isRunning ? (
@@ -98,7 +116,7 @@ export function WorkoutControls({
           <Play size={36} color={c.inkButtonText} strokeWidth={1.75} fill={c.inkButtonText} />
         )}
       </Pressable>
-      {skipFinishes ? (
+      {!showSeek && !skipFinishes ? null : skipFinishes ? (
         <Pressable
           style={({ pressed }) => [s.finishBtn, pressed && s.pressed]}
           onPress={onSkip}
@@ -113,11 +131,13 @@ export function WorkoutControls({
         </Pressable>
       ) : (
         <Pressable
-          style={({ pressed }) => [s.secondaryBtn, pressed && s.pressed]}
+          style={({ pressed }) => [s.secondaryBtn, pressed && s.pressed, seekDisabled && s.disabled]}
           onPress={onSkip}
+          disabled={seekDisabled}
           hitSlop={8}
           accessibilityLabel={t('workout.skip')}
           accessibilityRole="button"
+          accessibilityState={{ disabled: seekDisabled }}
         >
           <SkipForward size={24} color={c.fg} strokeWidth={1.5} />
         </Pressable>
@@ -129,6 +149,7 @@ export function WorkoutControls({
 function makeStyles(c: Colors, isLandscape: boolean) {
   return StyleSheet.create({
     pressed: { opacity: 0.7 },
+    disabled: { opacity: 0.35 },
     controls: {
       flexDirection: 'row',
       alignItems: 'center',

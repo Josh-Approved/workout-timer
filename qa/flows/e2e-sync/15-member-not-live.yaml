@@ -1,0 +1,9 @@
+# Class mode E2E (MEMBER, Android, link silent or stalled): the member hasn't
+# heard the instructor (10 s heartbeat) for 25 s, so the strip must drop "Live"
+# and say it's offline — an open socket that passes nothing is not a link.
+appId: com.joshapproved.freeworkouttimer
+---
+- extendedWaitUntil:
+    visible: "Offline.*"
+    timeout: 45000
+- assertNotVisible: "· Live"

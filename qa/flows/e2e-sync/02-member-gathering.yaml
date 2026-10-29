@@ -1,0 +1,14 @@
+# Class mode two-device E2E (MEMBER, Android): the class link opened on this
+# phone joined the class — the class strip is up and the start counts down.
+appId: com.joshapproved.freeworkouttimer
+---
+- extendedWaitUntil:
+    visible: "Class mode"
+    timeout: 15000
+# The clock is one merged accessibility element: "Class starts in 41 seconds".
+- assertVisible:
+    text: "Class starts in.*"
+# Members can't skip or go back: those controls are not there at all.
+- assertNotVisible: "Skip to next interval"
+- assertNotVisible: "Restart current interval"
+- assertNotVisible: "Previous interval"

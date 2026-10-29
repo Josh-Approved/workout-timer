@@ -34,6 +34,12 @@ public class LiveTimerModule: Module {
             Double(clock_gettime_nsec_np(CLOCK_MONOTONIC)) / 1_000_000
         }
 
+        // Android needs native wakes because its JS timers stop in the
+        // background; on iOS the workout's audio session keeps JS timers
+        // running, so these accept the same calls and do nothing.
+        Function("wakeAfter") { (_: String, _: Double) in }
+        Function("cancelWake") { (_: String) in }
+
         AsyncFunction("getAvailability") { () -> [String: Any?] in
             if #available(iOS 16.2, *) {
                 let info = ActivityAuthorizationInfo()

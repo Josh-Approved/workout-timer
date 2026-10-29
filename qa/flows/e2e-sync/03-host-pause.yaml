@@ -1,0 +1,14 @@
+# Class mode two-device E2E (HOST, iOS): pause the class. It lands ~1.2 s after
+# the tap on every phone; the button turns to Resume when it does.
+# The retry covers a tap Maestro reports as done but the app never received
+# (seen 2 of ~30 host taps on 2026-10-25). A received pause always flips the
+# button within ~1.5 s, so a retry after 4 s can't double-toggle the class.
+appId: com.joshapproved.freeworkouttimer
+---
+- retry:
+    maxRetries: 1
+    commands:
+      - tapOn: "Pause"
+      - extendedWaitUntil:
+          visible: "Resume"
+          timeout: 4000

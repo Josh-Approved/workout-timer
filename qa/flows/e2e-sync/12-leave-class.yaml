@@ -1,0 +1,18 @@
+# Class mode two-device E2E (EITHER device): leave the class, back to the list.
+appId: com.joshapproved.freeworkouttimer
+---
+- runFlow:
+    when:
+      visible: "Stop workout"
+    commands:
+      - tapOn: "Stop workout"
+      - tapOn: "Leave"
+- runFlow:
+    when:
+      visible: "Back to timers"
+    commands:
+      - tapOn: "Back to timers"
+- extendedWaitUntil:
+    visible: "Class mode, beta"
+    timeout: 10000
+- assertNotVisible: "Rejoin class.*"

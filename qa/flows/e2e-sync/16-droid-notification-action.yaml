@@ -1,0 +1,27 @@
+# Class mode E2E (ANDROID, app in the background): pull the shade down and tap
+# one of the class timer notification's actions. Env (pass with -e): ACTION
+# ("Pause" | "Resume" | "Skip"), TITLE (the notification title's start, the
+# timer name). Leaves the shade closed and the app still in the background.
+appId: com.joshapproved.freeworkouttimer
+---
+- swipe:
+    start: 50%, 1%
+    end: 50%, 70%
+    duration: 400
+- extendedWaitUntil:
+    visible: "${TITLE}.*"
+    timeout: 5000
+- runFlow:
+    when:
+      notVisible: "${ACTION}"
+    commands:
+      # A downward swipe on a notification expands it (its actions show).
+      - swipe:
+          from:
+            text: "${TITLE}.*"
+          direction: DOWN
+- tapOn: "${ACTION}"
+- swipe:
+    start: 50%, 95%
+    end: 50%, 10%
+    duration: 300

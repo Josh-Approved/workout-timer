@@ -1,0 +1,16 @@
+# Class mode E2E (EITHER device, after the app was killed mid-class): the timer
+# list offers "Rejoin class", and it puts this phone back in the class.
+appId: com.joshapproved.freeworkouttimer
+---
+- runFlow:
+    when:
+      visible: "Continue"
+    commands:
+      - tapOn: "Continue"
+- extendedWaitUntil:
+    visible: "Rejoin class.*"
+    timeout: 30000
+- tapOn: "Rejoin class.*"
+- extendedWaitUntil:
+    visible: "Class mode|Instructor"
+    timeout: 10000

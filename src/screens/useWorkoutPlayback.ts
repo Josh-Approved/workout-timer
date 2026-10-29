@@ -10,15 +10,22 @@
  * and the Lock Screen / notification schedule is derived from the same clock,
  * so nothing drifts.
  *
+ * Class mode (beta): the same driver, but the clock comes from the class's
+ * shared timeline (class/timeline) rather than this phone's taps. The
+ * instructor's controls write commands into the timeline and publish it over
+ * the class relay; every phone, the instructor's included, applies each
+ * command when it lands. A member's pause steps only that phone out, until
+ * Back in sync puts it back where the class is.
+ *
  * State the wake callback reads lives in refs (so `tick` never re-subscribes);
  * each ref-write is mirrored into useState for render.
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Alert, AppState } from 'react-native';
+import { Alert, AppState, Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
-import { PhaseStep, SoundSettings, WorkoutPhase, TimerKind, timerKind } from '../types';
+import { PhaseStep, SoundSettings, TimerConfig, WorkoutPhase, TimerKind, timerKind } from '../types';
 import { loadTimers, loadSettings } from '../storage/storage';
 import { buildWorkoutSequence, getTotalDuration, isOpenEnded } from '../utils/workout';
 import {
@@ -29,6 +36,8 @@ import {
   skipPlayback,
   backTargetIndex,
   stepStartSeconds,
+  positionAt,
+  elapsedSeconds,
 } from '../utils/playback';
 import {
   type WorkoutClock,
@@ -54,8 +63,24 @@ import {
   endLiveTimer,
   useLiveTimerEvents,
   nowMs,
+  wakeAfter,
+  cancelWake,
   type LiveTimerPhase,
+  type LiveTimerActionId,
 } from 'live-timer';
+import {
+  type ClassCommand,
+  type ClassTimeline,
+  classClockAt,
+  nextCommand,
+  toggleClassPause,
+  classSkip,
+  classBack,
+  classFinish,
+} from '../class/timeline';
+import { ClassRelay, PULSE_MS } from '../class/relay';
+import { classCodeUrl } from '../class/classCode';
+import { type ClassSession, saveClassSession, clearClassSession } from '../class/session';
 
 // The rendered position is exactly the playback engine's state (utils/playback).
 type DisplayState = PlaybackState;
@@ -69,7 +94,32 @@ export const phaseLabel = (phase: WorkoutPhase): string => t(`workout.phase.${ph
 // restarts the current one.
 export const RESTART_THRESHOLD_SECONDS = 1;
 
-export function useWorkoutPlayback(timerId: string, onExit: () => void) {
+/** A saved timer, or a class this phone is in (class mode). */
+export type WorkoutSource = { timerId: string } | { classSession: ClassSession };
+
+/** What the screen shows about the class this phone is in. */
+export interface ClassView {
+  role: 'host' | 'member';
+  /** A relay is reachable, so the instructor's commands can travel. */
+  live: boolean;
+  /** Seconds until the class starts; null once it has. */
+  startsIn: number | null;
+  /** The next instructor command still to land, and how soon. */
+  pending: { action: ClassCommand['action']; inSec: number } | null;
+  /** A member paused their own phone and is out of step until Back in sync. */
+  steppedOut: boolean;
+  /** A member who joined mid-class is waiting to hear the class's state. */
+  connecting: boolean;
+}
+
+/** Taps on the instructor's controls closer together than this are one tap. */
+const HOST_TAP_DEBOUNCE_MS = 500;
+/** How long a mid-class joiner waits to hear the class before running on schedule. */
+const JOIN_HOLD_MS = 5000;
+
+export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
+  const classSource = 'classSession' in source ? source.classSession : null;
+  const sourceKey = classSource ? classSource.invite : (source as { timerId: string }).timerId;
   const stepsRef = useRef<PhaseStep[]>([]);
   const soundsRef = useRef<SoundSettings | null>(null);
   const totalDurationRef = useRef(0);
@@ -88,6 +138,26 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
   const [rounds, setRounds] = useState(0);
   const finalElapsedRef = useRef<number | null>(null);
 
+  // Class mode. `gathering` holds until the class's first second, so the start
+  // (or a late join) is announced; `jumps` counts the instructor's jumps
+  // applied, so a new one is announced too.
+  const classRef = useRef<ClassSession | null>(classSource);
+  const relayRef = useRef<ClassRelay | null>(null);
+  const relayPulseRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const classWakeRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const steppedOutRef = useRef(false);
+  const gatheringRef = useRef(true);
+  const jumpsRef = useRef(0);
+  const liveRef = useRef(false);
+  // Whether the on-screen timer is up in class mode (it stays up the whole
+  // class: start countdown, running, paused), the last instructor tap, and —
+  // for a member who joined mid-class — whether the class has been heard yet.
+  const liveOnRef = useRef(false);
+  const lastHostTapRef = useRef(-Infinity);
+  const heardRef = useRef(false);
+  const holdUntilRef = useRef(0);
+  const [classView, setClassView] = useState<ClassView | null>(null);
+
   const stateRef = useRef<DisplayState>({ mode: 'phase', stepIndex: 0, timeRemaining: 0 });
   const [displayState, setDisplayState] = useState<DisplayState>(stateRef.current);
   const [isRunning, setIsRunning] = useState(false);
@@ -96,10 +166,14 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [timers, settings] = await Promise.all([loadTimers(), loadSettings()]);
+      const cs = classRef.current;
+      const [timers, settings] = await Promise.all([
+        cs ? Promise.resolve<TimerConfig[]>([cs.workout]) : loadTimers(),
+        loadSettings(),
+      ]);
       if (cancelled) return;
 
-      const timer = timers.find((tt) => tt.id === timerId);
+      const timer = cs ? cs.workout : timers.find((tt) => tt.id === sourceKey);
       if (!timer) {
         Alert.alert(t('workout.errorTitle'), t('workout.timerNotFound'), [
           { text: t('common.ok'), onPress: () => onExit() },
@@ -130,16 +204,23 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
         settings.sounds.workoutComplete,
         settings.sounds.halfwaySound,
       ]);
-      firePhaseStart(steps[0], settings.sounds, steps, maxCycles, settings.audioAccessibilityMode);
+      // A class starts when the class does (applyClass), not on load.
+      if (!cs) firePhaseStart(steps[0], settings.sounds, steps, maxCycles, settings.audioAccessibilityMode);
       const initial: DisplayState = initialPlayback(steps);
       stateRef.current = initial;
       setDisplayState(initial);
       // The workout's clock starts with its first cue.
-      clockRef.current = runningAt(nowMs());
+      clockRef.current = cs ? { running: false, elapsedMs: 0 } : runningAt(nowMs());
       setLoaded(true);
 
       await activateKeepAwakeAsync();
       AudioEngine.startKeepAlive().catch(() => {});
+      if (cancelled) return;
+
+      if (cs) {
+        startClass(cs);
+        return;
+      }
 
       startLiveTimer({
         sessionId: sessionIdRef.current,
@@ -155,8 +236,14 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
       deactivateKeepAwake();
       AudioEngine.stopKeepAlive();
       endLiveTimer(sessionIdRef.current).catch(() => {});
+      if (classWakeRef.current) clearTimeout(classWakeRef.current);
+      if (relayPulseRef.current) clearTimeout(relayPulseRef.current);
+      cancelWake('class');
+      cancelWake('relay');
+      relayRef.current?.close();
+      relayRef.current = null;
     };
-  }, [timerId]);
+  }, [sourceKey]);
 
   // A wake: sample the clock and play the second(s) it has crossed. Normally
   // that is exactly one; after a stall the engine skips the in-between seconds
@@ -214,6 +301,7 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
 
     // event === 'phase-start'
     firePhaseStart(steps[next.stepIndex], sounds, steps, maxCyclesRef.current, speechModeRef.current);
+    devClassLog('step', next.stepIndex);
     halfwayFiredRef.current = false;
     stateRef.current = next;
     setDisplayState(next);
@@ -230,11 +318,15 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
 
   // Wake at the next whole workout second (each wake schedules the next).
   // Declarations, so `tick` above can reach them; they only touch refs.
+  // The same wake is armed natively too (live-timer `wakeAfter`): Android
+  // stops JS timers while the app isn't in front, and whichever fires first runs.
   function scheduleTick() {
     stopTicking();
     const clock = clockRef.current;
     if (!clock.running) return;
-    timeoutRef.current = setTimeout(tick, msToNextSecond(clock, nowMs()));
+    const ms = msToNextSecond(clock, nowMs());
+    timeoutRef.current = setTimeout(tick, ms);
+    wakeAfter('tick', ms);
   }
 
   function stopTicking() {
@@ -242,6 +334,7 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
     }
+    cancelWake('tick');
   }
 
   // Wall-clock time the given step began on the workout clock (in the past for
@@ -267,6 +360,13 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
     clockRef.current = pauseClock(clockRef.current, nowMs());
     setIsRunning(false);
     endLiveTimer(sessionIdRef.current).catch(() => {});
+    liveOnRef.current = false;
+    // The class is over for this phone: nothing left to rejoin, and nothing
+    // left to say on the relay ("online only while you're in a class").
+    if (classRef.current) {
+      clearClassSession();
+      closeRelay();
+    }
   };
 
   useEffect(() => {
@@ -281,7 +381,12 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
   // app is back in front rather than at the next scheduled wake.
   useEffect(() => {
     const sub = AppState.addEventListener('change', (next) => {
-      if (next !== 'active' || !clockRef.current.running) return;
+      if (next !== 'active') return;
+      if (classRef.current) {
+        applyClass();
+        return;
+      }
+      if (!clockRef.current.running) return;
       stopTicking();
       tick();
     });
@@ -294,6 +399,20 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
 
   const togglePause = () => {
     if (displayState.mode === 'complete') return;
+    const cs = classRef.current;
+    if (cs) {
+      // The instructor pauses (or counts back in) the whole class; a member
+      // only steps their own phone out, or back in sync.
+      if (cs.role === 'host') {
+        if (classNow() >= cs.timeline.startAt && hostTap()) {
+          commitTimeline(toggleClassPause(stepsRef.current, cs.timeline, classNow()), true);
+        }
+      } else if (steppedOutRef.current) backInSync();
+      // A member can only step out of a class that is running; their play
+      // button does nothing while the class gathers or the instructor pauses.
+      else if (clockRef.current.running) stepOut();
+      return;
+    }
     if (clockRef.current.running) {
       clockRef.current = pauseClock(clockRef.current, nowMs());
       stopTicking();
@@ -348,6 +467,14 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
   // first interval there's nowhere to go back to, so it always restarts.
   const handleBack = () => {
     if (displayState.mode === 'complete') return;
+    const cs = classRef.current;
+    if (cs) {
+      if (cs.role === 'host' && classNow() >= cs.timeline.startAt && hostTap()) {
+        const tl = classBack(stepsRef.current, cs.timeline, classNow(), RESTART_THRESHOLD_SECONDS);
+        if (tl !== cs.timeline) commitTimeline(tl, true);
+      }
+      return;
+    }
     const s = stateRef.current;
     const currentStep = stepsRef.current[s.stepIndex];
     if (!currentStep) return;
@@ -356,6 +483,14 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
 
   const handleSkip = () => {
     if (displayState.mode === 'complete') return;
+    const cs = classRef.current;
+    if (cs) {
+      if (cs.role === 'host' && classNow() >= cs.timeline.startAt && hostTap()) {
+        const tl = classSkip(stepsRef.current, cs.timeline, classNow());
+        if (tl !== cs.timeline) commitTimeline(tl, true);
+      }
+      return;
+    }
     const s = stateRef.current;
     const steps = stepsRef.current;
     const { next, event } = skipPlayback(steps, s);
@@ -376,6 +511,23 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
    */
   const handleFinish = () => {
     if (displayState.mode === 'complete') return;
+    const cs = classRef.current;
+    if (cs?.role === 'host') {
+      // The instructor ends the timed block for the whole class.
+      Alert.alert(t('classMode.finishClassTitle'), t('classMode.finishClassBody'), [
+        { text: t('workout.keepGoing'), style: 'cancel' },
+        {
+          text: t('classMode.finishClass'),
+          onPress: () => {
+            const live = classRef.current;
+            if (!live || classNow() < live.timeline.startAt) return;
+            const tl = classFinish(stepsRef.current, live.timeline, classNow());
+            if (tl !== live.timeline) commitTimeline(tl, true);
+          },
+        },
+      ]);
+      return;
+    }
     const at = stateRef.current;
     const steps = stepsRef.current;
     Alert.alert(t('workout.finish'), t('workout.finishBody'), [
@@ -413,7 +565,7 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
   // with the round count and final time cleared.
   const restart = () => {
     const steps = stepsRef.current;
-    if (steps.length === 0) return;
+    if (steps.length === 0 || classRef.current) return;
     roundsRef.current = 0;
     setRounds(0);
     finalElapsedRef.current = null;
@@ -435,21 +587,321 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
   };
 
   const handleStop = () => {
-    Alert.alert(t('workout.stopWorkout'), t('workout.stopBody'), [
-      { text: t('workout.keepGoing'), style: 'cancel' },
-      {
-        text: t('workout.stop'),
-        style: 'destructive',
-        onPress: () => {
-          stopTicking();
-          endLiveTimer(sessionIdRef.current).catch(() => {});
-          onExit();
+    const inClass = classRef.current != null;
+    Alert.alert(
+      t(inClass ? 'classMode.leaveTitle' : 'workout.stopWorkout'),
+      t(inClass ? 'classMode.leaveBody' : 'workout.stopBody'),
+      [
+        { text: t('workout.keepGoing'), style: 'cancel' },
+        {
+          text: t(inClass ? 'classMode.leave' : 'workout.stop'),
+          style: 'destructive',
+          onPress: () => {
+            stopTicking();
+            endLiveTimer(sessionIdRef.current).catch(() => {});
+            if (inClass) clearClassSession();
+            onExit();
+          },
         },
-      },
-    ]);
+      ],
+    );
   };
 
+  // ---------------------------------------------------------------------------
+  // Class mode (beta)
+  // ---------------------------------------------------------------------------
+
+  /** Class time on this phone: its workout clock plus its line-up offset. */
+  function classNow(): number {
+    return nowMs() + (classRef.current?.offsetMs ?? 0);
+  }
+
+  // Members' Lock Screen / notification is display-only: stepping out of a
+  // class from the lock screen would leave no way back from there.
+  function classActions(running: boolean): LiveTimerActionId[] {
+    if (classRef.current?.role !== 'host') return [];
+    return running ? ['pause', 'skip'] : ['resume'];
+  }
+
+  /**
+   * A fumbled burst of instructor taps is one tap: a tap counts only after
+   * HOST_TAP_DEBOUNCE_MS of no tapping (each tap restarts the window, so a
+   * triple tap can't sneak a second toggle in).
+   */
+  function hostTap(): boolean {
+    const now = nowMs();
+    const quiet = now - lastHostTapRef.current >= HOST_TAP_DEBOUNCE_MS;
+    lastHostTapRef.current = now;
+    return quiet;
+  }
+
+  // The relay's heartbeat / watchdog, armed natively too (see scheduleTick).
+  function scheduleRelayPulse() {
+    if (relayPulseRef.current) clearTimeout(relayPulseRef.current);
+    relayPulseRef.current = setTimeout(relayPulse, PULSE_MS);
+    wakeAfter('relay', PULSE_MS);
+  }
+
+  function relayPulse() {
+    relayPulseRef.current = null;
+    if (!relayRef.current) return;
+    relayRef.current.pulse();
+    scheduleRelayPulse();
+  }
+
+  function closeRelay() {
+    if (relayPulseRef.current) clearTimeout(relayPulseRef.current);
+    relayPulseRef.current = null;
+    cancelWake('relay');
+    relayRef.current?.close();
+    relayRef.current = null;
+  }
+
+  /**
+   * The on-screen timer in class mode. It stays up for the whole class — the
+   * countdown to the start, the running steps, and a paused state — because
+   * on Android its foreground service is what keeps the phone awake enough
+   * for the native wakes to fire with the screen off.
+   */
+  function showClassLiveTimer(phases: LiveTimerPhase[], phaseStartMs: number, actions: LiveTimerActionId[]) {
+    if (liveOnRef.current) {
+      updateLiveTimer({ sessionId: sessionIdRef.current, phases, phaseStartMs, actions }).catch(() => {});
+      return;
+    }
+    liveOnRef.current = true;
+    startLiveTimer({
+      sessionId: sessionIdRef.current,
+      title: timerNameRef.current,
+      phases,
+      phaseStartMs,
+      actions,
+    }).catch(() => {});
+  }
+
+  function hideClassLiveTimer() {
+    if (!liveOnRef.current) return;
+    liveOnRef.current = false;
+    endLiveTimer(sessionIdRef.current).catch(() => {});
+  }
+
+  function startClass(cs: ClassSession) {
+    saveClassSession(cs);
+    // A member arriving after the start waits briefly to hear the class's
+    // state (pauses, jumps) before falling back to the bare schedule.
+    heardRef.current = cs.role === 'host';
+    if (cs.role === 'member' && classNow() > cs.timeline.startAt) holdUntilRef.current = nowMs() + JOIN_HOLD_MS;
+    const relay = new ClassRelay({
+      key: cs.key,
+      hostPub: cs.hostPub,
+      hostSecret: cs.hostSecret,
+      onTimeline: receiveTimeline,
+      onHeard: () => {
+        if (heardRef.current) return;
+        heardRef.current = true;
+        applyClass();
+      },
+      onLive: (live) => {
+        liveRef.current = live;
+        refreshClassView();
+      },
+    });
+    relayRef.current = relay;
+    relay.start();
+    scheduleRelayPulse();
+    if (cs.role === 'host') relay.publish(cs.timeline);
+    if (__DEV__) console.log('[class] code', classCodeUrl(cs.invite, classNow(), Date.now()));
+    applyClass();
+  }
+
+  // A newer timeline from the instructor, over the relay.
+  function receiveTimeline(tl: ClassTimeline) {
+    const cs = classRef.current;
+    if (!cs || tl.seq <= cs.timeline.seq || tl.startAt !== cs.timeline.startAt) return;
+    commitTimeline(tl, false);
+  }
+
+  function commitTimeline(tl: ClassTimeline, publish: boolean) {
+    const cs = classRef.current;
+    if (!cs) return;
+    const next = { ...cs, timeline: tl };
+    classRef.current = next;
+    saveClassSession(next);
+    if (publish) relayRef.current?.publish(tl);
+    applyClass();
+  }
+
+  /**
+   * Bring this phone to where the class is right now. Runs on load, on every
+   * timeline change, when the start or a command lands, on return to the
+   * foreground, and on Back in sync. Forward motion is left to `tick` (which
+   * plays the second(s) crossed, like solo); a jump, the start and a late join
+   * are announced; a pause that reached this phone late steps it back quietly.
+   */
+  function applyClass(announce = false) {
+    const cs = classRef.current;
+    const steps = stepsRef.current;
+    if (!cs || steps.length === 0) return;
+    scheduleClassWake();
+    refreshClassView();
+    if (stateRef.current.mode === 'complete' || steppedOutRef.current) return;
+    const local = nowMs();
+    const cc = classClockAt(steps, cs.timeline, local + cs.offsetMs);
+    if (!cc.started) {
+      // Counting down to the start, on the Lock Screen / notification too.
+      if (!liveOnRef.current) {
+        const waitMs = -cc.elapsedMs;
+        const waitSec = Math.max(1, Math.ceil(waitMs / 1000));
+        showClassLiveTimer(
+          [{ id: 'gathering', label: t('classMode.classStartsIn'), durationSeconds: waitSec }, ...phasesFrom(steps, 0)],
+          Date.now() + waitMs - waitSec * 1000,
+          [],
+        );
+      }
+      return;
+    }
+    if (!heardRef.current && local < holdUntilRef.current) return; // connecting
+
+    const prev = stateRef.current;
+    const target = positionAt(steps, cc.elapsedMs);
+    const jumped = announce || gatheringRef.current || cc.jumps !== jumpsRef.current;
+    gatheringRef.current = false;
+    jumpsRef.current = cc.jumps;
+    const wasRunning = clockRef.current.running;
+    clockRef.current = cc.running
+      ? runningAt(local, cc.elapsedMs)
+      : { running: false, elapsedMs: cc.elapsedMs };
+    setIsRunning(cc.running);
+    stopTicking();
+
+    if (target.mode === 'complete') {
+      finishWorkout(target, prev);
+      return;
+    }
+    if (jumped) {
+      const step = steps[target.stepIndex];
+      firePhaseStart(step, soundsRef.current!, steps, maxCyclesRef.current, speechModeRef.current);
+      devClassLog('jump', target.stepIndex);
+      halfwayFiredRef.current =
+        target.timeRemaining < step.duration && target.timeRemaining <= Math.floor(step.duration / 2);
+      stateRef.current = target;
+      setDisplayState(target);
+    } else if (!cc.running || elapsedSeconds(steps, prev) > elapsedSeconds(steps, target)) {
+      // Paused: show exactly where the class stopped (no tick will move us
+      // there). Running but ahead: a pause reached this phone late, so step
+      // back to the class quietly.
+      stateRef.current = target;
+      setDisplayState(target);
+    }
+
+    const idx = stateRef.current.stepIndex;
+    if (cc.running && (!wasRunning || jumped)) {
+      showClassLiveTimer(phasesFrom(steps, idx), stepStartWallMs(idx), classActions(true));
+    } else if (!cc.running && (wasRunning || jumped || !liveOnRef.current)) {
+      showClassLiveTimer(
+        [{ id: 'paused', label: t('classMode.pausedLive'), durationSeconds: 6 * 3600, countsUp: true }],
+        Date.now(),
+        classActions(false),
+      );
+    }
+    if (cc.running !== wasRunning) devClassLog(cc.running ? 'run' : 'pause', stateRef.current.stepIndex);
+    if (cc.running) tick();
+  }
+
+  // Development builds stamp every class step change with the time of day, so
+  // a multi-device test can measure how far apart the phones act (simulators
+  // and emulators share the Mac's clock). Never in store builds.
+  function devClassLog(what: string, stepIndex: number) {
+    const cs = classRef.current;
+    if (!__DEV__ || !cs) return;
+    console.log(
+      `[class] ${Platform.OS} ${cs.role} ${what} step=${stepIndex} running=${clockRef.current.running} wall=${Date.now()}`,
+    );
+  }
+
+  // Wake exactly when the class starts, or when the next command lands.
+  function scheduleClassWake() {
+    if (classWakeRef.current) clearTimeout(classWakeRef.current);
+    classWakeRef.current = null;
+    const cs = classRef.current;
+    if (!cs) return;
+    const cn = classNow();
+    const holdLeft = heardRef.current ? 0 : holdUntilRef.current - nowMs();
+    const at =
+      cn < cs.timeline.startAt
+        ? cs.timeline.startAt
+        : holdLeft > 0
+          ? cn + holdLeft
+          : nextCommand(cs.timeline, cn)?.at;
+    if (at == null) {
+      cancelWake('class');
+      return;
+    }
+    const ms = Math.max(0, at - cn) + 1;
+    classWakeRef.current = setTimeout(() => {
+      classWakeRef.current = null;
+      applyClass();
+    }, ms);
+    wakeAfter('class', ms);
+  }
+
+  function refreshClassView() {
+    const cs = classRef.current;
+    if (!cs) return;
+    const cn = classNow();
+    const waitMs = cs.timeline.startAt - cn;
+    const next = waitMs > 0 ? null : nextCommand(cs.timeline, cn);
+    const view: ClassView = {
+      role: cs.role,
+      live: liveRef.current,
+      startsIn: waitMs > 0 ? Math.ceil(waitMs / 1000) : null,
+      pending: next ? { action: next.action, inSec: Math.max(1, Math.ceil((next.at - cn) / 1000)) } : null,
+      steppedOut: steppedOutRef.current,
+      connecting: waitMs <= 0 && !heardRef.current && nowMs() < holdUntilRef.current,
+    };
+    setClassView((prev) => (prev && sameView(prev, view) ? prev : view));
+  }
+
+  // A member pauses only their own phone, out of the class's timeline.
+  function stepOut() {
+    steppedOutRef.current = true;
+    clockRef.current = pauseClock(clockRef.current, nowMs());
+    stopTicking();
+    setIsRunning(false);
+    hideClassLiveTimer();
+    refreshClassView();
+  }
+
+  function backInSync() {
+    steppedOutRef.current = false;
+    applyClass(true);
+  }
+
+  // Countdowns on screen ("Starts in", "Resuming in") tick while one is showing.
+  const countingDown =
+    classView != null && (classView.startsIn != null || classView.pending != null || classView.connecting);
+  useEffect(() => {
+    if (!countingDown) return;
+    const id = setInterval(refreshClassView, 250);
+    return () => clearInterval(id);
+  }, [countingDown]);
+
   useLiveTimerEvents((e) => {
+    // A native wake (Android, app not in front): run whatever it stood in for.
+    if (e.type === 'wake') {
+      if (e.id === 'tick' && timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+        tick();
+      } else if (e.id === 'class' && classWakeRef.current) {
+        clearTimeout(classWakeRef.current);
+        classWakeRef.current = null;
+        applyClass();
+      } else if (e.id === 'relay' && relayPulseRef.current) {
+        clearTimeout(relayPulseRef.current);
+        relayPulse();
+      }
+      return;
+    }
     if (e.type !== 'action') return;
     if (e.sessionId !== sessionIdRef.current) return;
     if (e.action === 'pause' || e.action === 'resume') togglePause();
@@ -478,7 +930,23 @@ export function useWorkoutPlayback(timerId: string, onExit: () => void) {
     countRound,
     undoRound,
     finalElapsed: finalElapsedRef.current,
+    classView,
+    /** The class code to draw right now (class mode); redraw it often. */
+    classCode: () =>
+      classRef.current ? classCodeUrl(classRef.current.invite, classNow(), Date.now()) : null,
   };
+}
+
+function sameView(a: ClassView, b: ClassView): boolean {
+  return (
+    a.role === b.role &&
+    a.live === b.live &&
+    a.startsIn === b.startsIn &&
+    a.steppedOut === b.steppedOut &&
+    a.connecting === b.connecting &&
+    a.pending?.action === b.pending?.action &&
+    a.pending?.inSec === b.pending?.inSec
+  );
 }
 
 // Returns every remaining phase from `idx` onward, each at its full duration

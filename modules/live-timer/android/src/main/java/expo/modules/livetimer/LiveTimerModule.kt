@@ -6,6 +6,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import expo.modules.kotlin.modules.Module
@@ -17,12 +19,37 @@ class LiveTimerModule : Module() {
         Events("event")
 
         OnCreate { activeInstance = this@LiveTimerModule }
-        OnDestroy { if (activeInstance === this@LiveTimerModule) activeInstance = null }
+        OnDestroy {
+            if (activeInstance === this@LiveTimerModule) activeInstance = null
+            wakeHandler.removeCallbacksAndMessages(null)
+        }
 
         // A clock that keeps counting while the phone sleeps and never jumps
         // when the OS adjusts the time of day. The workout timer runs on it, so
         // it can't drift. Milliseconds from boot: only differences mean anything.
         Function("nowMs") { SystemClock.elapsedRealtimeNanos() / 1_000_000.0 }
+
+        // React Native drives JS timers from frame callbacks, which stop while
+        // the app isn't in front (screen off, shade down, another app). The
+        // workout arms each of its wakes here as well: a main-looper Handler
+        // (kept running by the foreground service's wake lock) fires a "wake"
+        // event back to JS, so cues and class commands land on time anyway.
+        // One pending wake per id; arming an id again replaces it.
+        Function("wakeAfter") { id: String, delayMs: Double ->
+            wakeHandler.post {
+                wakes.remove(id)?.let { wakeHandler.removeCallbacks(it) }
+                val r = Runnable {
+                    wakes.remove(id)
+                    sendEvent("event", mapOf("type" to "wake", "id" to id))
+                }
+                wakes[id] = r
+                wakeHandler.postDelayed(r, delayMs.toLong().coerceAtLeast(0L))
+            }
+        }
+
+        Function("cancelWake") { id: String ->
+            wakeHandler.post { wakes.remove(id)?.let { wakeHandler.removeCallbacks(it) } }
+        }
 
         AsyncFunction("getAvailability") { ->
             val ctx = appContext.reactContext ?: return@AsyncFunction availability(false, false, "no_context")
@@ -68,6 +95,9 @@ class LiveTimerModule : Module() {
             ctx.startService(intent)
         }
     }
+
+    private val wakeHandler = Handler(Looper.getMainLooper())
+    private val wakes = HashMap<String, Runnable>()
 
     fun emitAction(sessionId: String, action: String) {
         sendEvent("event", mapOf(

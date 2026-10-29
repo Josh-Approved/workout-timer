@@ -1,0 +1,6 @@
+# Class mode E2E (MEMBER, either platform): the class strip says Live — the
+# member has heard the instructor recently (heartbeat every 10 s).
+appId: com.joshapproved.freeworkouttimer
+---
+- assertVisible: ".*Live"
+- assertNotVisible: "Offline.*"

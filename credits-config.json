@@ -28,6 +28,34 @@
     {
       "package": "lucide-react-native",
       "displayName": "Lucide"
+    },
+    {
+      "package": "expo-camera",
+      "displayName": "Expo Camera"
+    },
+    {
+      "package": "react-native-qrcode-svg",
+      "displayName": "react-native-qrcode-svg"
+    },
+    {
+      "package": "tweetnacl",
+      "displayName": "TweetNaCl.js"
+    },
+    {
+      "package": "tweetnacl-util",
+      "displayName": "tweetnacl-util"
+    },
+    {
+      "package": "@noble/curves",
+      "displayName": "noble-curves"
+    },
+    {
+      "package": "@noble/hashes",
+      "displayName": "noble-hashes"
+    },
+    {
+      "package": "react-native-get-random-values",
+      "displayName": "react-native-get-random-values"
     }
   ],
   "extra": [

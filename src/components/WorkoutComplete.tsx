@@ -30,7 +30,8 @@ type Props = {
   a11yLabel: string;
   /** Seconds a count-up workout was finished at; null for every other kind. */
   finalTime: number | null;
-  onRestart: () => void;
+  /** Absent in a class: a class runs once, together. */
+  onRestart?: () => void;
 };
 
 export function WorkoutComplete({ isLandscape, a11yLabel, finalTime, onRestart }: Props) {
@@ -50,16 +51,18 @@ export function WorkoutComplete({ isLandscape, a11yLabel, finalTime, onRestart }
           </Text>
         ) : null}
       </View>
-      <Pressable
-        style={({ pressed }) => [s.restartBtn, pressed && s.pressed]}
-        onPress={onRestart}
-        accessibilityRole="button"
-        accessibilityLabel={t('workout.restartWorkout')}
-        accessibilityHint={t('workout.restartWorkoutHint')}
-      >
-        <RotateCcw size={18} color={c.fg} strokeWidth={1.75} />
-        <Text style={s.restartText} importantForAccessibility="no">{t('workout.restartWorkout')}</Text>
-      </Pressable>
+      {onRestart ? (
+        <Pressable
+          style={({ pressed }) => [s.restartBtn, pressed && s.pressed]}
+          onPress={onRestart}
+          accessibilityRole="button"
+          accessibilityLabel={t('workout.restartWorkout')}
+          accessibilityHint={t('workout.restartWorkoutHint')}
+        >
+          <RotateCcw size={18} color={c.fg} strokeWidth={1.75} />
+          <Text style={s.restartText} importantForAccessibility="no">{t('workout.restartWorkout')}</Text>
+        </Pressable>
+      ) : null}
     </>
   );
 }

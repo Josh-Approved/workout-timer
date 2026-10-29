@@ -8,9 +8,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { ChevronRight, GripVertical, Play, Plus, Settings as SettingsIcon, Timer } from 'lucide-react-native';
+import { ChevronRight, GripVertical, Play, Plus, Settings as SettingsIcon, Timer, Users } from 'lucide-react-native';
+import { nowMs } from 'live-timer';
 import { RootStackParamList, TimerConfig } from '../types';
 import { loadTimers, saveTimers, duplicateTimer } from '../storage/storage';
+import { loadClassSession, canRejoin, clearClassSession, type ClassSession } from '../class/session';
 import { getTimerSummary, getTotalDuration, formatTime, generateId, isOpenEnded } from '../utils/workout';
 import { t } from '../i18n';
 import { TIP_JAR_ENABLED } from '../constants/features';
@@ -35,6 +37,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'TimerList'>;
 
 export default function TimerListScreen({ navigation }: Props) {
   const [timers, setTimers] = useState<TimerConfig[]>([]);
+  // A class this phone was in when the app last closed, if it can still be rejoined.
+  const [rejoinable, setRejoinable] = useState<ClassSession | null>(null);
   const [tipVisible, setTipVisible] = useState(false);
   const { c } = useTheme();
   const s = makeStyles(c);
@@ -55,6 +59,13 @@ export default function TimerListScreen({ navigation }: Props) {
   useFocusEffect(
     useCallback(() => {
       loadTimers().then(setTimers);
+      loadClassSession().then((saved) => {
+        if (saved && canRejoin(saved, nowMs(), Date.now())) setRejoinable(saved);
+        else {
+          setRejoinable(null);
+          if (saved) clearClassSession();
+        }
+      });
     }, [])
   );
 
@@ -86,16 +97,45 @@ export default function TimerListScreen({ navigation }: Props) {
         <Text style={s.title} accessibilityRole="header">
           {t('timerList.title')}
         </Text>
-        <Pressable
-          onPress={() => navigation.navigate('Settings')}
-          hitSlop={8}
-          accessibilityLabel={t('settings.title')}
-          accessibilityRole="button"
-          style={({ pressed }) => [s.iconBtn, pressed && s.pressed]}
-        >
-          <SettingsIcon size={22} color={c.fg} strokeWidth={1.5} />
-        </Pressable>
+        <View style={s.headerActions}>
+          <Pressable
+            onPress={() => navigation.navigate('Class')}
+            hitSlop={8}
+            accessibilityLabel={t('classMode.entry')}
+            accessibilityHint={t('classMode.entryHint')}
+            accessibilityRole="button"
+            style={({ pressed }) => [s.iconBtn, pressed && s.pressed]}
+          >
+            <Users size={22} color={c.fg} strokeWidth={1.5} />
+          </Pressable>
+          <Pressable
+            onPress={() => navigation.navigate('Settings')}
+            hitSlop={8}
+            accessibilityLabel={t('settings.title')}
+            accessibilityRole="button"
+            style={({ pressed }) => [s.iconBtn, pressed && s.pressed]}
+          >
+            <SettingsIcon size={22} color={c.fg} strokeWidth={1.5} />
+          </Pressable>
+        </View>
       </View>
+      {rejoinable ? (
+        <Pressable
+          onPress={() => {
+            const session = rejoinable;
+            setRejoinable(null);
+            navigation.navigate('ActiveWorkout', { classSession: session });
+          }}
+          style={({ pressed }) => [s.rejoin, pressed && s.pressed]}
+          accessibilityRole="button"
+          accessibilityLabel={`${t('classMode.rejoin')}. ${t('classMode.rejoinHint', { name: rejoinable.workout.name })}`}
+        >
+          <Users size={20} color={c.fg} strokeWidth={1.5} />
+          <Text style={s.rejoinText} importantForAccessibility="no">
+            {t('classMode.rejoin')} · {t('classMode.rejoinHint', { name: rejoinable.workout.name })}
+          </Text>
+        </Pressable>
+      ) : null}
 
       <SortableList
         items={timers}
@@ -221,6 +261,17 @@ function makeStyles(c: Colors) {
       color: c.fg,
       fontFamily: fontFamily.sansSemibold,
     },
+    headerActions: { flexDirection: 'row', alignItems: 'center', gap: space.s2 },
+    rejoin: {
+      ...boundedContent,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: space.s3,
+      paddingHorizontal: space.s6,
+      paddingVertical: space.s4,
+      backgroundColor: c.bgSubtle,
+    },
+    rejoinText: { ...ty.sm, flex: 1, color: c.fg, fontFamily: fontFamily.sansSemibold },
     iconBtn: {
       width: target.min,
       height: target.min,

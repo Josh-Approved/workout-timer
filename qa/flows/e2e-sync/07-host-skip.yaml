@@ -1,0 +1,4 @@
+# Class mode two-device E2E (HOST, iOS): skip the class to the next step.
+appId: com.joshapproved.freeworkouttimer
+---
+- tapOn: "Skip to next interval"

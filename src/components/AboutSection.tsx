@@ -139,6 +139,8 @@ export function AboutSection({ onSupport, onFeedback, onAcknowledgements }: Prop
           <Text style={s.versionValue} importantForAccessibility="no">{formatVersion()}</Text>
         </View>
       </View>
+      {/* Canon § Privacy: say plainly where data can go. */}
+      <Text style={s.dataNote}>{t('settings.whereDataGoes')}</Text>
       <MoreFromJA excludeSlug="workout-timer" />
 
       <View style={s.stamp}>
@@ -198,6 +200,13 @@ function makeStyles(c: Colors) {
       fontFamily: fontFamily.mono,
     },
 
+    dataNote: {
+      ...ty.xs,
+      color: c.fgMuted,
+      fontFamily: fontFamily.sans,
+      paddingHorizontal: space.s5,
+      paddingTop: space.s3,
+    },
     stamp: { alignItems: 'center', paddingVertical: space.s5, gap: space.s3 },
     stampText: {
       ...ty.xs,

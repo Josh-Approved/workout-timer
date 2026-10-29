@@ -1,0 +1,6 @@
+# Class mode E2E (MEMBER, Android): in the class (started or not).
+appId: com.joshapproved.freeworkouttimer
+---
+- extendedWaitUntil:
+    visible: "Class mode"
+    timeout: 15000

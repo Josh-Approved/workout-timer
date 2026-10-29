@@ -1,0 +1,46 @@
+# Class mode two-device E2E, step 0 (EITHER device): get the app to the timer
+# list, whatever a previous run left on screen — the dev client's first-run
+# sheet, an open dev menu, a finished class, a review prompt, a stale class.
+appId: com.joshapproved.freeworkouttimer
+---
+- runFlow:
+    when:
+      visible: "Continue"
+    commands:
+      - tapOn: "Continue"
+- runFlow:
+    when:
+      visible: "Toggle element inspector"
+    commands:
+      - pressKey: back
+- runFlow:
+    when:
+      visible: "Not Now"
+    commands:
+      - tapOn: "Not Now"
+- runFlow:
+    when:
+      visible: "Back to timers"
+    commands:
+      - tapOn: "Back to timers"
+- runFlow:
+    when:
+      visible: "Stop workout"
+    commands:
+      - tapOn: "Stop workout"
+      - tapOn: "Leave|Stop"
+# Left on the Class mode screen or the scanner (a previous run's join/scan):
+# step back to the list with the header's Back.
+- runFlow:
+    when:
+      visible: "Point your camera at.*|Lining up.*|That class has finished.*|To join a class.*"
+    commands:
+      - tapOn: "Back"
+- runFlow:
+    when:
+      visible: "Run a class|Start class|Scan class code"
+    commands:
+      - tapOn: "Back"
+- extendedWaitUntil:
+    visible: "Class mode, beta"
+    timeout: 30000

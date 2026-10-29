@@ -24,6 +24,9 @@ const mockTimer = {
   coolDown: 0,
 };
 
+jest.mock('@react-native-async-storage/async-storage', () =>
+  require('@react-native-async-storage/async-storage/jest/async-storage-mock')
+);
 jest.mock('../../storage/storage', () => ({
   loadTimers: jest.fn(async () => [mockTimer]),
   loadSettings: jest.fn(async () => ({
@@ -72,6 +75,8 @@ jest.mock('live-timer', () => ({
   updateLiveTimer: jest.fn(async () => {}),
   endLiveTimer: jest.fn(async () => {}),
   useLiveTimerEvents: () => {},
+  wakeAfter: () => {},
+  cancelWake: () => {},
   nowMs: () => Date.now() + mockStall.ms,
 }));
 
@@ -81,7 +86,7 @@ import { AudioEngine } from '../../audio/AudioEngine';
 import { startLiveTimer } from 'live-timer';
 
 async function startWorkout() {
-  const hook = await renderHook(() => useWorkoutPlayback('t', jest.fn()));
+  const hook = await renderHook(() => useWorkoutPlayback({ timerId: 't' }, jest.fn()));
   for (let i = 0; i < 5; i++) await act(async () => {}); // let the load settle
   expect(hook.result.current.loaded).toBe(true);
   return hook;
