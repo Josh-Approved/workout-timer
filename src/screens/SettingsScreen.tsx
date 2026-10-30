@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -37,8 +37,13 @@ import {
 } from '../theme';
 import { boundedContent } from '../theme';
 import { useFeedback } from '../feedback/FeedbackProvider';
+import { logEvent } from '../feedback/log';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Settings'>;
+
+// The volume slider reports every step of a drag; the log gets one line once
+// it rests, with where the drag started and ended.
+const VOLUME_LOG_REST_MS = 1000;
 
 export default function SettingsScreen({ navigation }: Props) {
   const { c } = useTheme();
@@ -62,15 +67,30 @@ export default function SettingsScreen({ navigation }: Props) {
     }, [])
   );
 
+  // Sound changes go in the diagnostic log, so a "no sound" report shows what
+  // the user had set. The values sit in the message itself: repeated lines
+  // collapse by message, and a collapsed line keeps its first values.
   const updateSound = async (key: SoundEventKey, value: SoundStyle) => {
     const updated = { ...sounds, [key]: value };
+    logEvent('settings', `sound ${key}: ${sounds[key]} -> ${value}`);
     setSounds(updated);
     await saveSettings({ sounds: updated, audioAccessibilityMode: audioMode });
     previewCue(key, value);
   };
 
+  const volumeLog = useRef<{ from: number; timer: ReturnType<typeof setTimeout> } | null>(null);
+
   // Applies at once — the engine reads it on the next cue.
   const updateVolume = async (value: number) => {
+    const from = volumeLog.current?.from ?? sounds.volume;
+    if (volumeLog.current) clearTimeout(volumeLog.current.timer);
+    volumeLog.current = {
+      from,
+      timer: setTimeout(() => {
+        volumeLog.current = null;
+        logEvent('settings', `cue volume: ${from}% -> ${value}%`);
+      }, VOLUME_LOG_REST_MS),
+    };
     const updated = { ...sounds, volume: value };
     setSounds(updated);
     AudioEngine.setVolume(value);
@@ -78,12 +98,14 @@ export default function SettingsScreen({ navigation }: Props) {
   };
 
   const updateCountdownDuration = async (value: number) => {
+    logEvent('settings', `countdown: ${sounds.countdownDuration}s -> ${value}s`);
     const updated = { ...sounds, countdownDuration: value };
     setSounds(updated);
     await saveSettings({ sounds: updated, audioAccessibilityMode: audioMode });
   };
 
   const updateAudioMode = async (value: boolean) => {
+    logEvent('settings', `voice announcements ${value ? 'on' : 'off'}`);
     setAudioMode(value);
     await saveSettings({ sounds, audioAccessibilityMode: value });
   };
@@ -95,6 +117,7 @@ export default function SettingsScreen({ navigation }: Props) {
         text: t('settings.reset'),
         style: 'destructive',
         onPress: async () => {
+          logEvent('settings', 'sounds reset to defaults');
           setSounds(DEFAULT_SETTINGS.sounds);
           setAudioMode(DEFAULT_SETTINGS.audioAccessibilityMode);
           AudioEngine.setVolume(DEFAULT_SETTINGS.sounds.volume);

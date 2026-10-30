@@ -1,4 +1,5 @@
 import ActivityKit
+import AVFoundation
 import ExpoModulesCore
 import Foundation
 
@@ -39,6 +40,19 @@ public class LiveTimerModule: Module {
         // running, so these accept the same calls and do nothing.
         Function("wakeAfter") { (_: String, _: Double) in }
         Function("cancelWake") { (_: String) in }
+
+        // What the phone will do with the workout's sound, for the diagnostic
+        // log: the media volume (0–1), where the sound goes, and whether
+        // another app is playing. Reads only; changes nothing. The ring/silent
+        // switch has no API, and the workout plays through it anyway.
+        AsyncFunction("getAudioOutput") { () -> [String: Any] in
+            let session = AVAudioSession.sharedInstance()
+            return [
+                "volume": Double(session.outputVolume),
+                "output": Self.outputName(session.currentRoute.outputs.first?.portType),
+                "otherAudio": session.isOtherAudioPlaying
+            ]
+        }
 
         AsyncFunction("getAvailability") { () -> [String: Any?] in
             if #available(iOS 16.2, *) {
@@ -271,6 +285,22 @@ public class LiveTimerModule: Module {
             cursor = end
         }
         return out
+    }
+
+    // One plain word per kind of output, the same words Android reports.
+    private static func outputName(_ port: AVAudioSession.Port?) -> String {
+        guard let port = port else { return "none" }
+        switch port {
+        case .builtInSpeaker: return "speaker"
+        case .builtInReceiver: return "earpiece"
+        case .headphones: return "headphones"
+        case .bluetoothA2DP, .bluetoothLE, .bluetoothHFP: return "bluetooth"
+        case .airPlay: return "airplay"
+        case .carAudio: return "car"
+        case .usbAudio: return "usb"
+        case .HDMI: return "hdmi"
+        default: return "other"
+        }
     }
 
     // Called by the AppIntent in the widget extension when the user taps a

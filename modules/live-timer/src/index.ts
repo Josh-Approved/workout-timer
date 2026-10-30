@@ -14,6 +14,7 @@ type EventSubscription = { remove: () => void };
 
 import LiveTimerModule from './LiveTimerModule';
 import type {
+  AudioOutput,
   LiveTimerActionId,
   LiveTimerAvailability,
   LiveTimerEvent,
@@ -22,6 +23,7 @@ import type {
 } from './types';
 
 export type {
+  AudioOutput,
   LiveTimerActionId,
   LiveTimerAvailability,
   LiveTimerEvent,
@@ -105,6 +107,18 @@ export function wakeAfter(id: string, delayMs: number): void {
 
 export function cancelWake(id: string): void {
   if (typeof LiveTimerModule.cancelWake === 'function') LiveTimerModule.cancelWake(id);
+}
+
+// The phone's media volume and where its sound goes, for the diagnostic log.
+// Null where the native function is missing (jest, or a binary built before it
+// existed) or the phone won't say; never throws.
+export async function getAudioOutput(): Promise<AudioOutput | null> {
+  if (typeof LiveTimerModule.getAudioOutput !== 'function') return null;
+  try {
+    return await LiveTimerModule.getAudioOutput();
+  } catch {
+    return null;
+  }
 }
 
 // Ask for what the on-screen timer needs (Android 13+ notifications) ahead of
