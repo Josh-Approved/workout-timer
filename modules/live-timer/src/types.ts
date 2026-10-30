@@ -59,3 +59,15 @@ export type LiveTimerAvailability = {
   // Platform-specific reason when not enabled, for diagnostics.
   reason?: string;
 };
+
+// What the phone will do with the app's sound right now. Diagnostics only:
+// the app logs it so "I hear nothing" can be told apart from "nothing played".
+export type AudioOutput = {
+  // The phone's media volume, 0–1 (0 when muted).
+  volume: number;
+  // Where the sound goes: speaker, earpiece, headphones, bluetooth, airplay,
+  // car, usb, hdmi, none or other.
+  output: string;
+  // Another app is playing sound too (iOS only; null where unknown).
+  otherAudio: boolean | null;
+};

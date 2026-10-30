@@ -5,6 +5,9 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.AudioAttributes
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -49,6 +52,19 @@ class LiveTimerModule : Module() {
 
         Function("cancelWake") { id: String ->
             wakeHandler.post { wakes.remove(id)?.let { wakeHandler.removeCallbacks(it) } }
+        }
+
+        // What the phone will do with the workout's sound, for the diagnostic
+        // log: the media volume (0–1) and where the sound goes. Reads only;
+        // changes nothing. Whether another app is playing can't be told apart
+        // from the workout's own keep-alive here, so it is left out.
+        AsyncFunction("getAudioOutput") { ->
+            val ctx = appContext.reactContext ?: return@AsyncFunction null
+            val am = ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            val stream = AudioManager.STREAM_MUSIC
+            val max = am.getStreamMaxVolume(stream).coerceAtLeast(1)
+            val volume = if (am.isStreamMute(stream)) 0.0 else am.getStreamVolume(stream).toDouble() / max
+            mapOf("volume" to volume, "output" to mediaOutput(am), "otherAudio" to null)
         }
 
         AsyncFunction("getAvailability") { ->
@@ -107,6 +123,41 @@ class LiveTimerModule : Module() {
         ))
     }
 
+    // Where media sound goes right now. Android 13+ says which device media is
+    // routed to; before that, the connected outputs are ranked the way Android
+    // routes media (a headset or Bluetooth device wins over the speaker).
+    private fun mediaOutput(am: AudioManager): String {
+        val devices = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val media = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).build()
+            am.getAudioDevicesForAttributes(media)
+        } else {
+            am.getDevices(AudioManager.GET_DEVICES_OUTPUTS).toList()
+        }
+        if (devices.isEmpty()) return "none"
+        val names = devices.map { outputName(it.type) }
+        return OUTPUT_RANK.firstOrNull { it in names } ?: "other"
+    }
+
+    // One plain word per kind of output, the same words iOS reports.
+    private fun outputName(type: Int): String = when (type) {
+        AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
+        AudioDeviceInfo.TYPE_BLUETOOTH_SCO,
+        AudioDeviceInfo.TYPE_BLE_HEADSET,
+        AudioDeviceInfo.TYPE_BLE_SPEAKER,
+        AudioDeviceInfo.TYPE_BLE_BROADCAST,
+        AudioDeviceInfo.TYPE_HEARING_AID -> "bluetooth"
+        AudioDeviceInfo.TYPE_WIRED_HEADSET,
+        AudioDeviceInfo.TYPE_WIRED_HEADPHONES -> "headphones"
+        AudioDeviceInfo.TYPE_USB_HEADSET,
+        AudioDeviceInfo.TYPE_USB_DEVICE,
+        AudioDeviceInfo.TYPE_USB_ACCESSORY -> "usb"
+        AudioDeviceInfo.TYPE_HDMI -> "hdmi"
+        AudioDeviceInfo.TYPE_BUILTIN_SPEAKER,
+        AudioDeviceInfo.TYPE_BUILTIN_SPEAKER_SAFE -> "speaker"
+        AudioDeviceInfo.TYPE_BUILTIN_EARPIECE -> "earpiece"
+        else -> "other"
+    }
+
     private fun requireContext(): Context =
         appContext.reactContext ?: error("React context unavailable")
 
@@ -150,5 +201,7 @@ class LiveTimerModule : Module() {
 
     companion object {
         @Volatile var activeInstance: LiveTimerModule? = null
+
+        private val OUTPUT_RANK = listOf("bluetooth", "headphones", "usb", "hdmi", "speaker", "earpiece")
     }
 }

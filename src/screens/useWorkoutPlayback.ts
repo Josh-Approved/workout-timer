@@ -27,6 +27,7 @@ import {
 } from '../utils/playback';
 import { runningAt, pauseClock, resumeClock, seekClock } from '../utils/workoutClock';
 import { AudioEngine } from '../audio/AudioEngine';
+import { startSoundCheck, endSoundCheck } from '../audio/soundCheck';
 import { firePhaseStart, getMaxCycles, fireRoundCounted } from '../audio/workoutCues';
 import { t } from '../i18n';
 import { updateLiveTimer, endLiveTimer, useLiveTimerEvents, nowMs } from 'live-timer';
@@ -121,6 +122,7 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
 
       await activateKeepAwakeAsync();
       AudioEngine.startKeepAlive().catch(() => {});
+      void startSoundCheck(settings.sounds, settings.audioAccessibilityMode);
       if (cancelled) return;
 
       if (cs) {
@@ -134,6 +136,7 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
       cancelled = true;
       deactivateKeepAwake();
       AudioEngine.stopKeepAlive();
+      void endSoundCheck();
       endLiveTimer(sessionIdRef.current).catch(() => {});
       cls.close();
     };

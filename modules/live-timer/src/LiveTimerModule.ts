@@ -1,6 +1,7 @@
 import { requireOptionalNativeModule } from 'expo';
 
 import type {
+  AudioOutput,
   LiveTimerAvailability,
   LiveTimerStartInput,
   LiveTimerUpdateInput,
@@ -14,6 +15,7 @@ type Native = {
   nowMs(): number;
   wakeAfter(id: string, delayMs: number): void;
   cancelWake(id: string): void;
+  getAudioOutput?(): Promise<AudioOutput | null>;
   addListener?: (name: string, cb: (...args: unknown[]) => void) => unknown;
 };
 
@@ -32,6 +34,7 @@ const noop: Native = {
   nowMs: () => Date.now(),
   wakeAfter: () => {},
   cancelWake: () => {},
+  getAudioOutput: async () => null,
 };
 
 const native = requireOptionalNativeModule<Native>('LiveTimerModule');

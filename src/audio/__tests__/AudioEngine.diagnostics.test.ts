@@ -11,6 +11,11 @@
  *      try block, swallowed).
  *   3. Every way a cue can go missing writes a line: no tone loaded, the
  *      player reporting an error, a cue that never finishes, init failing.
+ *
+ * Spoken cues: an iPhone 14 on iOS 27.0.1 (2026-10-27) reported no sound, and
+ * its log had no line at all for the spoken cues that every phase change uses
+ * by default. They are now counted, the first one finished is logged, and one
+ * that fails or never starts writes a warning.
  */
 
 type Status = Record<string, unknown>;
@@ -24,6 +29,15 @@ type MockPlayer = {
   addListener: (n: string, fn: (s: Status) => void) => { remove: jest.Mock };
 };
 type AudioMock = { __players: MockPlayer[]; setAudioModeAsync: jest.Mock; createAudioPlayer: jest.Mock };
+type SpeakOptions = {
+  language?: string;
+  volume?: number;
+  onStart?: () => void;
+  onDone?: () => void;
+  onStopped?: () => void;
+  onError?: (err: Error) => void;
+};
+type SpeechMock = { speak: jest.Mock; stop: jest.Mock; getAvailableVoicesAsync: jest.Mock };
 type LogMock = { logEvent: jest.Mock; logWarn: jest.Mock; logError: jest.Mock };
 type Engine = typeof import('../AudioEngine').AudioEngine;
 
@@ -63,17 +77,27 @@ jest.mock('expo-file-system/legacy', () => {
   };
 });
 
+jest.mock('expo-speech', () => ({
+  speak: jest.fn(),
+  stop: jest.fn(),
+  getAvailableVoicesAsync: jest.fn(async () => []),
+}));
+
 jest.mock('../../feedback/log', () => ({ logEvent: jest.fn(), logWarn: jest.fn(), logError: jest.fn() }));
 
 /** A fresh engine (it is a module singleton) plus fresh mocks for each test. */
-function load(): { AudioEngine: Engine; audio: AudioMock; log: LogMock; players: MockPlayer[] } {
+function load(): { AudioEngine: Engine; audio: AudioMock; log: LogMock; players: MockPlayer[]; speech: SpeechMock } {
   jest.resetModules();
   const audio = jest.requireMock('expo-audio') as AudioMock;
   const log = jest.requireMock('../../feedback/log') as LogMock;
+  const speech = jest.requireMock('expo-speech') as SpeechMock;
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { AudioEngine } = require('../AudioEngine') as { AudioEngine: Engine };
-  return { AudioEngine, audio, log, players: audio.__players };
+  return { AudioEngine, audio, log, players: audio.__players, speech };
 }
+
+/** The options of the nth Speech.speak call. */
+const spoken = (speech: SpeechMock, n = 0): SpeakOptions => speech.speak.mock.calls[n][1];
 
 const warned = (log: LogMock, msg: string) => log.logWarn.mock.calls.filter((c) => c[1] === msg);
 const flush = () => new Promise((r) => setTimeout(r, 0));
@@ -175,5 +199,119 @@ describe('AudioEngine diagnostics', () => {
     await AudioEngine.playSound('voice');
     expect(audio.createAudioPlayer).not.toHaveBeenCalled();
     expect(log.logWarn).not.toHaveBeenCalled();
+  });
+
+  it('counts the tones a workout played and finished, from zero at prepare', async () => {
+    const { AudioEngine, players } = load();
+    await AudioEngine.initialize();
+    await AudioEngine.playSound('beep');
+    AudioEngine.prepare(['beep']);
+    await AudioEngine.playSound('beep');
+    await AudioEngine.playTick();
+    await flush();
+    players[0].listeners.forEach((fn) => fn({ didJustFinish: true }));
+    players[1].listeners.forEach((fn) => fn({ error: 'Source error' }));
+    expect(AudioEngine.takeStats()).toMatchObject({ tones: 2, tonesFinished: 1, tonesFailed: 1 });
+    expect(AudioEngine.takeStats()).toMatchObject({ tones: 0, tonesFinished: 0, tonesFailed: 0 });
+  });
+});
+
+describe('AudioEngine spoken cues', () => {
+  it('speaks in English at the app volume, and counts each cue through to done', async () => {
+    const { AudioEngine, log, speech } = load();
+    AudioEngine.setVolume(60);
+    const settled = jest.fn();
+    AudioEngine.speak('Warm Up', settled);
+    AudioEngine.speak('Exercise');
+    expect(speech.speak.mock.calls[0][0]).toBe('Warm Up');
+    expect(spoken(speech)).toMatchObject({ language: 'en-US', volume: 0.6 });
+    for (const n of [0, 1]) {
+      spoken(speech, n).onStart?.();
+      spoken(speech, n).onDone?.();
+    }
+    expect(settled).toHaveBeenCalledTimes(1);
+    const firsts = log.logEvent.mock.calls.filter((c) => c[1] === 'first voice cue finished');
+    expect(firsts).toHaveLength(1);
+    expect(AudioEngine.takeStats()).toMatchObject({ voice: 2, voiceStarted: 2, voiceDone: 2, voiceFailed: 0 });
+    expect(log.logWarn).not.toHaveBeenCalled();
+  });
+
+  it('warns when a spoken cue never starts', () => {
+    jest.useFakeTimers();
+    const { AudioEngine, log } = load();
+    AudioEngine.speak('Rest');
+    jest.advanceTimersByTime(4999);
+    expect(warned(log, 'voice cue never started')).toHaveLength(0);
+    jest.advanceTimersByTime(1);
+    expect(warned(log, 'voice cue never started')).toEqual([
+      ['audio', 'voice cue never started', { language: 'en-US' }],
+    ]);
+    expect(AudioEngine.takeStats()).toMatchObject({ voice: 1, voiceStarted: 0, voiceFailed: 1 });
+    jest.useRealTimers();
+  });
+
+  it('does not call a cue cut off by the next one lost', () => {
+    jest.useFakeTimers();
+    const { AudioEngine, log, speech } = load();
+    AudioEngine.speak('Get Ready');
+    AudioEngine.stopSpeech();
+    expect(speech.stop).toHaveBeenCalled();
+    jest.advanceTimersByTime(10000);
+    expect(log.logWarn).not.toHaveBeenCalled();
+    jest.useRealTimers();
+  });
+
+  it('logs a spoken cue the speech engine rejects, and still settles it', () => {
+    const { AudioEngine, log, speech } = load();
+    const settled = jest.fn();
+    AudioEngine.speak('Cool Down', settled);
+    spoken(speech).onError?.(new Error('synthesis failed'));
+    expect(warned(log, 'voice cue failed')).toEqual([
+      ['audio', 'voice cue failed', { error: 'Error: synthesis failed' }],
+    ]);
+    expect(settled).toHaveBeenCalledTimes(1);
+    expect(AudioEngine.takeStats()).toMatchObject({ voice: 1, voiceFailed: 1 });
+  });
+
+  it('says nothing, and counts nothing, at an app volume of 0', () => {
+    const { AudioEngine, speech } = load();
+    AudioEngine.setVolume(0);
+    AudioEngine.speak('Exercise');
+    expect(speech.speak).not.toHaveBeenCalled();
+    expect(AudioEngine.takeStats().voice).toBe(0);
+  });
+
+  it('logs how many English voices the phone has, once a session', async () => {
+    const { AudioEngine, log, speech } = load();
+    speech.getAvailableVoicesAsync.mockResolvedValueOnce([
+      { language: 'en-US' },
+      { language: 'en-GB' },
+      { language: 'de-DE' },
+    ]);
+    await AudioEngine.checkVoices();
+    await AudioEngine.checkVoices();
+    expect(speech.getAvailableVoicesAsync).toHaveBeenCalledTimes(1);
+    expect(log.logEvent).toHaveBeenCalledWith('audio', 'voices', { total: 3, english: 2 });
+    expect(log.logWarn).not.toHaveBeenCalled();
+  });
+
+  it('warns when the phone has no English voice', async () => {
+    const { AudioEngine, log, speech } = load();
+    speech.getAvailableVoicesAsync.mockResolvedValueOnce([{ language: 'de-DE' }]);
+    await AudioEngine.checkVoices();
+    expect(warned(log, 'no English voice on this phone')).toEqual([
+      ['audio', 'no English voice on this phone', { total: 1 }],
+    ]);
+  });
+
+  it('warns when the speech engine never answers', async () => {
+    jest.useFakeTimers();
+    const { AudioEngine, log, speech } = load();
+    speech.getAvailableVoicesAsync.mockReturnValueOnce(new Promise(() => {}));
+    const checked = AudioEngine.checkVoices();
+    jest.advanceTimersByTime(5000);
+    await checked;
+    expect(warned(log, 'speech engine did not answer')).toHaveLength(1);
+    jest.useRealTimers();
   });
 });

@@ -1,4 +1,5 @@
 import * as FileSystem from 'expo-file-system/legacy';
+import * as Speech from 'expo-speech';
 import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { SoundStyle } from '../types';
 import { logEvent, logWarn, logError } from '../feedback/log';
@@ -9,6 +10,39 @@ import { logEvent, logWarn, logError } from '../feedback/log';
  * without letting a stuck player hide (or leak) for a whole workout.
  */
 const CUE_WATCHDOG_MS = 4000;
+
+/** Spoken cues are always English (the phrases are). */
+const VOICE_LANGUAGE = 'en-US';
+
+/**
+ * How long a spoken cue may take to start before we call it lost. Android's
+ * speech engine starts up on first use and can take a second or two; a phone
+ * with no engine at all never starts, and never says why.
+ */
+const VOICE_WATCHDOG_MS = 5000;
+
+/** What a workout's cues did, for the sound summary line (audio/soundCheck). */
+export interface CueStats {
+  /** Tones handed to a player, and how many reported they played to the end. */
+  tones: number;
+  tonesFinished: number;
+  tonesFailed: number;
+  /** Spoken cues asked for, started, finished and failed. */
+  voice: number;
+  voiceStarted: number;
+  voiceDone: number;
+  voiceFailed: number;
+}
+
+const noStats = (): CueStats => ({
+  tones: 0,
+  tonesFinished: 0,
+  tonesFailed: 0,
+  voice: 0,
+  voiceStarted: 0,
+  voiceDone: 0,
+  voiceFailed: 0,
+});
 
 /**
  * Silence appended after the last tone of every cue. Android's media output
@@ -300,6 +334,118 @@ class AudioEngineClass {
   /** Cues that reported they finished this session — proof in the log that
    *  the sound path works at all, logged once so a workout doesn't flood it. */
   private cuesFinished = 0;
+  private voicesFinished = 0;
+
+  /** Counts since the workout was prepared, for its summary line. */
+  private stats: CueStats = noStats();
+
+  /** What the cues did since prepare(), and start counting afresh. */
+  takeStats(): CueStats {
+    const out = this.stats;
+    this.stats = noStats();
+    return out;
+  }
+
+  /** The "never started" watchdog of the spoken cue in flight, if any. */
+  private voiceWatchdog: ReturnType<typeof setTimeout> | null = null;
+
+  private clearVoiceWatchdog(): void {
+    if (this.voiceWatchdog) clearTimeout(this.voiceWatchdog);
+    this.voiceWatchdog = null;
+  }
+
+  /** Cut off a spoken cue in progress. A cut-off cue is not a lost one. */
+  stopSpeech(): void {
+    this.clearVoiceWatchdog();
+    Speech.stop();
+  }
+
+  /**
+   * Speak a cue at the app's cue volume. Spoken cues go through the phone's
+   * speech engine, not the tone players, so they were invisible in the log: a
+   * customer whose phone said nothing (iPhone 14, iOS 27.0.1, 2026-10-27) sent
+   * a log that could not say whether a single word had been spoken. Every
+   * spoken cue is now counted, the first one finished is logged, and one that
+   * fails or never starts writes a warning.
+   */
+  speak(phrase: string, onSettled?: () => void): void {
+    if (this.volume === 0) return;
+    this.stats.voice++;
+    const asked = Date.now();
+    this.clearVoiceWatchdog();
+    const watchdog = setTimeout(() => {
+      if (this.voiceWatchdog === watchdog) this.voiceWatchdog = null;
+      this.stats.voiceFailed++;
+      logWarn('audio', 'voice cue never started', { language: VOICE_LANGUAGE });
+    }, VOICE_WATCHDOG_MS);
+    this.voiceWatchdog = watchdog;
+    const standDown = () => {
+      clearTimeout(watchdog);
+      if (this.voiceWatchdog === watchdog) this.voiceWatchdog = null;
+    };
+    try {
+      Speech.speak(phrase, {
+        language: VOICE_LANGUAGE,
+        volume: this.volume,
+        onStart: () => {
+          standDown();
+          this.stats.voiceStarted++;
+        },
+        onDone: () => {
+          standDown();
+          this.stats.voiceDone++;
+          if (this.voicesFinished++ === 0) {
+            logEvent('audio', 'first voice cue finished', { ms: Date.now() - asked });
+          }
+          onSettled?.();
+        },
+        onStopped: standDown,
+        onError: (err) => {
+          standDown();
+          this.stats.voiceFailed++;
+          logWarn('audio', 'voice cue failed', { error: String(err) });
+          onSettled?.();
+        },
+      });
+    } catch (err) {
+      standDown();
+      this.stats.voiceFailed++;
+      logWarn('audio', 'voice cue failed', { error: String(err) });
+    }
+  }
+
+  private voicesChecked = false;
+
+  /**
+   * Once a session, before a workout that speaks: how many voices the phone
+   * has, and how many speak English. With no English voice the phone falls
+   * back to another one or says nothing, and a phone with no speech engine
+   * never answers at all, hence the time limit.
+   */
+  async checkVoices(): Promise<void> {
+    if (this.voicesChecked) return;
+    this.voicesChecked = true;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    try {
+      const voices = await Promise.race([
+        Speech.getAvailableVoicesAsync(),
+        new Promise<null>((resolve) => {
+          timer = setTimeout(() => resolve(null), VOICE_WATCHDOG_MS);
+        }),
+      ]);
+      if (voices === null) {
+        logWarn('audio', 'speech engine did not answer', { waitedMs: VOICE_WATCHDOG_MS });
+        return;
+      }
+      const english = voices.filter((v) => (v.language ?? '').toLowerCase().startsWith('en')).length;
+      logEvent('audio', 'voices', { total: voices.length, english });
+      if (english === 0) logWarn('audio', 'no English voice on this phone', { total: voices.length });
+    } catch (err) {
+      logWarn('audio', 'voices not listed', { error: String(err) });
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
 
   /**
    * One long-lived player per cue, created on first use and replayed from the
@@ -315,8 +461,10 @@ class AudioEngineClass {
   private watchdogs: Map<string, ReturnType<typeof setTimeout>> = new Map();
 
   /** Create the players a workout will need before it starts, so the first
-   *  cue of the session is not also the first time its player is built. */
+   *  cue of the session is not also the first time its player is built, and
+   *  count the workout's cues from zero. */
   prepare(styles: SoundStyle[]): void {
+    this.stats = noStats();
     for (const style of styles) {
       if (style === 'none' || style === 'voice') continue;
       this.playerFor(style);
@@ -335,11 +483,13 @@ class AudioEngineClass {
         const failure = (status as { error?: string | null }).error;
         if (failure) {
           this.settle(key);
+          this.stats.tonesFailed++;
           logWarn('audio', 'cue failed', { style: key, error: String(failure) });
           return;
         }
         if (status.didJustFinish) {
           this.settle(key);
+          this.stats.tonesFinished++;
           if (this.cuesFinished++ === 0) logEvent('audio', 'first cue finished', { style: key });
         }
       });
@@ -369,6 +519,7 @@ class AudioEngineClass {
     if (!player) return;
     // Players are long-lived, so the current volume is applied on every play.
     player.volume = this.volume;
+    this.stats.tones++;
     this.settle(key);
     this.watchdogs.set(
       key,
@@ -385,10 +536,12 @@ class AudioEngineClass {
         .then(() => player.play())
         .catch((err) => {
           this.settle(key);
+          this.stats.tonesFailed++;
           logWarn('audio', 'cue failed', { style: key, error: String(err) });
         });
     } catch (err) {
       this.settle(key);
+      this.stats.tonesFailed++;
       logWarn('audio', 'cue failed', { style: key, error: String(err) });
     }
   }
