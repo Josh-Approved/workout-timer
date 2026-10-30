@@ -9,7 +9,7 @@ import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { QrCode, MessageSquare } from 'lucide-react-native';
 import { t } from '../i18n';
-import type { ClassView } from '../screens/useWorkoutPlayback';
+import type { ClassView } from '../class/useClassDriver';
 import { BetaChip } from './BetaChip';
 import { useTheme, fontFamily, space, type as ty, target, Colors } from '../theme';
 
