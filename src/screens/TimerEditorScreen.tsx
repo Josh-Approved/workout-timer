@@ -364,7 +364,7 @@ export default function TimerEditorScreen({ route, navigation }: Props) {
                     value={form.sets}
                     onChange={(v) => set('sets', Math.max(1, v))}
                     min={1}
-                    max={30}
+                    max={50}
                     step={1}
                     colors={c}
                   />
