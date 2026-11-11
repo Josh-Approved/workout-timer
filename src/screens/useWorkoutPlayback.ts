@@ -46,6 +46,10 @@ type DisplayState = PlaybackState;
 // restarts the current one.
 export const RESTART_THRESHOLD_SECONDS = 1;
 
+// How long a finished workout keeps its background audio hold, so the finish
+// cue (or its spoken version) plays out in full on a locked phone.
+export const RELEASE_AFTER_FINISH_MS = 8_000;
+
 /** A saved timer, or a class this phone is in (class mode). */
 export type WorkoutSource = { timerId: string } | { classSession: ClassSession };
 
@@ -57,7 +61,13 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
   // the core can play anything.
   const core = usePlaybackCore({
     stepStart: (idx) => cls.devLog('step', idx),
-    finish: () => cls.finished(),
+    finish: () => {
+      // The workout is over: the screen may sleep, and once the finish cue
+      // has played the app may be suspended like any other.
+      deactivateKeepAwake();
+      releaseAudioHold(RELEASE_AFTER_FINISH_MS);
+      cls.finished();
+    },
   });
   const { stepsRef, soundsRef, maxCyclesRef, speechModeRef, clockRef, stateRef } = core;
   const { sessionIdRef, timerNameRef, finalElapsedRef, displayState, isRunning, setIsRunning } = core;
@@ -71,6 +81,35 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
   const roundsRef = useRef(0);
   const [rounds, setRounds] = useState(0);
   const [loaded, setLoaded] = useState(false);
+
+  // While the workout clock runs, the app holds the phone: the screen stays on,
+  // and a silent audio loop (AudioEngine.startKeepAlive) keeps iOS from
+  // suspending the app, so cues and phase changes still land with the phone
+  // locked. That audio hold must end when the clock stops. It used to last
+  // until this screen closed, so a finished or paused workout left on screen
+  // kept the app alive in the background indefinitely: iOS never let it go,
+  // every open was a resume rather than a cold start (so the launch splash
+  // never played), and the phone ran an audio session nobody could hear.
+  const releaseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelPendingRelease = () => {
+    if (releaseTimerRef.current) clearTimeout(releaseTimerRef.current);
+    releaseTimerRef.current = null;
+  };
+  const holdAudio = () => {
+    cancelPendingRelease();
+    AudioEngine.startKeepAlive().catch(() => {});
+  };
+  const releaseAudioHold = (afterMs = 0) => {
+    cancelPendingRelease();
+    if (afterMs <= 0) {
+      AudioEngine.stopKeepAlive();
+      return;
+    }
+    releaseTimerRef.current = setTimeout(() => {
+      releaseTimerRef.current = null;
+      AudioEngine.stopKeepAlive();
+    }, afterMs);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -121,7 +160,7 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
       setLoaded(true);
 
       await activateKeepAwakeAsync();
-      AudioEngine.startKeepAlive().catch(() => {});
+      holdAudio();
       void startSoundCheck(settings.sounds, settings.audioAccessibilityMode);
       if (cancelled) return;
 
@@ -134,6 +173,7 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
 
     return () => {
       cancelled = true;
+      cancelPendingRelease();
       deactivateKeepAwake();
       AudioEngine.stopKeepAlive();
       void endSoundCheck();
@@ -181,7 +221,11 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
       stopTicking();
       setIsRunning(false);
       endLiveTimer(sessionIdRef.current).catch(() => {});
+      // Nothing to play while paused. The screen stays on (the athlete is
+      // resting, not done); only the background audio hold goes.
+      releaseAudioHold();
     } else {
+      holdAudio();
       clockRef.current = resumeClock(clockRef.current, nowMs());
       setIsRunning(true);
       scheduleTick();
@@ -275,12 +319,14 @@ export function useWorkoutPlayback(source: WorkoutSource, onExit: () => void) {
   };
 
   // Run the same workout again from the top, straight from the complete
-  // screen. Keep-awake and the silent keep-alive are still held (they're only
-  // released on unmount), so this is the load path's start sequence again,
-  // with the round count and final time cleared.
+  // screen. Finishing let go of the screen and the audio hold, so this takes
+  // both back, then runs the load path's start sequence again with the round
+  // count and final time cleared.
   const restart = () => {
     const steps = stepsRef.current;
     if (steps.length === 0 || cls.session()) return;
+    activateKeepAwakeAsync().catch(() => {});
+    holdAudio();
     roundsRef.current = 0;
     setRounds(0);
     finalElapsedRef.current = null;
