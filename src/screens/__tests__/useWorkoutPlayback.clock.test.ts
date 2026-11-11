@@ -62,8 +62,8 @@ jest.mock('../../audio/workoutCues', () => ({
   fireRoundCounted: jest.fn(),
 }));
 jest.mock('expo-keep-awake', () => ({
-  activateKeepAwakeAsync: async () => {},
-  deactivateKeepAwake: () => {},
+  activateKeepAwakeAsync: jest.fn(async () => {}),
+  deactivateKeepAwake: jest.fn(),
 }));
 jest.mock('expo-haptics', () => ({
   impactAsync: jest.fn(async () => {}),
@@ -84,6 +84,7 @@ import { useWorkoutPlayback } from '../useWorkoutPlayback';
 import { firePhaseStart, playComplete } from '../../audio/workoutCues';
 import { AudioEngine } from '../../audio/AudioEngine';
 import { startLiveTimer } from 'live-timer';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 
 async function startWorkout() {
   const hook = await renderHook(() => useWorkoutPlayback({ timerId: 't' }, jest.fn()));
@@ -164,5 +165,47 @@ describe('useWorkoutPlayback — the timer runs on its clock', () => {
     expect(result.current.displayState).toEqual({ mode: 'phase', stepIndex: 1, timeRemaining: 5 });
     await advance(1);
     expect(result.current.displayState).toEqual({ mode: 'phase', stepIndex: 1, timeRemaining: 4 });
+  });
+});
+
+// While the clock runs the app holds the phone: the screen stays on and a
+// silent audio loop keeps iOS from suspending it. A finished or paused workout
+// left on screen used to keep that loop going until the screen closed, so iOS
+// never let the app go: every open was a resume, never a cold start (no launch
+// splash), with an audio session running for nobody.
+describe('useWorkoutPlayback — the phone is let go when the clock stops', () => {
+  it('a finished workout lets the screen sleep and drops the silent loop after the finish cue', async () => {
+    const { result } = await startWorkout();
+    expect(AudioEngine.startKeepAlive).toHaveBeenCalledTimes(1);
+    await advance(40_000);
+    expect(result.current.displayState.mode).toBe('complete');
+    expect(deactivateKeepAwake).toHaveBeenCalledTimes(1);
+    // The finish cue (or its spoken version) still plays out on a locked phone.
+    expect(AudioEngine.stopKeepAlive).not.toHaveBeenCalled();
+    await advance(8_000);
+    expect(AudioEngine.stopKeepAlive).toHaveBeenCalledTimes(1);
+  });
+
+  it('Restart from the complete screen takes both holds back and cancels the pending drop', async () => {
+    const { result } = await startWorkout();
+    await advance(40_000);
+    await advance(2_000);
+    await act(() => result.current.restart());
+    expect(activateKeepAwakeAsync).toHaveBeenCalledTimes(2);
+    expect(AudioEngine.startKeepAlive).toHaveBeenCalledTimes(2);
+    await advance(10_000);
+    expect(result.current.displayState.mode).toBe('phase');
+    expect(AudioEngine.stopKeepAlive).not.toHaveBeenCalled();
+  });
+
+  it('a paused solo workout drops the silent loop, and resuming takes it back', async () => {
+    const { result } = await startWorkout();
+    await advance(3_000);
+    await act(() => result.current.togglePause());
+    expect(AudioEngine.stopKeepAlive).toHaveBeenCalledTimes(1);
+    // Paused, the screen still stays on: the athlete is resting, not done.
+    expect(deactivateKeepAwake).not.toHaveBeenCalled();
+    await act(() => result.current.togglePause());
+    expect(AudioEngine.startKeepAlive).toHaveBeenCalledTimes(2);
   });
 });
